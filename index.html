@@ -3226,6 +3226,7 @@ async function handleAuth(e, type) {
             } else if (profile.status === 'pending') {
                 showToast('Your account is pending admin approval.', 'info');
                 showStatusMessage('pending');
+                startApprovalPolling();
             } else if (profile.status === 'rejected') {
                 showToast('Your account has been rejected.', 'error');
                 showStatusMessage('rejected');
@@ -3267,6 +3268,7 @@ async function handleLogout() {
     var dd = document.getElementById('userMenuDropdown');
     if (dd) { dd.style.opacity = '0'; dd.style.pointerEvents = 'none'; dd.style.transform = 'translateY(8px)'; }
     hideStatusMessage();
+    stopApprovalPolling();
     navigateTo('home');
     showToast('Signed out successfully.', 'info');
 }
@@ -3927,7 +3929,9 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             // Dashboard protection on page load:
             if (profile && profile.status === 'approved') {
+                hideStatusMessage();
                 updateDashboardUI();
+                navigateTo('dashboard');
             }
 
             // If the dashboard view is somehow active but user isn't approved, kick them out
@@ -3946,6 +3950,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                     navigateTo('home');
                 }
             }
+
+            // ── Poll for admin approval every 30s while pending ──
+            if (profile && profile.status === 'pending') {
+                startApprovalPolling();
+            }
         } else {
             // No active Supabase session — clear everything
             clearSession();
@@ -3958,6 +3967,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     // ── Real-time auth state listener ──
     // Reacts to: admin approval, token refresh, external signout, etc.
     sb.auth.onAuthStateChange(async function (event, session) {
+        // Approval was detected by polling — skip duplicate handling
+        if (_approvalJustDetected) return;
         // to prevent duplicate toasts and UI updates.
         if (_authHandlingInProgress) return;
 
@@ -4011,6 +4022,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                         hideStatusMessage();
                         updateDashboardUI();
                         showToast('Your account has been approved! Access granted.', 'success');
+                        navigateTo('dashboard');
+                        stopApprovalPolling();
                     } else {
                         showStatusMessage(profile.status);
                     }
@@ -4019,6 +4032,46 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 });
+
+
+// ── Approval Polling: check profile status every 30s for pending users ──
+var _approvalPollingTimer = null;
+var _approvalJustDetected  = false;
+
+function startApprovalPolling() {
+    stopApprovalPolling();
+    _approvalPollingTimer = setInterval(async function () {
+        if (!sb || !currentUser || !currentUser.id) {
+            stopApprovalPolling();
+            return;
+        }
+        try {
+            var res = await sb.from('profiles').select('status').eq('id', currentUser.id).single();
+            if (res.data && res.data.status === 'approved') {
+                stopApprovalPolling();
+                _approvalJustDetected = true;
+                currentUser.status = 'approved';
+                sessionValid = true;
+                saveSession();
+                hideStatusMessage();
+                updateAuthUI();
+                updateDashboardUI();
+                showToast('Your account has been approved! Access granted.', 'success');
+                navigateTo('dashboard');
+                setTimeout(function () { _approvalJustDetected = false; }, 3000);
+            }
+        } catch (_) {
+            // Silently retry next interval
+        }
+    }, 30000); // every 30 seconds
+}
+
+function stopApprovalPolling() {
+    if (_approvalPollingTimer) {
+        clearInterval(_approvalPollingTimer);
+        _approvalPollingTimer = null;
+    }
+}
 
 
 // Focus trap for modals
