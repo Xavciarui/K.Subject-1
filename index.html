@@ -3053,9 +3053,12 @@ async function handleAuth(e, type) {
                 password: password,
                 options: {
                     data: {
-                        first_name: firstName,
-                        last_name:  lastName,
-                        role:        role || 'seller'
+                        first_name:  firstName,
+                        last_name:   lastName,
+                        role:         role || 'seller',
+                        brand_name:  brand,
+                        phone:        phone,
+                        description:  desc
                     }
                 }
             });
@@ -3958,7 +3961,22 @@ document.addEventListener('DOMContentLoaded', async function () {
         // to prevent duplicate toasts and UI updates.
         if (_authHandlingInProgress) return;
 
-        if (event === 'SIGNED_IN' && session) {
+        if (event === 'SIGNED_UP' && session) {
+            // SIGNED_UP with a session means email confirmation is OFF.
+            // Profile should already exist (trigger + client both run).
+            var user    = session.user;
+            var profile = await getProfile(user.id);
+            currentUser = buildCurrentUser(user, profile);
+            sessionValid = true;
+            saveSession();
+            updateAuthUI();
+            if (profile && profile.status === 'pending') {
+                showStatusMessage('pending');
+            }
+        } else if (event === 'SIGNED_UP' && !session) {
+            // Email confirmation is ON. Trigger already created the profile.
+            // No session = no UI update needed. User sees the "check email" toast.
+        } else if (event === 'SIGNED_IN' && session) {
             var user    = session.user;
             var profile = await getProfile(user.id);
             currentUser = buildCurrentUser(user, profile);
