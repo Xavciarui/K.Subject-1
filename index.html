@@ -674,66 +674,6 @@
             color: #9b97a8;
         }
 
-        
-
-        /* ── Mobile Dashboard Horizontal Tab Bar ── */
-        @media (max-width: 1023px) {
-            .dash-sidebar-card {
-                background: transparent !important;
-                border: none !important;
-                padding: 0 !important;
-                border-radius: 0 !important;
-                position: static !important;
-            }
-            .dash-sidebar-card .dash-seller-info {
-                display: none;
-            }
-            .dash-sidebar-card > nav {
-                display: flex !important;
-                flex-direction: row !important;
-                gap: 6px !important;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                padding-bottom: 4px;
-                margin-bottom: 4px;
-            }
-            .dash-sidebar-card > nav::-webkit-scrollbar {
-                display: none;
-            }
-            .dash-sidebar-link {
-                white-space: nowrap;
-                flex-shrink: 0;
-                padding: 9px 16px !important;
-                font-size: 13px !important;
-                border-radius: 12px !important;
-                border: 1px solid rgba(255,255,255,0.06) !important;
-                background: rgba(255,255,255,0.03) !important;
-            }
-            .dash-sidebar-link.active {
-                background: rgba(232,166,48,0.12) !important;
-                border-color: rgba(232,166,48,0.2) !important;
-                color: #e8a630 !important;
-            }
-            .dash-sidebar-card .dash-back-to-shop {
-                display: none;
-            }
-        }
-        /* Separator line between mobile tabs and content */
-        @media (max-width: 1023px) {
-            .dash-mobile-sep {
-                display: block;
-                height: 1px;
-                background: linear-gradient(90deg, transparent, rgba(232,166,48,0.15), transparent);
-                margin: 12px 0 20px 0;
-            }
-        }
-        @media (min-width: 1024px) {
-            .dash-mobile-sep {
-                display: none;
-            }
-        }
-
         .dash-activity-item {
             display: flex; gap: 14px; padding: 14px 0;
             border-bottom: 1px solid rgba(255,255,255,0.03);
@@ -763,7 +703,220 @@
         }
 
         /* ═══════════════════════════════════════
-           27. RESPONSIVE
+           27.5 EMPTY STATES — Premium Collection & Library
+           Matches: atmospheric orbs, glow-ring aesthetic,
+           Playfair Display headings, gold accent palette
+        ═══════════════════════════════════════ */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 80px 24px; position: relative;
+            overflow: hidden;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        /* Fade out class - added by JS before removing */
+        .empty-state.fade-out {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.98);
+            pointer-events: none;
+        }
+        /* Subtle background atmosphere matching .atmo-bg */
+        .empty-state::before {
+            content: '';
+            position: absolute; inset: 0; pointer-events: none; z-index: 0;
+            background:
+                radial-gradient(ellipse 300px 250px at 50% 30%, rgba(232,166,48,0.06), transparent),
+                radial-gradient(ellipse 200px 180px at 20% 70%, rgba(224,122,95,0.03), transparent);
+        }
+        .empty-state > * { position: relative; z-index: 1; }
+
+        /* Visual container - icon + orb system */
+        .empty-state-visual {
+            position: relative; width: 160px; height: 140px; margin-bottom: 32px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        /* Main glowing orb - matches .orb styling but contained */
+        .empty-state-orb {
+            position: absolute; width: 110px; height: 110px; border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(232,166,48,0.15), rgba(232,166,48,0.05) 40%, transparent 70%);
+            filter: blur(2px);
+            animation: emptyOrbFloat 8s ease-in-out infinite;
+        }
+        /* Orb ring border - matches .glow-ring aesthetic */
+        .empty-state-orb::before {
+            content: ''; position: absolute; inset: -12px; border-radius: 50%;
+            background: transparent;
+            box-shadow: 0 0 0 1px rgba(232,166,48,0.1), 0 0 40px -8px rgba(232,166,48,0.1);
+            animation: emptyOrbRingPulse 4s ease-in-out infinite;
+        }
+        @keyframes emptyOrbFloat {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.03); }
+        }
+        @keyframes emptyOrbRingPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        /* Icon styling - matches accent color + drop shadow like product cards */
+        .empty-state-icon {
+            position: relative; z-index: 2; font-size: 36px;
+            color: #e8a630;
+            filter: drop-shadow(0 4px 20px rgba(232,166,48,0.3));
+            animation: iconGentleBreathe 6s ease-in-out infinite;
+        }
+        @keyframes iconGentleBreathe {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+        /* Sparkle particles - subtle ambient effect */
+        .empty-state-sparkles {
+            position: absolute; inset: 0; pointer-events: none;
+        }
+        .empty-sparkle {
+            position: absolute; width: 5px; height: 5px; border-radius: 50%;
+            background: #e8a630; opacity: 0;
+            box-shadow: 0 0 6px 2px rgba(232,166,48,0.3);
+            animation: sparkleTwinkle 4s ease-in-out infinite;
+        }
+        .empty-sparkle:nth-child(1) { top: 5%; left: 18%; animation-delay: 0s; }
+        .empty-sparkle:nth-child(2) { top: 15%; right: 12%; animation-delay: 1s; }
+        .empty-sparkle:nth-child(3) { bottom: 28%; left: 10%; animation-delay: 2s; }
+        .empty-sparkle:nth-child(4) { bottom: 18%; right: 18%; animation-delay: 3s; }
+        .empty-sparkle:nth-child(5) { top: 45%; left: 5%; animation-delay: 1.5s; width: 4px; height: 4px; }
+        .empty-sparkle:nth-child(6) { top: 40%; right: 5%; animation-delay: 2.5s; width: 4px; height: 4px; }
+        @keyframes sparkleTwinkle {
+            0%, 70%, 100% { opacity: 0; transform: scale(0.5); }
+            35% { opacity: 0.8; transform: scale(1); }
+        }
+        /* Title - uses Playfair Display like section headings */
+        .empty-state-title {
+            font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600;
+            color: #ede8e0; margin-bottom: 12px; letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        /* Description - matches body text subtlety */
+        .empty-state-desc {
+            font-family: 'DM Sans', sans-serif; font-size: 14.5px; color: #9b97a8;
+            max-width: 340px; line-height: 1.7; margin-bottom: 32px;
+            font-weight: 400;
+        }
+        /* Action button - matches primary button styling */
+        .empty-state-action {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 14px 28px; border-radius: 16px;
+            background: linear-gradient(135deg, rgba(232,166,48,0.12), rgba(232,166,48,0.08));
+            border: 1px solid rgba(232,166,48,0.18);
+            color: #e8a630; font-size: 14px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.4s cubic-bezier(0.4,0,0.2,1); cursor: pointer;
+            position: relative; overflow: hidden;
+        }
+        /* Button shine effect on hover - matches .card-shine */
+        .empty-state-action::before {
+            content: ''; position: absolute; top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        .empty-state-action:hover {
+            background: linear-gradient(135deg, rgba(232,166,48,0.18), rgba(232,166,48,0.1));
+            border-color: rgba(232,166,48,0.3);
+            transform: translateY(-3px);
+            box-shadow:
+                0 0 0 1px rgba(232,166,48,0.1),
+                0 10px 40px -10px rgba(232,166,48,0.25),
+                0 20px 60px -15px rgba(0,0,0,0.5);
+        }
+        .empty-state-action:hover::before { left: 100%; }
+        .empty-state-action:active { transform: translateY(-1px); }
+        .empty-state-action i { transition: transform 0.3s ease; }
+        .empty-state-action:hover i { transform: translateX(3px); }
+
+        /* ═══════════════════════════════════════
+           Dashboard variant - slightly more compact
+        ═══════════════════════════════════════ */
+        .empty-state-dash {
+            background: linear-gradient(165deg, rgba(19,19,28,0.95), rgba(19,19,28,0.7));
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 24px;
+            padding: 56px 28px;
+            position: relative; overflow: hidden;
+        }
+        .empty-state-dash::before {
+            content: '';
+            position: absolute; inset: 0; pointer-events: none;
+            background: radial-gradient(ellipse 200px 150px at 50% 20%, rgba(232,166,48,0.04), transparent);
+        }
+        .empty-state-dash .empty-state-visual { width: 120px; height: 105px; margin-bottom: 24px; }
+        .empty-state-dash .empty-state-orb { width: 85px; height: 85px; }
+        .empty-state-dash .empty-state-icon { font-size: 28px; }
+        .empty-state-dash .empty-state-title { font-size: 19px; margin-bottom: 8px; }
+        .empty-state-dash .empty-state-desc { font-size: 13px; max-width: 280px; line-height: 1.6; margin-bottom: 24px; }
+
+        /* ═══════════════════════════════════════
+           27.6 DASHBOARD SIDEBAR ENHANCEMENT
+        ═══════════════════════════════════════ */
+        .dash-sidebar-wrapper {
+            position: relative;
+        }
+        .dash-sidebar-wrapper::before {
+            content: '';
+            position: absolute; left: -12px; right: -12px; top: -12px; bottom: -12px;
+            background: linear-gradient(180deg, rgba(232,166,48,0.03) 0%, transparent 50%, rgba(232,166,48,0.02) 100%);
+            border-radius: 28px; pointer-events: none; z-index: -1;
+        }
+        .dash-sidebar-card {
+            background: linear-gradient(165deg, #151520 0%, #13131c 50%, #11111a 100%);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px; padding: 20px; position: relative; overflow: hidden;
+        }
+        .dash-sidebar-card::after {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(232,166,48,0.2), transparent);
+        }
+        .dash-sidebar-glow {
+            position: absolute; width: 120px; height: 120px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(232,166,48,0.08), transparent 70%);
+            top: -40px; right: -30px; pointer-events: none;
+        }
+        .dash-seller-profile {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px; margin: -20px -20px 16px -20px;
+            background: linear-gradient(135deg, rgba(232,166,48,0.06), rgba(232,166,48,0.02));
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-radius: 20px 20px 0 0; position: relative;
+        }
+        .dash-avatar-ring {
+            position: relative; flex-shrink: 0;
+        }
+        .dash-avatar-ring::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 14px;
+            background: linear-gradient(135deg, #e8a630, #c48a20); opacity: 0.4;
+            z-index: -1;
+        }
+        .dash-nav-section {
+            position: relative; z-index: 1;
+        }
+        .dash-sidebar-divider {
+            height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+            margin: 12px 0;
+        }
+        .dash-back-link {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px; margin: 8px -8px 0 -8px;
+            border-radius: 12px; font-size: 13px; color: #6b6880;
+            transition: all 0.25s ease; cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .dash-back-link:hover {
+            background: rgba(224,122,95,0.08); color: #e07a5f;
+            border-color: rgba(224,122,95,0.1);
+        }
+        .dash-back-link i { transition: transform 0.25s ease; }
+        .dash-back-link:hover i { transform: translateX(-3px); }
+
+        /* ═══════════════════════════════════════
+           28. RESPONSIVE
         ═══════════════════════════════════════ */
         @media (max-width: 768px) {
             .float-1 { width: 160px; height: 200px; top: 2%; right: 2%; }
@@ -1400,25 +1553,25 @@
                         </button>
                     </div>
                     <div class="mt-8" id="collectionContent">
-                        <div class="flex flex-col items-center justify-center text-center py-16 sm:py-24">
-                            <div class="relative mb-8">
-                                <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-accent/10 to-accent/[0.03] border border-accent/10 flex items-center justify-center rotate-3 hover:rotate-0 transition-transform duration-500">
-                                    <i class="fa-solid fa-box-open text-3xl text-accent/60" aria-hidden="true"></i>
+                        <div class="empty-state" id="collectionEmptyState">
+                            <div class="empty-state-visual">
+                                <div class="empty-state-orb"></div>
+                                <div class="empty-state-sparkles">
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
                                 </div>
-                                <div class="absolute -top-2 -right-2 w-8 h-8 rounded-lg bg-sage/10 border border-sage/15 flex items-center justify-center">
-                                    <i class="fa-solid fa-wand-magic-sparkles text-sage text-xs" aria-hidden="true"></i>
-                                </div>
+                                <i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i>
                             </div>
-                            <p class="font-display font-bold text-xl text-softWhite mb-2">Coming Soon</p>
-                            <p class="text-sm text-subtle max-w-sm leading-relaxed">Our team is handpicking the finest products across all categories. This collection will be live shortly.</p>
-                            <div class="flex items-center gap-3 mt-8">
-                                <button onclick="navigateTo('home')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent/10 border border-accent/15 text-accent text-sm font-medium hover:bg-accent/15 transition">
-                                    <i class="fa-solid fa-house text-xs" aria-hidden="true"></i> Back to Home
-                                </button>
-                                <button onclick="navigateTo('collaborate')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm font-medium hover:bg-white/[0.08] transition">
-                                    <i class="fa-solid fa-handshake text-xs" aria-hidden="true"></i> Become a Seller
-                                </button>
-                            </div>
+                            <h3 class="empty-state-title">Collection Awaiting Products</h3>
+                            <p class="empty-state-desc">The shelves are ready. Our curators are selecting premium pieces across tech, fashion, beauty, and outdoor categories.</p>
+                            <button onclick="navigateTo('collaborate')" class="empty-state-action">
+                                <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
+                                Submit a Product
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1440,25 +1593,25 @@
                         <p class="mt-2 text-subtle max-w-lg">Curated essentials — from daily utility to ambient comfort. Handpicked for quality.</p>
                     </div>
                     <div class="mt-8" id="libraryContent">
-                        <div class="flex flex-col items-center justify-center text-center py-16 sm:py-24">
-                            <div class="relative mb-8">
-                                <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#648cc8]/10 to-[#648cc8]/[0.03] border border-[#648cc8]/10 flex items-center justify-center -rotate-3 hover:rotate-0 transition-transform duration-500">
-                                    <i class="fa-solid fa-book text-3xl text-[#648cc8]/60" aria-hidden="true"></i>
+                        <div class="empty-state" id="libraryEmptyState">
+                            <div class="empty-state-visual">
+                                <div class="empty-state-orb"></div>
+                                <div class="empty-state-sparkles">
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
+                                    <span class="empty-sparkle"></span>
                                 </div>
-                                <div class="absolute -top-2 -left-2 w-8 h-8 rounded-lg bg-accent/10 border border-accent/15 flex items-center justify-center">
-                                    <i class="fa-solid fa-clock text-accent text-xs" aria-hidden="true"></i>
-                                </div>
+                                <i class="fa-solid fa-book empty-state-icon" aria-hidden="true"></i>
                             </div>
-                            <p class="font-display font-bold text-xl text-softWhite mb-2">Curating in Progress</p>
-                            <p class="text-sm text-subtle max-w-sm leading-relaxed">We are carefully selecting everyday essentials for quality and value. The library will be ready soon.</p>
-                            <div class="flex items-center gap-3 mt-8">
-                                <button onclick="navigateTo('home')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#648cc8]/10 border border-[#648cc8]/15 text-[#648cc8] text-sm font-medium hover:bg-[#648cc8]/15 transition">
-                                    <i class="fa-solid fa-house text-xs" aria-hidden="true"></i> Back to Home
-                                </button>
-                                <button onclick="navigateTo('collection')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm font-medium hover:bg-white/[0.08] transition">
-                                    <i class="fa-solid fa-grip text-xs" aria-hidden="true"></i> Browse Collection
-                                </button>
-                            </div>
+                            <h3 class="empty-state-title">Library Being Stocked</h3>
+                            <p class="empty-state-desc">We're carefully selecting essential reads, guides, and resources. Quality takes time — the shelves will be ready soon.</p>
+                            <button onclick="navigateTo('collection')" class="empty-state-action">
+                                <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
+                                Browse Collection
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2301,20 +2454,25 @@
 
                     <!-- Sidebar -->
                     <div class="lg:w-64 shrink-0">
-                        <div class="dash-sidebar-card bg-card border border-white/[0.04] rounded-2xl p-4 lg:sticky lg:top-24">
-                            <!-- Seller Info -->
-                            <div class="dash-seller-info flex items-center gap-3 px-3 py-3 mb-3 border-b border-white/[0.04]">
-                                <div class="w-10 h-10 rounded-xl bg-accent/15 border border-accent/10 flex items-center justify-center">
-                                    <span class="text-accent font-display font-bold text-sm" id="dashAvatar">KC</span>
-                                </div>
+                        <div class="dash-sidebar-wrapper">
+                            <div class="dash-sidebar-card lg:sticky lg:top-24">
+                                <div class="dash-sidebar-glow"></div>
+
+                                <!-- Seller Info -->
+                                <div class="dash-seller-profile">
+                                    <div class="dash-avatar-ring">
+                                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center">
+                                            <span class="text-accent font-display font-bold text-sm" id="dashAvatar">KC</span>
+                                        </div>
+                                    </div>
                                 <div class="min-w-0">
-                                    <p class="text-sm font-semibold truncate" id="dashSellerName">Seller</p>
+                                    <p class="text-sm font-semibold truncate text-softWhite" id="dashSellerName">Seller</p>
                                     <p class="text-[11px] text-muted truncate" id="dashSellerEmail">seller@example.com</p>
                                 </div>
-                            </div>
+                                </div>
 
-                            <!-- Nav Links -->
-                            <nav class="space-y-1" role="navigation" aria-label="Dashboard">
+                                <!-- Nav Links -->
+                                <nav class="dash-nav-section space-y-1" role="navigation" aria-label="Dashboard">
                                 <button class="dash-sidebar-link active w-full" data-dash-tab="overview" onclick="switchDashTab('overview',this)">
                                     <i class="fa-solid fa-chart-pie dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
                                     <span>Overview</span>
@@ -2335,17 +2493,17 @@
 
                             </nav>
 
-                            <!-- Back to Shop -->
-                            <div class="dash-back-to-shop mt-4 pt-4 border-t border-white/[0.04]">
-                                <button onclick="navigateTo('home')" class="dash-sidebar-link w-full">
-                                    <i class="fa-solid fa-arrow-left dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
+                                <div class="dash-sidebar-divider"></div>
+
+                                <!-- Back to Shop -->
+                                <button onclick="navigateTo('home')" class="dash-back-link">
+                                    <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
                                     <span>Back to Shop</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="dash-mobile-sep"></div>
                     <!-- Main Content -->
                     <div class="flex-1 min-w-0">
 
@@ -2443,14 +2601,16 @@
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Products</h3>
                                     <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="text-xs text-accent hover:text-accentDim transition">View All</button>
                                 </div>
-                                <div class="bg-card border border-white/[0.04] rounded-2xl p-10 text-center">
-                                    <div class="w-16 h-16 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
-                                        <i class="fa-solid fa-box-open text-2xl text-muted" aria-hidden="true"></i>
+                                <div class="empty-state-dash">
+                                    <div class="empty-state-visual">
+                                        <div class="empty-state-orb"></div>
+                                        <i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i>
                                     </div>
-                                    <p class="font-medium text-subtle">No products yet</p>
-                                    <p class="text-sm text-muted mt-1 mb-5 max-w-xs mx-auto">Start by adding your first product to see it appear here.</p>
-                                    <button onclick="showToast('Product management will be available soon.','info')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent/10 border border-accent/15 text-accent text-sm font-medium hover:bg-accent/15 transition">
-                                        <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add Your First Product
+                                    <h3 class="empty-state-title">Your Product Showcase</h3>
+                                    <p class="empty-state-desc">Start by adding your first product to see it appear here. Build your catalog and watch it come to life.</p>
+                                    <button onclick="showToast('Product management will be available soon.','info')" class="empty-state-action">
+                                        <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
+                                        Add Your First Product
                                     </button>
                                 </div>
                             </div>
@@ -2461,50 +2621,47 @@
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Orders</h3>
                                     <button onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))" class="text-xs text-accent hover:text-accentDim transition">View All</button>
                                 </div>
-                                <div class="bg-card border border-white/[0.04] rounded-2xl p-10 text-center">
-                                    <div class="w-16 h-16 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
-                                        <i class="fa-solid fa-receipt text-2xl text-muted" aria-hidden="true"></i>
+                                <div class="empty-state-dash">
+                                    <div class="empty-state-visual">
+                                        <div class="empty-state-orb"></div>
+                                        <i class="fa-solid fa-receipt empty-state-icon" aria-hidden="true"></i>
                                     </div>
-                                    <p class="font-medium text-subtle">No orders yet</p>
-                                    <p class="text-sm text-muted mt-1 max-w-xs mx-auto">Orders will appear here once customers start purchasing your products.</p>
+                                    <h3 class="empty-state-title">Orders Will Appear Here</h3>
+                                    <p class="empty-state-desc">Once customers start purchasing your products, orders will show up here in real-time.</p>
                                 </div>
                             </div>
 
                             <!-- Activity Feed (Empty) -->
                             <div>
                                 <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider mb-4">Activity</h3>
-                                <div class="bg-card border border-white/[0.04] rounded-2xl p-10 text-center">
-                                    <div class="w-16 h-16 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
-                                        <i class="fa-solid fa-clock-rotate-left text-2xl text-muted" aria-hidden="true"></i>
+                                <div class="empty-state-dash">
+                                    <div class="empty-state-visual">
+                                        <div class="empty-state-orb"></div>
+                                        <i class="fa-solid fa-clock-rotate-left empty-state-icon" aria-hidden="true"></i>
                                     </div>
-                                    <p class="font-medium text-subtle">No activity yet</p>
-                                    <p class="text-sm text-muted mt-1">Your recent actions and updates will show up here.</p>
+                                    <h3 class="empty-state-title">Activity Awaits</h3>
+                                    <p class="empty-state-desc">Your recent actions, updates, and milestones will appear here as your shop grows.</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- ── PRODUCTS TAB (EMPTY) ── -->
                         <div class="dash-tab-content" id="dashTabProducts" style="display:none;">
-                            <div class="bg-card border border-white/[0.04] rounded-2xl p-12 text-center">
-                                <div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-5">
-                                    <i class="fa-solid fa-boxes-stacked text-3xl text-muted" aria-hidden="true"></i>
+                            <div class="empty-state-dash">
+                                <div class="empty-state-visual">
+                                    <div class="empty-state-orb"></div>
+                                    <i class="fa-solid fa-boxes-stacked empty-state-icon" aria-hidden="true"></i>
                                 </div>
-                                <h3 class="font-display text-xl font-bold mb-2">Your Product Catalog</h3>
-                                <p class="text-muted max-w-md mx-auto mb-6">You haven't added any products yet. Start building your collection by adding your first item.</p>
+                                <h3 class="empty-state-title">Your Product Catalog</h3>
+                                <p class="empty-state-desc">You haven't added any products yet. Start building your collection by adding your first item and watch your catalog come to life.</p>
                                 <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                                    <button onclick="showToast('Product management will be available soon.','info')" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
-                                        <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add First Product
+                                    <button onclick="showToast('Product management will be available soon.','info')" class="empty-state-action">
+                                        <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
+                                        Add First Product
                                     </button>
                                     <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm font-medium hover:bg-white/[0.08] transition">
                                         <i class="fa-solid fa-gear text-xs" aria-hidden="true"></i> Configure Shop
                                     </button>
-                                </div>
-
-                                <!-- Empty state illustration -->
-                                <div class="mt-10 grid grid-cols-3 gap-4 max-w-sm mx-auto opacity-30">
-                                    <div class="h-24 rounded-xl bg-white/[0.03] border border-white/[0.04]"></div>
-                                    <div class="h-24 rounded-xl bg-white/[0.03] border border-white/[0.04]"></div>
-                                    <div class="h-24 rounded-xl bg-white/[0.03] border border-white/[0.04]"></div>
                                 </div>
                             </div>
                         </div>
@@ -2781,7 +2938,6 @@ function clearSession() {
     try { localStorage.removeItem('kc_session'); } catch (_) {}
     currentUser  = null;
     sessionValid = false;
-    _approvalToastShown = false;
 }
 
 
@@ -3793,7 +3949,25 @@ function filterCollection(cat) {
     var collectionContent = safeGet('collectionContent');
     if (collectionContent) {
         var catLabel = cat === 'all' ? 'all categories' : cat;
-        collectionContent.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-16"><div class="relative mb-6"><div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent/10 to-accent/[0.03] border border-accent/10 flex items-center justify-center rotate-3"><i class="fa-solid fa-box-open text-2xl text-accent/60" aria-hidden="true"></i></div></div><p class="font-display font-bold text-lg text-softWhite mb-1">No items in ' + catLabel + '</p><p class="text-sm text-subtle max-w-sm">This section is being curated. Check back soon for handpicked products.</p></div>';
+        var catIcon = cat === 'tech' ? 'fa-microchip' :
+                      cat === 'fashion' ? 'fa-shirt' :
+                      cat === 'beauty' ? 'fa-spa' :
+                      cat === 'outdoor' ? 'fa-tree' :
+                      cat === 'library' ? 'fa-book-open' : 'fa-gem';
+        var catTitle = cat === 'all' ? 'Curating Your Collection' :
+                       cat === 'tech' ? 'Tech Picks Coming Soon' :
+                       cat === 'fashion' ? 'Fashion Line in Progress' :
+                       cat === 'beauty' ? 'Beauty Selection Loading' :
+                       cat === 'outdoor' ? 'Outdoor Gear Curating' :
+                       cat === 'library' ? 'Library in the Making' : 'Curating Your Collection';
+        var catDesc = cat === 'all' ? 'Our team is handpicking the finest pieces across all categories. Something special is on the way.' :
+                     cat === 'tech' ? 'We\'re sourcing cutting-edge tech and gadgets that blend innovation with elegant design.' :
+                     cat === 'fashion' ? 'Our fashion curators are selecting pieces that define contemporary style and timeless elegance.' :
+                     cat === 'beauty' ? 'Premium beauty essentials are being tested and selected for quality and results.' :
+                     cat === 'outdoor' ? 'Rugged yet refined outdoor gear is being chosen for your next adventure.' :
+                     cat === 'library' ? 'We\'re gathering essential reads, guides, and resources for quality and everyday value.' :
+                     'The collection is being curated. Check back soon for handpicked products.';
+        collectionContent.innerHTML = '<div class="empty-state"><div class="empty-state-visual"><div class="empty-state-orb"></div><div class="empty-state-sparkles"><span class="empty-sparkle"></span><span class="empty-sparkle"></span><span class="empty-sparkle"></span><span class="empty-sparkle"></span></div><i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true"></i></div><h3 class="empty-state-title">' + catTitle + '</h3><p class="empty-state-desc">' + catDesc + '</p><button onclick="navigateTo(\'collaborate\')" class="empty-state-action"><i class="fa-solid fa-sparkles text-xs" aria-hidden="true"></i>Become a Curator</button></div>';
     }
 }
 function filterCollectionWithSearch() {
@@ -4017,7 +4191,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             // Dashboard protection on page load:
             if (profile && profile.status === 'approved') {
-                _approvalToastShown = true;
                 hideStatusMessage();
                 updateDashboardUI();
                 navigateTo('dashboard');
@@ -4087,7 +4260,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (profile && profile.status === 'approved') {
                 hideStatusMessage();
                 updateDashboardUI();
-                if (!_approvalToastShown) { _approvalToastShown = true; showToast('Your account has been approved! Access granted.', 'success'); };
+                showToast('Your account has been approved! Access granted.', 'success');
             } else if (profile) {
                 showStatusMessage(profile.status);
             }
@@ -4110,7 +4283,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     if (profile.status === 'approved') {
                         hideStatusMessage();
                         updateDashboardUI();
-                        if (!_approvalToastShown) { _approvalToastShown = true; showToast('Your account has been approved! Access granted.', 'success'); };
+                        showToast('Your account has been approved! Access granted.', 'success');
                         navigateTo('dashboard');
                         stopApprovalPolling();
                     } else {
@@ -4126,7 +4299,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 // ── Approval Polling: check profile status every 30s for pending users ──
 var _approvalPollingTimer = null;
 var _approvalJustDetected  = false;
-var _approvalToastShown   = false;
 
 function startApprovalPolling() {
     stopApprovalPolling();
@@ -4146,7 +4318,7 @@ function startApprovalPolling() {
                 hideStatusMessage();
                 updateAuthUI();
                 updateDashboardUI();
-                if (!_approvalToastShown) { _approvalToastShown = true; showToast('Your account has been approved! Access granted.', 'success'); };
+                showToast('Your account has been approved! Access granted.', 'success');
                 navigateTo('dashboard');
                 setTimeout(function () { _approvalJustDetected = false; }, 3000);
             }

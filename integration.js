@@ -20,7 +20,7 @@
     var fp = window.formatPrice || function (v) { return 'K' + (v || 0).toLocaleString(); };
     var sr = window.starRating  || function (r) { return ''; };
     var ta = window.timeAgo    || function (d) { return d || ''; };
-    var sg = safeGet;
+    var sg = window.safeGet || function (id) { return document.getElementById(id); };
 
     // ─── Internal checkout state ────────────────────────────────────────────
     var _checkoutDeliveryMethods = [];

@@ -324,6 +324,24 @@
          * Render the main collection view with product grid.
          * @param {string} activeCategory - Currently selected category slug (null = all).
          */
+
+        /**
+         * Build product grid HTML string.
+         * @param {Array} products - Array of product objects.
+         * @param {number} total - Total product count.
+         * @returns {string} HTML string for product grid.
+         */
+        buildProductGridHtml: function (products, total) {
+            var html = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">';
+            for (var i = 0; i < products.length; i++) {
+                html += ProductManager.renderProductCard(products[i]);
+            }
+            html += '</div>';
+            // Results count
+            html += '<p class="text-center text-sm text-muted mt-8">Showing ' + products.length + ' of ' + total + ' products</p>';
+            return html;
+        },
+
         renderCollection: function (activeCategory) {
             var container = safeGet('collectionContent');
             if (!container) return;
@@ -336,28 +354,114 @@
                     var total = result.count || 0;
 
                     if (products.length === 0) {
-                        container.innerHTML = '<div class="text-center py-20">' +
-                            '<div class="text-6xl mb-4 opacity-30"><i class="fa-solid fa-box-open"></i></div>' +
-                            '<h3 class="text-xl font-semibold text-gray-500 mb-2">No products found</h3>' +
-                            '<p class="text-gray-400">Check back later for new additions.</p>' +
+                        var catIcon = (activeCategory === 'tech') ? 'fa-microchip' :
+                                     (activeCategory === 'fashion') ? 'fa-shirt' :
+                                     (activeCategory === 'beauty') ? 'fa-spa' :
+                                     (activeCategory === 'outdoor') ? 'fa-tree' :
+                                     (activeCategory === 'library') ? 'fa-book' : 'fa-box-open';
+                        var catTitle = (activeCategory === 'tech') ? 'Tech Picks Coming Soon' :
+                                       (activeCategory === 'fashion') ? 'Fashion Line in Progress' :
+                                       (activeCategory === 'beauty') ? 'Beauty Selection Loading' :
+                                       (activeCategory === 'outdoor') ? 'Outdoor Gear Curating' :
+                                       (activeCategory === 'library') ? 'Library Being Stocked' : 'Collection Awaiting Products';
+                        var catDesc = (activeCategory === 'tech') ? 'We\'re sourcing cutting-edge tech and gadgets that blend innovation with elegant design.' :
+                                    (activeCategory === 'fashion') ? 'Our fashion curators are selecting pieces that define contemporary style.' :
+                                    (activeCategory === 'beauty') ? 'Premium beauty essentials are being tested and selected for quality.' :
+                                    (activeCategory === 'outdoor') ? 'Rugged yet refined outdoor gear is being chosen for your next adventure.' :
+                                    (activeCategory === 'library') ? 'We\'re carefully selecting essential reads, guides, and resources. Quality takes time.' :
+                                    'The shelves are ready. Our curators are selecting premium pieces across all categories.';
+                        var catBtnIcon = (activeCategory === 'library') ? 'fa-arrow-right' : 'fa-plus';
+                        var catBtnText = (activeCategory === 'library') ? 'Browse Collection' : 'Submit a Product';
+                        var catBtnAction = (activeCategory === 'library') ? 'navigateTo(\'collection\')' : 'navigateTo(\'collaborate\')';
+
+                        // Fade out existing empty state if present
+                        var existingEmpty = container.querySelector('.empty-state');
+                        if (existingEmpty) {
+                            existingEmpty.classList.add('fade-out');
+                            setTimeout(function () {
+                                container.innerHTML = '<div class="empty-state">' +
+                                    '<div class="empty-state-visual">' +
+                                        '<div class="empty-state-orb"></div>' +
+                                        '<div class="empty-state-sparkles">' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                        '</div>' +
+                                        '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true"></i>' +
+                                    '</div>' +
+                                    '<h3 class="empty-state-title">' + catTitle + '</h3>' +
+                                    '<p class="empty-state-desc">' + catDesc + '</p>' +
+                                    '<button onclick="' + catBtnAction + '" class="empty-state-action">' +
+                                        '<i class="fa-solid ' + catBtnIcon + ' text-xs" aria-hidden="true"></i> ' + catBtnText +
+                                    '</button>' +
+                                '</div>';
+                                // Trigger fade in
+                                requestAnimationFrame(function () {
+                                    var newEmpty = container.querySelector('.empty-state');
+                                    if (newEmpty) {
+                                        newEmpty.style.opacity = '0';
+                                        newEmpty.style.transform = 'translateY(20px)';
+                                        requestAnimationFrame(function () {
+                                            newEmpty.style.opacity = '';
+                                            newEmpty.style.transform = '';
+                                        });
+                                    }
+                                });
+                            }, 400);
+                        } else {
+                            container.innerHTML = '<div class="empty-state">' +
+                                '<div class="empty-state-visual">' +
+                                    '<div class="empty-state-orb"></div>' +
+                                    '<div class="empty-state-sparkles">' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                    '</div>' +
+                                    '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true"></i>' +
+                                '</div>' +
+                                '<h3 class="empty-state-title">' + catTitle + '</h3>' +
+                                '<p class="empty-state-desc">' + catDesc + '</p>' +
+                                '<button onclick="' + catBtnAction + '" class="empty-state-action">' +
+                                    '<i class="fa-solid ' + catBtnIcon + ' text-xs" aria-hidden="true"></i> ' + catBtnText +
+                                '</button>' +
                             '</div>';
+                        }
                         return;
                     }
 
-                    var html = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">';
-                    for (var i = 0; i < products.length; i++) {
-                        html += ProductManager.renderProductCard(products[i]);
+                    // Products exist - fade out empty state and show products
+                    var existingEmptyState = container.querySelector('.empty-state');
+                    var productHtml = buildProductGridHtml(products, total);
+
+                    if (existingEmptyState) {
+                        existingEmptyState.classList.add('fade-out');
+                        setTimeout(function () {
+                            container.innerHTML = productHtml;
+                            // Fade in products
+                            var grid = container.querySelector('.grid');
+                            if (grid) {
+                                grid.style.opacity = '0';
+                                grid.style.transform = 'translateY(20px)';
+                                requestAnimationFrame(function () {
+                                    grid.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                                    grid.style.opacity = '1';
+                                    grid.style.transform = 'translateY(0)';
+                                });
+                            }
+                        }, 400);
+                    } else {
+                        container.innerHTML = productHtml;
                     }
-                    html += '</div>';
-
-                    // Results count
-                    html += '<p class="text-center text-sm text-gray-400 mt-8">Showing ' + products.length + ' of ' + total + ' products</p>';
-
-                    container.innerHTML = html;
                 })
                 .catch(function (err) {
                     console.error('Collection load error:', err);
-                    container.innerHTML = '<div class="text-center py-20"><div class="text-5xl mb-4 text-red-400"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="text-lg font-semibold text-gray-500">Failed to load products</h3><p class="text-gray-400 text-sm mt-1">Please try again later.</p></div>';
+                    container.innerHTML = '<div class="text-center py-20"><div class="text-5xl mb-4 text-coral/60"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="text-lg font-semibold text-subtle">Having trouble loading</h3><p class="text-muted text-sm mt-1">Please refresh the page or try again in a moment.</p></div>';
                 });
         },
 
@@ -375,21 +479,86 @@
                     var products = result.data || [];
 
                     if (products.length === 0) {
-                        container.innerHTML = '<div class="text-center py-20"><div class="text-6xl mb-4 opacity-30"><i class="fa-solid fa-book-open"></i></div><h3 class="text-xl font-semibold text-gray-500 mb-2">Library is empty</h3><p class="text-gray-400">No books or publications yet.</p></div>';
+                        // Check for existing empty state and fade it out first
+                        var existingEmpty = container.querySelector('.empty-state');
+                        if (existingEmpty) {
+                            existingEmpty.classList.add('fade-out');
+                            setTimeout(function () {
+                                container.innerHTML = '<div class="empty-state">' +
+                                    '<div class="empty-state-visual">' +
+                                        '<div class="empty-state-orb"></div>' +
+                                        '<div class="empty-state-sparkles">' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                            '<span class="empty-sparkle"></span>' +
+                                        '</div>' +
+                                        '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true"></i>' +
+                                    '</div>' +
+                                    '<h3 class="empty-state-title">Library Being Stocked</h3>' +
+                                    '<p class="empty-state-desc">We\'re carefully selecting essential reads, guides, and resources. Quality takes time — the shelves will be ready soon.</p>' +
+                                    '<button onclick="navigateTo(\'collection\')" class="empty-state-action">' +
+                                        '<i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i> Browse Collection' +
+                                    '</button>' +
+                                '</div>';
+                            }, 400);
+                        } else {
+                            container.innerHTML = '<div class="empty-state">' +
+                                '<div class="empty-state-visual">' +
+                                    '<div class="empty-state-orb"></div>' +
+                                    '<div class="empty-state-sparkles">' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                        '<span class="empty-sparkle"></span>' +
+                                    '</div>' +
+                                    '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true"></i>' +
+                                '</div>' +
+                                '<h3 class="empty-state-title">Library Being Stocked</h3>' +
+                                '<p class="empty-state-desc">We\'re carefully selecting essential reads, guides, and resources. Quality takes time — the shelves will be ready soon.</p>' +
+                                '<button onclick="navigateTo(\'collection\')" class="empty-state-action">' +
+                                    '<i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i> Browse Collection' +
+                                '</button>' +
+                            '</div>';
+                        }
                         return;
                     }
 
-                    var html = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">';
-                    for (var i = 0; i < products.length; i++) {
-                        html += ProductManager.renderProductCard(products[i]);
+                    // Products exist - fade out empty state and show products
+                    var existingEmptyState = container.querySelector('.empty-state');
+                    var libProductHtml = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">';
+                    for (var j = 0; j < products.length; j++) {
+                        libProductHtml += ProductManager.renderProductCard(products[j]);
                     }
-                    html += '</div>';
+                    libProductHtml += '</div>';
 
-                    container.innerHTML = html;
+                    if (existingEmptyState) {
+                        existingEmptyState.classList.add('fade-out');
+                        setTimeout(function () {
+                            container.innerHTML = libProductHtml;
+                            // Fade in products
+                            var grid = container.querySelector('.grid');
+                            if (grid) {
+                                grid.style.opacity = '0';
+                                grid.style.transform = 'translateY(20px)';
+                                requestAnimationFrame(function () {
+                                    grid.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                                    grid.style.opacity = '1';
+                                    grid.style.transform = 'translateY(0)';
+                                });
+                            }
+                        }, 400);
+                    } else {
+                        container.innerHTML = libProductHtml;
+                    }
                 })
                 .catch(function (err) {
                     console.error('Library load error:', err);
-                    container.innerHTML = '<div class="text-center py-20"><p class="text-gray-400">Failed to load library items.</p></div>';
+                    container.innerHTML = '<div class="text-center py-20"><p class="text-muted">Having trouble loading library items. Please refresh and try again.</p></div>';
                 });
         },
 
@@ -463,7 +632,7 @@
             if (!container) return;
 
             if (!results || results.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-magnifying-glass mr-2"></i>No results found</div>';
+                container.innerHTML = '<div class="p-6 text-center"><div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-magnifying-glass text-accent"></i></div><p class="text-subtle text-sm font-medium">No results found</p><p class="text-muted text-xs mt-1">Try different keywords</p></div>';
                 container.style.display = 'block';
                 return;
             }
@@ -1201,7 +1370,7 @@
                 // Render products list in dashboard
                 if (listEl) {
                     if (products.length === 0) {
-                        listEl.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-box-open text-3xl mb-2 block"></i>No products yet</div>';
+                        listEl.innerHTML = '<div class="text-center py-10"><div class="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-box-open text-accent text-lg"></i></div><p class="text-subtle text-sm font-medium">No products yet</p><p class="text-muted text-xs mt-1">Add your first product to get started</p></div>';
                     } else {
                         var html = '<div class="space-y-3">';
                         for (var i = 0; i < products.length; i++) {
@@ -1253,7 +1422,7 @@
                 if (recentEl) {
                     var recent = products.slice(0, 5);
                     if (recent.length === 0) {
-                        recentEl.innerHTML = '<p class="text-sm text-gray-400">No products yet</p>';
+                        recentEl.innerHTML = '<div class="text-center py-3"><p class="text-sm text-muted"><i class="fa-solid fa-box-open text-accent/50 mr-2"></i>No products yet</p></div>';
                     } else {
                         var rhtml = '';
                         for (var k = 0; k < recent.length; k++) {
@@ -1319,7 +1488,7 @@
                 // Render orders list
                 if (listEl) {
                     if (orders.length === 0) {
-                        listEl.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-receipt text-3xl mb-2 block"></i>No orders yet</div>';
+                        listEl.innerHTML = '<div class="text-center py-10"><div class="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-receipt text-accent text-lg"></i></div><p class="text-subtle text-sm font-medium">No orders yet</p><p class="text-muted text-xs mt-1">Orders will appear here when customers purchase</p></div>';
                     } else {
                         var html = '';
                         for (var i = 0; i < orders.length; i++) {
@@ -1372,7 +1541,7 @@
                 if (recentEl) {
                     var recent = orders.slice(0, 5);
                     if (recent.length === 0) {
-                        recentEl.innerHTML = '<p class="text-sm text-gray-400">No orders yet</p>';
+                        recentEl.innerHTML = '<div class="text-center py-3"><p class="text-sm text-muted"><i class="fa-solid fa-receipt text-accent/50 mr-2"></i>No orders yet</p></div>';
                     } else {
                         var rhtml = '<tbody>';
                         for (var k = 0; k < recent.length; k++) {
@@ -1411,7 +1580,7 @@
                 .then(function (result) {
                     var logs = result.data || [];
                     if (logs.length === 0) {
-                        feedEl.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">No recent activity</p>';
+                        feedEl.innerHTML = '<div class="text-center py-6"><div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-clock-rotate-left text-accent text-sm"></i></div><p class="text-sm text-muted">No recent activity</p><p class="text-xs text-muted/60 mt-1">Your actions will appear here</p></div>';
                         return;
                     }
 
@@ -1685,7 +1854,7 @@
          */
         renderNotificationList: function () {
             if (_notificationCache.length === 0) {
-                return '<div class="p-6 text-center text-gray-400"><i class="fa-solid fa-bell-slash text-2xl mb-2 block"></i><p class="text-sm">No notifications</p></div>';
+                return '<div class="p-6 text-center"><div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-bell-slash text-accent"></i></div><p class="text-subtle text-sm font-medium">No notifications</p><p class="text-muted text-xs mt-1">We\'ll notify you when something arrives</p></div>';
             }
 
             var typeIcons = {
