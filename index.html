@@ -556,7 +556,7 @@
             display: flex; align-items: center; gap: 12px;
             padding: 11px 16px; border-radius: 12px;
             font-size: 14px; color: #9b97a8;
-            transition: all 0.25s ease; cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease; cursor: pointer;
             border: 1px solid transparent;
         }
         .dash-sidebar-link:hover {
@@ -577,7 +577,7 @@
             border: 1px solid rgba(255,255,255,0.05);
             border-radius: 20px;
             padding: 24px;
-            transition: all 0.3s ease;
+            transition: border-color 0.2s ease;
             position: relative;
             overflow: hidden;
         }
@@ -585,13 +585,10 @@
             content: '';
             position: absolute; top: 0; left: 0; right: 0; height: 2px;
             background: linear-gradient(90deg, transparent, var(--stat-color, #e8a630), transparent);
-            opacity: 0; transition: opacity 0.3s;
+            opacity: 0.6;
         }
-        .dash-stat-card:hover::before { opacity: 1; }
         .dash-stat-card:hover {
-            border-color: rgba(255,255,255,0.08);
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px -10px rgba(0,0,0,0.4);
+            border-color: rgba(232,166,48,0.15);
         }
 
         .dash-bar {
@@ -601,7 +598,7 @@
         }
         .dash-bar-fill {
             height: 100%; border-radius: 4px;
-            transition: width 1s cubic-bezier(0.4,0,0.2,1);
+            transition: width 0.4s ease-out;
             width: 0;
         }
 
@@ -612,7 +609,7 @@
             padding: 14px 20px;
             border-bottom: 1px solid rgba(255,255,255,0.03);
             font-size: 14px;
-            transition: background 0.2s;
+            transition: background 0.15s ease;
         }
         .dash-table-row:hover {
             background: rgba(255,255,255,0.02);
@@ -655,12 +652,11 @@
             padding: 20px 16px; border-radius: 16px;
             background: rgba(255,255,255,0.02);
             border: 1px solid rgba(255,255,255,0.05);
-            transition: all 0.3s ease; cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease; cursor: pointer;
         }
         .dash-quick-action:hover {
             background: rgba(232,166,48,0.06);
             border-color: rgba(232,166,48,0.12);
-            transform: translateY(-3px);
         }
         .dash-quick-action:hover .dash-qa-icon {
             background: rgba(232,166,48,0.15);
@@ -670,7 +666,7 @@
             width: 48px; height: 48px; border-radius: 14px;
             background: rgba(255,255,255,0.04);
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s ease;
+            transition: background 0.2s ease, color 0.2s ease;
             color: #9b97a8;
         }
 
@@ -694,12 +690,15 @@
         }
         .dash-product-row:last-child { border-bottom: none; }
 
+        /* Animation DISABLED - was causing unsettling flash */
         @keyframes dashCountUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 1; transform: none; }
+            to { opacity: 1; transform: none; }
         }
         .dash-count-anim {
-            animation: dashCountUp 0.6s cubic-bezier(0.4,0,0.2,1) forwards;
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
         }
 
         /* ═══════════════════════════════════════
@@ -1018,15 +1017,15 @@
             display: flex; align-items: center; gap: 10px;
             padding: 12px 16px; margin: 8px -8px 0 -8px;
             border-radius: 12px; font-size: 13px; color: #6b6880;
-            transition: all 0.25s ease; cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease; cursor: pointer;
             border: 1px solid transparent;
         }
         .dash-back-link:hover {
             background: rgba(224,122,95,0.08); color: #e07a5f;
             border-color: rgba(224,122,95,0.1);
         }
-        .dash-back-link i { transition: transform 0.25s ease; }
-        .dash-back-link:hover i { transform: translateX(-3px); }
+        .dash-back-link i { transition: transform 0.2s ease; }
+        .dash-back-link:hover i { transform: translateX(-2px); }
 
         /* ═══════════════════════════════════════
            28. RESPONSIVE

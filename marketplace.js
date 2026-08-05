@@ -1291,29 +1291,29 @@
                             }
 
                             var statusColors = {
-                                draft: 'bg-gray-100 text-gray-600',
-                                active: 'bg-green-100 text-green-700',
-                                archived: 'bg-yellow-100 text-yellow-700',
-                                banned: 'bg-red-100 text-red-700'
+                                draft: 'bg-white/5 text-gray-400 border border-white/10',
+                                active: 'bg-green-500/10 text-green-400 border border-green-500/20',
+                                archived: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+                                banned: 'bg-red-500/10 text-red-400 border border-red-500/20'
                             };
-                            var statusClass = statusColors[p.status] || 'bg-gray-100 text-gray-600';
+                            var statusClass = statusColors[p.status] || 'bg-white/5 text-gray-400 border border-white/10';
 
-                            html += '<div class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">';
+                            html += '<div class="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors bg-white/[0.02]">';
                             html += '<img src="' + (primaryImg || getPlaceholder('')) + '" alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'"/>';
                             html += '<div class="flex-1 min-w-0">';
-                            html += '<p class="text-sm font-medium text-gray-800 truncate">' + (p.name || 'Untitled') + '</p>';
-                            html += '<p class="text-xs text-gray-400 mt-0.5">' + (p.categories ? p.categories.name : '') + ' · ' + formatPrice(p.price) + ' · Stock: ' + (p.stock_quantity || 0) + '</p>';
+                            html += '<p class="text-sm font-medium text-softWhite truncate">' + (p.name || 'Untitled') + '</p>';
+                            html += '<p class="text-xs text-muted mt-0.5">' + (p.categories ? p.categories.name : '') + ' · ' + formatPrice(p.price) + ' · Stock: ' + (p.stock_quantity || 0) + '</p>';
                             html += '</div>';
                             html += '<span class="text-xs font-medium px-2.5 py-1 rounded-full ' + statusClass + '">' + (p.status || 'draft') + '</span>';
                             html += '<div class="flex items-center gap-1">';
                             if (p.status === 'draft') {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors" title="Publish"><i class="fa-solid fa-check text-xs"></i></button>';
+                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Publish"><i class="fa-solid fa-check text-xs"></i></button>';
                             } else if (p.status === 'active') {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'archived\')" class="p-2 text-yellow-500 hover:bg-yellow-50 rounded-lg transition-colors" title="Archive"><i class="fa-solid fa-archive text-xs"></i></button>';
+                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'archived\')" class="p-2 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors" title="Archive"><i class="fa-solid fa-archive text-xs"></i></button>';
                             } else {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors" title="Reactivate"><i class="fa-solid fa-rotate-left text-xs"></i></button>';
+                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Reactivate"><i class="fa-solid fa-rotate-left text-xs"></i></button>';
                             }
-                            html += '<button onclick="DashboardManager.deleteProduct(\'' + p.id + '\')" class="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><i class="fa-solid fa-trash text-xs"></i></button>';
+                            html += '<button onclick="DashboardManager.deleteProduct(\'' + p.id + '\')" class="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete"><i class="fa-solid fa-trash text-xs"></i></button>';
                             html += '</div>';
                             html += '</div>';
                         }
@@ -1331,10 +1331,10 @@
                         var rhtml = '';
                         for (var k = 0; k < recent.length; k++) {
                             var rp = recent[k];
-                            rhtml += '<div class="flex items-center gap-2 py-2 border-b border-gray-50 last:border-0">';
-                            rhtml += '<div class="w-2 h-2 rounded-full ' + (rp.status === 'active' ? 'bg-green-400' : 'bg-gray-300') + '"></div>';
-                            rhtml += '<span class="text-sm text-gray-700 truncate flex-1">' + rp.name + '</span>';
-                            rhtml += '<span class="text-xs text-gray-400">' + formatPrice(rp.price) + '</span>';
+                            rhtml += '<div class="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">';
+                            rhtml += '<div class="w-2 h-2 rounded-full ' + (rp.status === 'active' ? 'bg-green-400' : 'bg-gray-600') + '"></div>';
+                            rhtml += '<span class="text-sm text-softWhite truncate flex-1">' + rp.name + '</span>';
+                            rhtml += '<span class="text-xs text-muted">' + formatPrice(rp.price) + '</span>';
                             rhtml += '</div>';
                         }
                         recentEl.innerHTML = rhtml;
@@ -1383,10 +1383,10 @@
                         }
                     }
                     countsEl.innerHTML =
-                        '<span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pending: ' + counts.pending + '</span> ' +
-                        '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Active: ' + (counts.confirmed + counts.processing + counts.shipped) + '</span> ' +
-                        '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Done: ' + (counts.delivered + counts.completed) + '</span> ' +
-                        '<span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Cancelled: ' + counts.cancelled + '</span>';
+                        '<span class="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded-full">Pending: ' + counts.pending + '</span> ' +
+                        '<span class="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">Active: ' + (counts.confirmed + counts.processing + counts.shipped) + '</span> ' +
+                        '<span class="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">Done: ' + (counts.delivered + counts.completed) + '</span> ' +
+                        '<span class="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full">Cancelled: ' + counts.cancelled + '</span>';
                 }
 
                 // Render orders list
@@ -1402,29 +1402,29 @@
                             var total = role === 'customer' ? o.total_amount : o.subtotal;
 
                             var statusStyles = {
-                                pending: 'bg-yellow-100 text-yellow-700',
-                                confirmed: 'bg-blue-100 text-blue-700',
-                                processing: 'bg-indigo-100 text-indigo-700',
-                                shipped: 'bg-purple-100 text-purple-700',
-                                delivered: 'bg-green-100 text-green-700',
-                                completed: 'bg-emerald-100 text-emerald-700',
-                                cancelled: 'bg-red-100 text-red-700',
-                                refunded: 'bg-orange-100 text-orange-700'
+                                pending: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+                                confirmed: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+                                processing: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20',
+                                shipped: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+                                delivered: 'bg-green-500/10 text-green-400 border border-green-500/20',
+                                completed: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+                                cancelled: 'bg-red-500/10 text-red-400 border border-red-500/20',
+                                refunded: 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
                             };
-                            var ss = statusStyles[orderStatus] || 'bg-gray-100 text-gray-600';
+                            var ss = statusStyles[orderStatus] || 'bg-white/5 text-gray-400 border border-white/10';
 
-                            html += '<tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">';
-                            html += '<td class="py-3 px-3 text-sm font-mono text-gray-600">' + orderNum + '</td>';
-                            html += '<td class="py-3 px-3 text-sm text-gray-800">' + (o.product_name || 'Product') + '</td>';
-                            html += '<td class="py-3 px-3 text-sm text-gray-600">' + timeAgo(o.created_at) + '</td>';
-                            html += '<td class="py-3 px-3 text-sm font-semibold">' + formatPrice(total) + '</td>';
+                            html += '<tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">';
+                            html += '<td class="py-3 px-3 text-sm font-mono text-muted">' + orderNum + '</td>';
+                            html += '<td class="py-3 px-3 text-sm text-softWhite">' + (o.product_name || 'Product') + '</td>';
+                            html += '<td class="py-3 px-3 text-sm text-muted">' + timeAgo(o.created_at) + '</td>';
+                            html += '<td class="py-3 px-3 text-sm font-semibold text-softWhite">' + formatPrice(total) + '</td>';
                             html += '<td class="py-3 px-3"><span class="text-xs font-medium px-2.5 py-1 rounded-full ' + ss + '">' + (orderStatus || 'pending') + '</span></td>';
 
                             // Actions for sellers
                             if (role === 'seller') {
                                 var itemId = o.order_item_id;
                                 html += '<td class="py-3 px-3">';
-                                html += '<select onchange="DashboardManager.updateOrderItemStatus(\'' + itemId + '\', this.value, null)" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-400">';
+                                html += '<select onchange="DashboardManager.updateOrderItemStatus(\'' + itemId + '\', this.value, null)" class="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-white/5 text-gray-300 focus:outline-none focus:ring-2 focus:ring-accent/50">';
                                 var statuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
                                 for (var s = 0; s < statuses.length; s++) {
                                     html += '<option value="' + statuses[s] + '"' + (orderStatus === statuses[s] ? ' selected' : '') + '>' + statuses[s] + '</option>';
@@ -1452,10 +1452,10 @@
                             var ro = recent[k];
                             var rStatus = role === 'customer' ? ro.status : (ro.item_status || ro.order_status);
                             var rTotal = role === 'customer' ? ro.total_amount : ro.subtotal;
-                            rhtml += '<tr class="border-b border-gray-50">';
-                            rhtml += '<td class="py-2 text-sm font-mono text-gray-500">' + (ro.order_number || '-') + '</td>';
-                            rhtml += '<td class="py-2 text-sm text-gray-700">' + formatPrice(rTotal) + '</td>';
-                            rhtml += '<td class="py-2 text-sm text-gray-400">' + timeAgo(ro.created_at) + '</td>';
+                            rhtml += '<tr class="border-b border-white/5">';
+                            rhtml += '<td class="py-2 text-sm font-mono text-muted">' + (ro.order_number || '-') + '</td>';
+                            rhtml += '<td class="py-2 text-sm text-softWhite">' + formatPrice(rTotal) + '</td>';
+                            rhtml += '<td class="py-2 text-sm text-muted">' + timeAgo(ro.created_at) + '</td>';
                             rhtml += '</tr>';
                         }
                         rhtml += '</tbody>';
@@ -1503,11 +1503,11 @@
                         var iconClass = icons[log.action] || 'fa-circle text-gray-300';
                         var label = log.action.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
 
-                        html += '<div class="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">';
-                        html += '<div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0"><i class="fa-solid ' + iconClass + ' text-xs"></i></div>';
+                        html += '<div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">';
+                        html += '<div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0"><i class="fa-solid ' + iconClass + ' text-xs"></i></div>';
                         html += '<div class="flex-1 min-w-0">';
-                        html += '<p class="text-sm text-gray-700">' + label + '</p>';
-                        html += '<p class="text-xs text-gray-400">' + timeAgo(log.created_at) + '</p>';
+                        html += '<p class="text-sm text-softWhite">' + label + '</p>';
+                        html += '<p class="text-xs text-muted">' + timeAgo(log.created_at) + '</p>';
                         html += '</div>';
                         html += '</div>';
                     }
