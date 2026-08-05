@@ -1274,7 +1274,7 @@
                 // Render products list in dashboard
                 if (listEl) {
                     if (products.length === 0) {
-                        listEl.innerHTML = '<div class="text-center py-10"><div class="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-box-open text-accent text-lg"></i></div><p class="text-subtle text-sm font-medium">No products yet</p><p class="text-muted text-xs mt-1">Add your first product to get started</p></div>';
+                        listEl.innerHTML = '<div class="text-center py-6 sm:py-10 px-4"><div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-box-open text-accent text-base sm:text-lg"></i></div><p class="text-subtle text-sm font-medium">No products yet</p><p class="text-muted text-xs mt-1">Add your first product to get started</p></div>';
                     } else {
                         var html = '<div class="space-y-3">';
                         for (var i = 0; i < products.length; i++) {
@@ -1298,22 +1298,22 @@
                             };
                             var statusClass = statusColors[p.status] || 'bg-white/5 text-gray-400 border border-white/10';
 
-                            html += '<div class="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors bg-white/[0.02]">';
-                            html += '<img src="' + (primaryImg || getPlaceholder('')) + '" alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'"/>';
+                            html += '<div class="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors bg-white/[0.02]">';
+                            html += '<img src="' + (primaryImg || getPlaceholder('')) + '" alt="" class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'"/>';
                             html += '<div class="flex-1 min-w-0">';
-                            html += '<p class="text-sm font-medium text-softWhite truncate">' + (p.name || 'Untitled') + '</p>';
-                            html += '<p class="text-xs text-muted mt-0.5">' + (p.categories ? p.categories.name : '') + ' · ' + formatPrice(p.price) + ' · Stock: ' + (p.stock_quantity || 0) + '</p>';
+                            html += '<p class="text-xs sm:text-sm font-medium text-softWhite truncate">' + (p.name || 'Untitled') + '</p>';
+                            html += '<p class="text-[11px] sm:text-xs text-muted mt-0.5">' + (p.categories ? p.categories.name : '') + ' · ' + formatPrice(p.price) + '</p>';
                             html += '</div>';
-                            html += '<span class="text-xs font-medium px-2.5 py-1 rounded-full ' + statusClass + '">' + (p.status || 'draft') + '</span>';
-                            html += '<div class="flex items-center gap-1">';
+                            html += '<span class="text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full ' + statusClass + '">' + (p.status || 'draft') + '</span>';
+                            html += '<div class="flex items-center gap-0.5 sm:gap-1">';
                             if (p.status === 'draft') {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Publish"><i class="fa-solid fa-check text-xs"></i></button>';
+                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-1.5 sm:p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Publish"><i class="fa-solid fa-check text-[10px] sm:text-xs"></i></button>';
                             } else if (p.status === 'active') {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'archived\')" class="p-2 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors" title="Archive"><i class="fa-solid fa-archive text-xs"></i></button>';
+                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'archived\')" class="p-1.5 sm:p-2 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors" title="Archive"><i class="fa-solid fa-archive text-[10px] sm:text-xs"></i></button>';
                             } else {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Reactivate"><i class="fa-solid fa-rotate-left text-xs"></i></button>';
+                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + p.id + '\', \'active\')" class="p-1.5 sm:p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Reactivate"><i class="fa-solid fa-rotate-left text-[10px] sm:text-xs"></i></button>';
                             }
-                            html += '<button onclick="DashboardManager.deleteProduct(\'' + p.id + '\')" class="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete"><i class="fa-solid fa-trash text-xs"></i></button>';
+                            html += '<button onclick="DashboardManager.deleteProduct(\'' + p.id + '\')" class="p-1.5 sm:p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete"><i class="fa-solid fa-trash text-[10px] sm:text-xs"></i></button>';
                             html += '</div>';
                             html += '</div>';
                         }
@@ -1392,9 +1392,22 @@
                 // Render orders list
                 if (listEl) {
                     if (orders.length === 0) {
-                        listEl.innerHTML = '<div class="text-center py-10"><div class="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-receipt text-accent text-lg"></i></div><p class="text-subtle text-sm font-medium">No orders yet</p><p class="text-muted text-xs mt-1">Orders will appear here when customers purchase</p></div>';
+                        listEl.innerHTML = '<div class="text-center py-6 sm:py-10 px-4"><div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-receipt text-accent text-base sm:text-lg"></i></div><p class="text-subtle text-sm font-medium">No orders yet</p><p class="text-muted text-xs mt-1">Orders will appear here when customers purchase</p></div>';
                     } else {
-                        var html = '';
+                        // Mobile-friendly: use card layout instead of table
+                        var html = '<div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">';
+                        html += '<table class="w-full min-w-[500px] sm:min-w-0">';
+                        html += '<thead class="hidden sm:table-header-group"><tr class="border-b border-white/10">';
+                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Order</th>';
+                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Product</th>';
+                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider hidden sm:table-cell">Date</th>';
+                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Total</th>';
+                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Status</th>';
+                        if (role === 'seller') {
+                            html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Action</th>';
+                        }
+                        html += '</tr></thead><tbody>';
+                        
                         for (var i = 0; i < orders.length; i++) {
                             var o = orders[i];
                             var orderNum = o.order_number || 'N/A';
@@ -1414,17 +1427,17 @@
                             var ss = statusStyles[orderStatus] || 'bg-white/5 text-gray-400 border border-white/10';
 
                             html += '<tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">';
-                            html += '<td class="py-3 px-3 text-sm font-mono text-muted">' + orderNum + '</td>';
-                            html += '<td class="py-3 px-3 text-sm text-softWhite">' + (o.product_name || 'Product') + '</td>';
-                            html += '<td class="py-3 px-3 text-sm text-muted">' + timeAgo(o.created_at) + '</td>';
-                            html += '<td class="py-3 px-3 text-sm font-semibold text-softWhite">' + formatPrice(total) + '</td>';
-                            html += '<td class="py-3 px-3"><span class="text-xs font-medium px-2.5 py-1 rounded-full ' + ss + '">' + (orderStatus || 'pending') + '</span></td>';
+                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm font-mono text-muted">' + orderNum + '</td>';
+                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm text-softWhite max-w-[120px] sm:max-w-none truncate">' + (o.product_name || 'Product') + '</td>';
+                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm text-muted hidden sm:table-cell">' + timeAgo(o.created_at) + '</td>';
+                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm font-semibold text-softWhite">' + formatPrice(total) + '</td>';
+                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3"><span class="text-[10px] sm:text-xs font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full ' + ss + '">' + (orderStatus || 'pending') + '</span></td>';
 
                             // Actions for sellers
                             if (role === 'seller') {
                                 var itemId = o.order_item_id;
-                                html += '<td class="py-3 px-3">';
-                                html += '<select onchange="DashboardManager.updateOrderItemStatus(\'' + itemId + '\', this.value, null)" class="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-white/5 text-gray-300 focus:outline-none focus:ring-2 focus:ring-accent/50">';
+                                html += '<td class="py-2 sm:py-3 px-2 sm:px-3">';
+                                html += '<select onchange="DashboardManager.updateOrderItemStatus(\'' + itemId + '\', this.value, null)" class="text-[10px] sm:text-xs border border-white/10 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white/5 text-gray-300 focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-accent/50 w-full sm:w-auto">';
                                 var statuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
                                 for (var s = 0; s < statuses.length; s++) {
                                     html += '<option value="' + statuses[s] + '"' + (orderStatus === statuses[s] ? ' selected' : '') + '>' + statuses[s] + '</option>';
@@ -1432,11 +1445,12 @@
                                 html += '</select>';
                                 html += '</td>';
                             } else {
-                                html += '<td class="py-3 px-3">-</td>';
+                                html += '<td class="py-2 sm:py-3 px-2 sm:px-3">-</td>';
                             }
 
                             html += '</tr>';
                         }
+                        html += '</tbody></table></div>';
                         listEl.innerHTML = html;
                     }
                 }
@@ -1453,9 +1467,9 @@
                             var rStatus = role === 'customer' ? ro.status : (ro.item_status || ro.order_status);
                             var rTotal = role === 'customer' ? ro.total_amount : ro.subtotal;
                             rhtml += '<tr class="border-b border-white/5">';
-                            rhtml += '<td class="py-2 text-sm font-mono text-muted">' + (ro.order_number || '-') + '</td>';
-                            rhtml += '<td class="py-2 text-sm text-softWhite">' + formatPrice(rTotal) + '</td>';
-                            rhtml += '<td class="py-2 text-sm text-muted">' + timeAgo(ro.created_at) + '</td>';
+                            rhtml += '<td class="py-1.5 sm:py-2 text-[11px] sm:text-sm font-mono text-muted">' + (ro.order_number || '-') + '</td>';
+                            rhtml += '<td class="py-1.5 sm:py-2 text-[11px] sm:text-sm text-softWhite">' + formatPrice(rTotal) + '</td>';
+                            rhtml += '<td class="py-1.5 sm:py-2 text-[11px] sm:text-sm text-muted">' + timeAgo(ro.created_at) + '</td>';
                             rhtml += '</tr>';
                         }
                         rhtml += '</tbody>';
@@ -1484,7 +1498,7 @@
                 .then(function (result) {
                     var logs = result.data || [];
                     if (logs.length === 0) {
-                        feedEl.innerHTML = '<div class="text-center py-6"><div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-clock-rotate-left text-accent text-sm"></i></div><p class="text-sm text-muted">No recent activity</p><p class="text-xs text-muted/60 mt-1">Your actions will appear here</p></div>';
+                        feedEl.innerHTML = '<div class="text-center py-4 sm:py-6 px-4"><div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-clock-rotate-left text-accent text-xs sm:text-sm"></i></div><p class="text-xs sm:text-sm text-muted">No recent activity</p><p class="text-[11px] sm:text-xs text-muted/60 mt-1">Your actions will appear here</p></div>';
                         return;
                     }
 
@@ -1503,11 +1517,11 @@
                         var iconClass = icons[log.action] || 'fa-circle text-gray-300';
                         var label = log.action.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
 
-                        html += '<div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">';
-                        html += '<div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0"><i class="fa-solid ' + iconClass + ' text-xs"></i></div>';
+                        html += '<div class="flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 border-b border-white/5 last:border-0">';
+                        html += '<div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0"><i class="fa-solid ' + iconClass + ' text-[10px] sm:text-xs"></i></div>';
                         html += '<div class="flex-1 min-w-0">';
-                        html += '<p class="text-sm text-softWhite">' + label + '</p>';
-                        html += '<p class="text-xs text-muted">' + timeAgo(log.created_at) + '</p>';
+                        html += '<p class="text-xs sm:text-sm text-softWhite">' + label + '</p>';
+                        html += '<p class="text-[11px] sm:text-xs text-muted">' + timeAgo(log.created_at) + '</p>';
                         html += '</div>';
                         html += '</div>';
                     }
