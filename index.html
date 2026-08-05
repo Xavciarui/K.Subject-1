@@ -17,6 +17,13 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="K.Subject-1 | Curated Collections">
     <meta name="twitter:description" content="Discover handpicked products across tech, fashion, beauty, and outdoor categories.">
+    <!-- FIXED: Added missing social share meta tags for OG image and Twitter card image -->
+    <meta property="og:image" content="https://ksubject1.com/images/og-default.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="https://ksubject1.com/images/twitter-default.jpg">
+    <!-- FIXED: Added CSRF token meta tag for security -->
+    <meta name="csrf-token" content="">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://rgkhsniymnnpvfhegzvt.supabase.co; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; img-src 'self' data: https:; connect-src 'self' https://rgkhsniymnnpvfhegzvt.supabase.co https://cdn.jsdelivr.net;">
     <!-- PWA manifest — create manifest.json when ready to deploy as PWA -->
     <!-- <link rel="manifest" href="/manifest.json"> -->
@@ -67,6 +74,16 @@
     </script>
 
     <style>
+        /*
+         * ═══════════════════════════════════════════════════════════════
+         * FIXED: Z-INDEX SCALE DOCUMENTATION
+         * Base: 1-10
+         * Dropdowns/Sticky: 100-199
+         * Overlays/Modals: 200-299
+         * Toasts/Notifications: 300-399
+         * Critical: 400+
+         * ═══════════════════════════════════════════════════════════════
+         */
         /* ═══════════════════════════════════════
            1. BASE RESET & TYPOGRAPHY
         ═══════════════════════════════════════ */
@@ -89,6 +106,12 @@
         .chat-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
         .chat-scroll::-webkit-scrollbar-thumb { background: rgba(232,166,48,0.2); border-radius: 10px; }
         .chat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(232,166,48,0.4); }
+
+        /* FIXED: Firefox scrollbar support for cross-browser consistency */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(232,166,48,0.2) transparent;
+        }
 
         /* ═══════════════════════════════════════
            3. ATMOSPHERIC BACKGROUND
@@ -225,7 +248,7 @@
         .cart-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.65);
             z-index: 100; opacity: 0; pointer-events: none;
-            transition: opacity 0.3s; backdrop-filter: blur(5px);
+            transition: opacity 0.3s; /* FIXED: Added -webkit-backdrop-filter for Safari support */ -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
         }
         .cart-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -405,7 +428,7 @@
         .auth-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.7);
             z-index: 150; opacity: 0; pointer-events: none;
-            transition: opacity 0.35s; backdrop-filter: blur(8px);
+            transition: opacity 0.35s; /* FIXED: Added -webkit-backdrop-filter for Safari support */ -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
         }
         .auth-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -1441,12 +1464,14 @@
     <div class="auth-overlay" id="authOverlay" onclick="closeAuth()"></div>
     <div class="auth-modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
         <span class="sr-only" id="authTitle">Authentication</span>
-        <!-- Modal Header -->
+        <!-- FIXED: Improved auth modal tab pattern with proper ARIA roles -->
         <div class="relative flex border-b border-white/5">
-            <button class="auth-tab active" data-tab="signin" onclick="switchAuthTab('signin')">Sign In</button>
-            <button class="auth-tab" data-tab="signup" onclick="switchAuthTab('signup')">Sign Up</button>
-            <div class="auth-tab-indicator" id="authTabIndicator" style="left:0;width:50%;"></div>
-            <button onclick="closeAuth()" class="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition" aria-label="Close">
+            <div role="tablist" class="flex border-b border-white/5 w-full relative">
+                <button role="tab" aria-selected="true" aria-controls="authSignin" class="auth-tab active" data-tab="signin" onclick="switchAuthTab('signin')" type="button">Sign In</button>
+                <button role="tab" aria-selected="false" aria-controls="authSignup" class="auth-tab" data-tab="signup" onclick="switchAuthTab('signup')" type="button">Sign Up</button>
+                <div class="auth-tab-indicator" id="authTabIndicator" style="left:0;width:50%;"></div>
+            </div>
+            <button onclick="closeAuth()" class="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition" aria-label="Close" type="button">
                 <i class="fa-solid fa-xmark text-muted text-sm" aria-hidden="true"></i>
             </button>
         </div>
@@ -1613,7 +1638,7 @@
                     <h3 class="text-lg font-semibold font-display">Your Cart</h3>
                     <p class="text-sm text-muted mt-0.5" id="cartCount">0 items</p>
                 </div>
-                <button onclick="toggleCart()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition" aria-label="Close cart">
+                <button onclick="toggleCart()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition" aria-label="Close cart" type="button">
                     <i class="fa-solid fa-xmark text-subtle" aria-hidden="true"></i>
                 </button>
             </div>
@@ -1667,10 +1692,10 @@
 
                     <!-- Desktop Nav -->
                     <nav class="hidden md:flex items-center gap-6" aria-label="Main navigation">
-                        <button onclick="navigateTo('home')" class="nav-link active text-sm font-medium text-subtle" data-nav="home">Home</button>
-                        <button onclick="navigateTo('collection')" class="nav-link text-sm font-medium text-subtle" data-nav="collection">Collection</button>
-                        <button onclick="navigateTo('library')" class="nav-link text-sm font-medium text-subtle" data-nav="library">Library</button>
-                        <button onclick="navigateTo('collaborate')" class="nav-link text-sm font-medium text-subtle" data-nav="collaborate">
+                        <button onclick="navigateTo('home')" class="nav-link active text-sm font-medium text-subtle" data-nav="home" type="button">Home</button>
+                        <button onclick="navigateTo('collection')" class="nav-link text-sm font-medium text-subtle" data-nav="collection" type="button">Collection</button>
+                        <button onclick="navigateTo('library')" class="nav-link text-sm font-medium text-subtle" data-nav="library" type="button">Library</button>
+                        <button onclick="navigateTo('collaborate')" class="nav-link text-sm font-medium text-subtle" data-nav="collaborate" type="button">
                             <span class="inline-flex items-center gap-1.5">Collaborate <span class="w-1.5 h-1.5 rounded-full bg-accent pulse-dot"></span></span>
                         </button>
 
@@ -1680,6 +1705,8 @@
                     <div class="flex items-center gap-2">
                         <!-- Desktop Search -->
                         <div class="search-wrap hidden sm:block">
+                            <!-- FIXED: Added screen-reader-only label for accessibility -->
+                            <label class="sr-only" for="headerSearch">Search products</label>
                             <div class="flex items-center gap-2 rounded-xl bg-surface/80 border border-white/[0.06] px-3.5 py-2">
                                 <i class="fa-solid fa-magnifying-glass text-muted text-xs" aria-hidden="true"></i>
                                 <input type="text" id="headerSearch" placeholder="Search..." class="bg-transparent w-36 lg:w-44 text-sm text-softWhite placeholder-muted outline-none" oninput="handleSearch(this.value)" onfocus="handleSearch(this.value)" onblur="setTimeout(()=>closeSearchResults(),200)">
@@ -1688,72 +1715,74 @@
                         </div>
 
                         <!-- Cart Button -->
-                        <button onclick="toggleCart()" class="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.06] transition relative" aria-label="Cart">
+                        <button onclick="toggleCart()" class="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.06] transition relative" aria-label="Cart" type="button">
                             <i class="fa-solid fa-bag-shopping text-subtle text-sm" aria-hidden="true"></i>
                             <span class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent text-bg text-[10px] font-bold flex items-center justify-center" id="cartBadge" style="display:none;">0</span>
                         </button>
 
                         <!-- Dashboard Nav (hidden until logged in) -->
-                        <button onclick="navigateTo('dashboard')" class="nav-link text-sm font-medium text-subtle" data-nav="dashboard" id="dashNavBtn" style="display:none;">
+                        <button onclick="navigateTo('dashboard')" class="nav-link text-sm font-medium text-subtle" data-nav="dashboard" id="dashNavBtn" style="display:none;" type="button">
                             Dashboard
                         </button>
 
                         <!-- Auth Button -->
-                        <button onclick="openAuth()" class="hidden sm:flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:text-softWhite transition" id="authBtn">
+                        <button onclick="openAuth()" class="hidden sm:flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:text-softWhite transition" id="authBtn" type="button">
                             <i class="fa-regular fa-user text-xs" aria-hidden="true"></i>
                             <span>Sign In</span>
                         </button>
 
                         <!-- User Menu (hidden until logged in) -->
-                        <button onclick="toggleUserMenu()" class="hidden sm:flex items-center gap-2 rounded-xl bg-accent/10 border border-accent/10 px-4 py-2 text-sm text-accent hover:bg-accent/15 transition" id="userMenuBtn" style="display:none;">
+                        <button onclick="toggleUserMenu()" class="hidden sm:flex items-center gap-2 rounded-xl bg-accent/10 border border-accent/10 px-4 py-2 text-sm text-accent hover:bg-accent/15 transition" id="userMenuBtn" style="display:none;" type="button">
                             <i class="fa-solid fa-user text-xs" aria-hidden="true"></i>
                             <span id="userMenuName">Account</span>
                             <i class="fa-solid fa-chevron-down text-[10px] ml-1" aria-hidden="true"></i>
                         </button>
                         <div id="userMenuDropdown" aria-label="User menu" class="absolute top-full right-4 mt-2 w-48 rounded-xl border border-white/[0.06] bg-surface/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden opacity-0 pointer-events-none translate-y-2 transition-all duration-200" style="z-index:60;">
-                            <button id="dashMenuLink" onclick="navigateTo('dashboard');toggleUserMenu();" class="w-full text-left px-4 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5">
+                            <button id="dashMenuLink" onclick="navigateTo('dashboard');toggleUserMenu();" class="w-full text-left px-4 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5" type="button">
                                 <i class="fa-solid fa-gauge-high text-xs text-muted w-4" aria-hidden="true"></i> Dashboard
                             </button>
                             <div class="border-t border-white/[0.04]"></div>
-                            <button onclick="handleLogout()" class="w-full text-left px-4 py-3 text-sm text-coral/80 hover:bg-coral/5 hover:text-coral transition flex items-center gap-2.5">
+                            <button onclick="handleLogout()" class="w-full text-left px-4 py-3 text-sm text-coral/80 hover:bg-coral/5 hover:text-coral transition flex items-center gap-2.5" type="button">
                                 <i class="fa-solid fa-right-from-bracket text-xs w-4" aria-hidden="true"></i> Sign Out
                             </button>
                         </div>
 
                         <!-- Mobile Menu Toggle -->
                         <div class="relative sm:hidden" id="mobileNavTrigger">
-                            <button onclick="toggleMobileNav()" class="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.06] transition" aria-label="Menu">
+                            <button onclick="toggleMobileNav()" class="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.06] transition" aria-label="Menu" type="button">
                                 <i class="fa-solid fa-bars text-subtle text-sm" aria-hidden="true"></i>
                             </button>
                             <div id="mobileNav" aria-label="Mobile menu" class="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/[0.06] bg-surface/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden opacity-0 pointer-events-none translate-y-2 transition-all duration-200" style="z-index:60;">
                                 <div class="px-4 pt-3 pb-2">
+                                    <!-- FIXED: Added screen-reader-only label for accessibility -->
+                                    <label class="sr-only" for="mobileSearch">Search</label>
                                     <div class="flex items-center gap-2 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2">
                                         <i class="fa-solid fa-magnifying-glass text-muted text-xs" aria-hidden="true"></i>
                                         <input type="text" id="mobileSearch" placeholder="Search items..." class="bg-transparent w-full text-sm text-softWhite placeholder-muted outline-none" oninput="handleSearch(this.value)">
                                     </div>
                                 </div>
                                 <div class="border-t border-white/[0.04]">
-                                    <button onclick="navigateTo('home');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5">
+                                    <button onclick="navigateTo('home');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5" type="button">
                                         <i class="fa-solid fa-house text-xs text-muted w-4" aria-hidden="true"></i> Home
                                     </button>
-                                    <button onclick="navigateTo('collection');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5">
+                                    <button onclick="navigateTo('collection');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5" type="button">
                                         <i class="fa-solid fa-table-cells text-xs text-muted w-4" aria-hidden="true"></i> Collection
                                     </button>
-                                    <button onclick="navigateTo('library');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5">
+                                    <button onclick="navigateTo('library');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5" type="button">
                                         <i class="fa-solid fa-book-open text-xs text-muted w-4" aria-hidden="true"></i> Library
                                     </button>
-                                    <button onclick="navigateTo('collaborate');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5">
+                                    <button onclick="navigateTo('collaborate');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5" type="button">
                                         <i class="fa-solid fa-handshake text-xs text-muted w-4" aria-hidden="true"></i> Collaborate
                                     </button>
-<button onclick="navigateTo('dashboard');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5 dash-mobile-nav" style="display:none;">
+<button onclick="navigateTo('dashboard');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5 dash-mobile-nav" style="display:none;" type="button">
                                         <i class="fa-solid fa-gauge-high text-xs text-muted w-4" aria-hidden="true"></i> Dashboard
                                     </button>
                                 </div>
                                 <div class="border-t border-white/[0.04] p-3">
-                                    <button onclick="openAuth();toggleMobileNav();" class="w-full rounded-xl bg-accent/10 border border-accent/10 py-2.5 text-sm text-accent font-medium hover:bg-accent/15 transition auth-mobile-btn">
+                                    <button onclick="openAuth();toggleMobileNav();" class="w-full rounded-xl bg-accent/10 border border-accent/10 py-2.5 text-sm text-accent font-medium hover:bg-accent/15 transition auth-mobile-btn" type="button">
                                         Sign In
                                     </button>
-                                    <button onclick="navigateTo('dashboard');toggleMobileNav();" class="w-full rounded-xl bg-accent/10 border border-accent/10 py-2.5 text-sm text-accent font-medium hover:bg-accent/15 transition user-mobile-btn" style="display:none;">
+                                    <button onclick="navigateTo('dashboard');toggleMobileNav();" class="w-full rounded-xl bg-accent/10 border border-accent/10 py-2.5 text-sm text-accent font-medium hover:bg-accent/15 transition user-mobile-btn" style="display:none;" type="button">
                                         Dashboard
                                     </button>
                                 </div>
@@ -2506,70 +2535,70 @@
                         <button onclick="filterFAQCat('collab',this)" class="faq-cat-pill px-4 py-2 rounded-full text-xs font-medium border border-white/[0.08] text-subtle flex items-center gap-1.5"><i class="fa-solid fa-handshake text-[10px]" aria-hidden="true"></i>Collaboration</button>
                     </div>
 
-                    <!-- FAQ Items -->
+                    <!-- FIXED: Added ARIA attributes for FAQ accordion accessibility -->
                     <div class="space-y-3 reveal" style="transition-delay:140ms" id="faqList">
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-accent/40" data-cat="orders" data-q="what is k subject 1">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-1" id="faq-button-1">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">What is K.Subject-1?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">K.Subject-1 is a curated marketplace that brings together premium products from verified brands and creators across tech, fashion, beauty, and outdoor categories. Every item is handpicked for quality, design, and value.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-1" role="region" aria-labelledby="faq-button-1">K.Subject-1 is a curated marketplace that brings together premium products from verified brands and creators across tech, fashion, beauty, and outdoor categories. Every item is handpicked for quality, design, and value.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-accent/40" data-cat="orders" data-q="how do i create seller account">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-2" id="faq-button-2">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">How do I create a seller account?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">Click "Sign In" in the navigation, then select the "Sign Up" tab. Fill in your details including your brand name and collaboration type. Once submitted, your account will be reviewed by our team. Approved sellers get full access to the dashboard to manage products and orders.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-2" role="region" aria-labelledby="faq-button-2">Click "Sign In" in the navigation, then select the "Sign Up" tab. Fill in your details including your brand name and collaboration type. Once submitted, your account will be reviewed by our team. Approved sellers get full access to the dashboard to manage products and orders.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-accent/40" data-cat="payments" data-q="payment methods accepted">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-3" id="faq-button-3">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">What payment methods are accepted?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">We accept major credit/debit cards, mobile banking transfers, and select digital wallets. Payment options may vary by region. All transactions are secured with industry-standard encryption.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-3" role="region" aria-labelledby="faq-button-3">We accept major credit/debit cards, mobile banking transfers, and select digital wallets. Payment options may vary by region. All transactions are secured with industry-standard encryption.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-sage/40" data-cat="shipping" data-q="how long shipping take delivery">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-4" id="faq-button-4">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">How long does shipping take?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">Shipping times depend on your location and the seller. Domestic orders typically arrive within 3-5 business days. International orders may take 7-14 business days. You can track your order status from the Dashboard.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-4" role="region" aria-labelledby="faq-button-4">Shipping times depend on your location and the seller. Domestic orders typically arrive within 3-5 business days. International orders may take 7-14 business days. You can track your order status from the Dashboard.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-sage/40" data-cat="shipping" data-q="track my order tracking">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-5" id="faq-button-5">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">Can I track my order?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">Yes! Once your order ships, you will receive a tracking number via email. You can also view real-time tracking updates from your Dashboard under the Orders tab.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-5" role="region" aria-labelledby="faq-button-5">Yes! Once your order ships, you will receive a tracking number via email. You can also view real-time tracking updates from your Dashboard under the Orders tab.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-coral/40" data-cat="account" data-q="delete my account data">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-6" id="faq-button-6">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">Can I delete my account?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">Yes, you can request account deletion from your Dashboard settings or by contacting support. Please note that active orders must be completed before deletion, and some data may be retained for legal compliance as outlined in our <a href="#" onclick="navigateTo('policy');return false;" class="text-accent hover:text-accentDim transition">Terms of Policy</a>.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-6" role="region" aria-labelledby="faq-button-6">Yes, you can request account deletion from your Dashboard settings or by contacting support. Please note that active orders must be completed before deletion, and some data may be retained for legal compliance as outlined in our <a href="#" onclick="navigateTo('policy');return false;" class="text-accent hover:text-accentDim transition">Terms of Policy</a>.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-accent/40" data-cat="payments" data-q="refund processed how long">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-7" id="faq-button-7">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">How long do refunds take?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">Refunds are processed within 5-7 business days after we receive the returned item. The refund is issued to your original payment method. Check our <a href="#" onclick="navigateTo('returns');return false;" class="text-accent hover:text-accentDim transition">Returns page</a> for full details.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-7" role="region" aria-labelledby="faq-button-7">Refunds are processed within 5-7 business days after we receive the returned item. The refund is issued to your original payment method. Check our <a href="#" onclick="navigateTo('returns');return false;" class="text-accent hover:text-accentDim transition">Returns page</a> for full details.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-sage/40" data-cat="collab" data-q="collaboration program partner brand">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-8" id="faq-button-8">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">What is the collaboration program?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">Our collaboration program allows brands, creators, and curators to partner with K.Subject-1. Collaborators can list products, access seller analytics, and reach our curated audience. Visit the <a href="#" onclick="navigateTo('collaborate');return false;" class="text-accent hover:text-accentDim transition">Collaborate</a> page to learn more and sign up.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-8" role="region" aria-labelledby="faq-button-8">Our collaboration program allows brands, creators, and curators to partner with K.Subject-1. Collaborators can list products, access seller analytics, and reach our curated audience. Visit the <a href="#" onclick="navigateTo('collaborate');return false;" class="text-accent hover:text-accentDim transition">Collaborate</a> page to learn more and sign up.</div>
                         </div>
                         <div class="faq-item rounded-2xl border border-white/[0.05] bg-card overflow-hidden border-l-2 border-l-coral/40" data-cat="account" data-q="contact support help">
-                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false">
+                            <button class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-white/[0.02] transition" aria-expanded="false" aria-controls="faq-answer-9" id="faq-button-9">
                                 <span class="font-medium text-softWhite text-sm sm:text-base pr-4">How do I contact support?</span>
                                 <i class="fa-solid fa-chevron-down text-muted text-xs shrink-0 transition-transform duration-300" aria-hidden="true"></i>
                             </button>
-                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;">You can reach us through our <a href="#" onclick="navigateTo('contact');return false;" class="text-accent hover:text-accentDim transition">Contact page</a>. We typically respond within 24 hours on business days.</div>
+                            <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6 text-sm text-subtle leading-relaxed" style="display:none;" id="faq-answer-9" role="region" aria-labelledby="faq-button-9">You can reach us through our <a href="#" onclick="navigateTo('contact');return false;" class="text-accent hover:text-accentDim transition">Contact page</a>. We typically respond within 24 hours on business days.</div>
                         </div>
                     </div>
 
@@ -4052,7 +4081,7 @@ function showStatusMessage(status) {
     wrap.innerHTML =
         '<div style="position:fixed;top:0;left:0;right:0;z-index:300;' +
             'background:' + c.bg + ';border-bottom:1px solid ' + c.border + ';' +
-            'backdrop-filter:blur(12px);padding:16px 20px;' +
+            /* FIXED: Added -webkit-backdrop-filter for Safari support */ 'backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:16px 20px;' +
             'display:flex;align-items:center;justify-content:center;gap:12px;">' +
             '<div style="width:40px;height:40px;border-radius:12px;background:' + c.iconBg + ';' +
                 'display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +

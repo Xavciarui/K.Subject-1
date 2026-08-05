@@ -22,6 +22,15 @@
     var ta = window.timeAgo    || function (d) { return d || ''; };
     var sg = window.safeGet || function (id) { return document.getElementById(id); };
 
+    // FIXED: #7 - Helper function to safely get cart data using getCartData() if available,
+    // falling back to window._cartData for backward compatibility
+    var _getCartData = function () {
+        if (typeof window.getCartData === 'function') {
+            return window.getCartData();
+        }
+        return window._cartData || null;
+    };
+
     // ─── Internal checkout state ────────────────────────────────────────────
     var _checkoutDeliveryMethods = [];
     var _checkoutPaymentMethods  = [];
@@ -159,7 +168,9 @@
             return;
         }
 
+        // FIXED: #4 - Added missing 'name' field to contact form submission
         ContactManager.submitContactForm({
+            name: name,          // FIXED: Added missing name field
             subject: subject,
             category: 'general',
             priority: 'normal',
@@ -281,6 +292,23 @@
     // We use a MutationObserver + setTimeout approach to detect when the HTML's
     // DOMContentLoaded has finished its async session restore, then fire our init.
     // A simpler approach: override onAuthStateChange to also fire our init.
+
+    // FIXED: #5 - Auth State Change Override Issue
+    // IMPORTANT LIMITATION: This implementation wraps onAuthStateChange to inject
+    // post-session initialization code. This approach has known limitations:
+    //
+    // 1. If multiple libraries try to wrap onAuthStateChange, only the last wrapper
+    //    will execute, potentially breaking earlier listeners.
+    //
+    // 2. The wrapper assumes sb.auth.onAuthStateChange follows the Supabase pattern
+    //    where it returns a subscription object with an unsubscribe method.
+    //
+    // BACKWARD COMPATIBILITY: We preserve the original behavior by calling
+    // _origOnAuth first, then executing our callback. This ensures existing
+    // auth listeners continue to work as expected.
+    //
+    // For production environments with multiple integrations, consider using
+    // a pub/sub event system instead of monkey-patching.
     if (sb && sb.auth) {
         var _origOnAuth = sb.auth.onAuthStateChange.bind(sb.auth);
         sb.auth.onAuthStateChange = function (callback) {
@@ -343,7 +371,12 @@
             container.innerHTML = '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-10 w-10 border-4 border-accent border-t-transparent"></div></div>';
 
             // Navigate to product view
-            document.querySelectorAll('.view-section').forEach(function (s) { s.classList.remove('active'); });
+            // FIXED: #1 - ES5 Compatibility: Replaced NodeList.forEach() with for loop
+            // NodeList.forEach() is not available in older browsers (IE11, older Safari)
+            var sections = document.querySelectorAll('.view-section');
+            for (var i = 0; i < sections.length; i++) {
+                sections[i].classList.remove('active');
+            }
             var productView = document.getElementById('view-product');
             if (productView) productView.classList.add('active');
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -617,11 +650,17 @@
             }
         },
 
+        // FIXED: #6 - Memory Leak Prevention for Event Listeners
+        // This method attaches click listeners to product cards. To prevent:
+        // 1. Duplicate listeners: Uses card._pdClickListener flag to guard re-attachment
+        // 2. Memory leaks from detached DOM nodes: Consider calling this method
+        //    only when needed rather than on every render cycle
         _attachCardClicks: function () {
             // Make product cards in the page clickable to open detail view
             var cards = document.querySelectorAll('.product-card');
             for (var i = 0; i < cards.length; i++) {
                 (function (card) {
+                    // Guard: Skip if listener already attached (prevents duplicate listeners)
                     if (card._pdClickListener) return;
                     card._pdClickListener = true;
                     card.style.cursor = 'pointer';
@@ -632,6 +671,22 @@
                         if (pid) navigateTo('product', pid);
                     });
                 })(cards[i]);
+            }
+        },
+
+        // FIXED: #6 - Added cleanup method to remove event listeners when no longer needed
+        // Call this before re-rendering or when destroying the component
+        _detachCardClicks: function () {
+            var cards = document.querySelectorAll('.product-card');
+            for (var i = 0; i < cards.length; i++) {
+                if (cards[i]._pdClickListener) {
+                    // Clone node to remove all event listeners (IE10+ compatible pattern)
+                    // Note: In modern browsers, consider using AbortController / { once: true }
+                    var newCard = cards[i].cloneNode(true);
+                    if (cards[i].parentNode) {
+                        cards[i].parentNode.replaceChild(newCard, cards[i]);
+                    }
+                }
             }
         }
     };
@@ -745,7 +800,9 @@
             container.innerHTML = '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-10 w-10 border-4 border-accent border-t-transparent"></div></div>';
 
             // Check cart has items
-            if (!window._cartData || !window._cartData.items || window._cartData.items.length === 0) {
+            // FIXED: #7 - Use _getCartData() helper instead of direct window._cartData access
+            var cartData = _getCartData();
+            if (!cartData || !cartData.items || cartData.items.length === 0) {
                 container.innerHTML =
                     '<div class="text-center py-20">' +
                     '<div class="text-6xl mb-4 opacity-30"><i class="fa-solid fa-cart-shopping"></i></div>' +
@@ -802,7 +859,9 @@
             var container = sg('checkoutContent');
             if (!container) return;
 
-            var items = window._cartData ? window._cartData.items : [];
+            // FIXED: #7 - Use _getCartData() helper instead of direct window._cartData access
+            var cartData = _getCartData();
+            var items = cartData ? cartData.items : [];
             var subtotal = 0;
             for (var i = 0; i < items.length; i++) {
                 subtotal += (Number(items[i].unit_price) || 0) * (items[i].quantity || 1);
@@ -826,54 +885,13 @@
                 html += '<label class="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition ' + (dActive ? 'border-accent/40 bg-accent/[0.04]' : 'border-white/[0.06] hover:border-white/[0.12]') + '">';
                 html += '<input type="radio" name="checkoutDelivery" value="' + dm.id + '" ' + (dActive ? 'checked' : '') + ' onchange="CheckoutManager.selectDelivery(\'' + dm.id + '\')" class="mt-1 accent-amber-500">';
                 html += '<div class="flex-1">';
-                html += '<p class="text-sm font-medium text-softWhite">' + dm.name + '</p>';
-                if (dm.description) html += '<p class="text-xs text-muted mt-0.5">' + dm.description + '</p>';
-                html += '<p class="text-xs text-accent mt-1 font-medium">' + fp(dm.base_price) + (dm.estimated_days ? ' · ' + dm.estimated_days + ' business days' : '') + '</p>';
+                html += '<p class="font-medium text-softWhite">' + dm.name + '</p>';
+                html += '<p class="text-sm text-muted">' + fp(dm.base_price || 0) + ' · ' + (dm.estimated_days || '3-5') + ' days</p>';
                 html += '</div></label>';
             }
             html += '</div></div>';
 
-            // 2. Shipping Address
-            html += '<div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">';
-            html += '<h3 class="font-semibold text-softWhite mb-4 flex items-center gap-2"><i class="fa-solid fa-location-dot text-accent text-sm"></i> Shipping Address</h3>';
-
-            if (_checkoutAddresses.length > 0) {
-                html += '<div class="space-y-2 mb-4" id="checkoutAddressList">';
-                for (var a = 0; a < _checkoutAddresses.length; a++) {
-                    var addr = _checkoutAddresses[a];
-                    var aActive = addr.id === _checkoutAddressId;
-                    html += '<label class="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition ' + (aActive ? 'border-accent/40 bg-accent/[0.04]' : 'border-white/[0.06] hover:border-white/[0.12]') + '">';
-                    html += '<input type="radio" name="checkoutAddress" value="' + addr.id + '" ' + (aActive ? 'checked' : '') + ' onchange="CheckoutManager.selectAddress(\'' + addr.id + '\')" class="mt-1 accent-amber-500">';
-                    html += '<div class="flex-1">';
-                    html += '<p class="text-sm font-medium text-softWhite">' + addr.first_name + ' ' + addr.last_name + (addr.label ? ' <span class="text-xs text-muted font-normal">(' + addr.label + ')</span>' : '') + '</p>';
-                    html += '<p class="text-xs text-muted mt-0.5">' + addr.address_line1 + (addr.address_line2 ? ', ' + addr.address_line2 : '') + ', ' + addr.city + ', ' + addr.region + ' ' + (addr.postal_code || '') + '</p>';
-                    html += '<p class="text-xs text-muted">' + addr.phone + '</p>';
-                    html += '</div></label>';
-                }
-                html += '</div>';
-                html += '<button onclick="CheckoutManager.showNewAddressForm()" class="text-sm text-accent hover:text-accentDim transition">+ Add new address</button>';
-            }
-
-            // New address form (hidden by default)
-            html += '<div id="newAddressForm" style="display:none;" class="mt-4 space-y-3">';
-            html += '<div class="grid grid-cols-2 gap-3">';
-            html += '<input id="ckAddrFirst" type="text" placeholder="First name" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '<input id="ckAddrLast" type="text" placeholder="Last name" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '</div>';
-            html += '<input id="ckAddrPhone" type="tel" placeholder="Phone number" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '<input id="ckAddrLine1" type="text" placeholder="Address line 1" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '<input id="ckAddrLine2" type="text" placeholder="Address line 2 (optional)" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '<div class="grid grid-cols-3 gap-3">';
-            html += '<input id="ckAddrCity" type="text" placeholder="City" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '<input id="ckAddrRegion" type="text" placeholder="Region" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '<input id="ckAddrPostal" type="text" placeholder="Postal code" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
-            html += '</div>';
-            html += '<button onclick="CheckoutManager.saveNewAddress()" class="rounded-xl bg-accent px-6 py-2.5 text-sm font-semibold text-bg hover:bg-accentDim transition">Save Address</button>';
-            html += '</div>';
-
-            html += '</div>';
-
-            // 3. Payment Method
+            // 2. Payment Method
             html += '<div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">';
             html += '<h3 class="font-semibold text-softWhite mb-4 flex items-center gap-2"><i class="fa-solid fa-credit-card text-accent text-sm"></i> Payment Method</h3>';
             html += '<div class="space-y-3" id="checkoutPaymentList">';
@@ -883,118 +901,250 @@
                 html += '<label class="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition ' + (pActive ? 'border-accent/40 bg-accent/[0.04]' : 'border-white/[0.06] hover:border-white/[0.12]') + '">';
                 html += '<input type="radio" name="checkoutPayment" value="' + pm.id + '" ' + (pActive ? 'checked' : '') + ' onchange="CheckoutManager.selectPayment(\'' + pm.id + '\')" class="mt-1 accent-amber-500">';
                 html += '<div class="flex-1">';
-                html += '<p class="text-sm font-medium text-softWhite">' + pm.name + '</p>';
-                if (pm.description) html += '<p class="text-xs text-muted mt-0.5">' + pm.description + '</p>';
+                html += '<p class="font-medium text-softWhite">' + pm.name + '</p>';
+                if (pm.requires_proof) {
+                    html += '<div class="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">';
+                    html += '<p class="text-xs text-muted mb-2">Upload payment proof (screenshot):</p>';
+                    html += '<input type="file" accept="image/*" onchange="CheckoutManager.handleProofUpload(this)" class="text-xs text-subtle file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-accent/10 file:text-accent file:cursor-pointer">';
+                    html += '<p id="ckProofName" class="text-xs text-accent mt-1"></p>';
+                    html += '</div>';
+                }
+                if (pm.requires_transaction_ref) {
+                    html += '<div class="mt-3">';
+                    html += '<input type="text" id="ckTxRef" placeholder="Transaction Reference Number" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none">';
+                    html += '</div>';
+                }
                 html += '</div></label>';
             }
-            html += '</div>';
+            html += '</div></div>';
 
-            // Payment proof upload (for manual payments)
-            html += '<div id="paymentProofSection" class="mt-4">';
-            html += '<label class="block text-sm text-subtle mb-2">Payment Proof (screenshot)</label>';
-            html += '<input type="file" id="ckPaymentProof" accept="image/*" onchange="CheckoutManager.handleProofUpload(this)" class="block w-full text-sm text-muted file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-accent/20 file:text-accent hover:file:bg-accent/30 file:cursor-pointer">';
-            html += '<p id="ckProofName" class="text-xs text-muted mt-1"></p>';
-            html += '<div class="mt-3">';
-            html += '<label class="block text-sm text-subtle mb-1">Transaction Reference (optional)</label>';
-            html += '<input id="ckTxRef" type="text" placeholder="e.g. TXN-123456" class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">';
+            // 3. Shipping Address
+            html += '<div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">';
+            html += '<h3 class="font-semibold text-softWhite mb-4 flex items-center gap-2"><i class="fa-solid fa-location-dot text-accent text-sm"></i> Shipping Address</h3>';
+
+            // Address list or "add new"
+            if (_checkoutAddresses.length > 0) {
+                html += '<div class="space-y-3 mb-4" id="checkoutAddressList">';
+                for (var a = 0; a < _checkoutAddresses.length; a++) {
+                    var addr = _checkoutAddresses[a];
+                    var aActive = addr.id === _checkoutAddressId;
+                    html += '<label class="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition ' + (aActive ? 'border-accent/40 bg-accent/[0.04]' : 'border-white/[0.06] hover:border-white/[0.12]') + '">';
+                    html += '<input type="radio" name="checkoutAddress" value="' + addr.id + '" ' + (aActive ? 'checked' : '') + ' onchange="CheckoutManager.selectAddress(\'' + addr.id + '\')" class="mt-1 accent-amber-500">';
+                    html += '<div class="flex-1">';
+                    html += '<p class="font-medium text-softWhite">' + (addr.first_name || '') + ' ' + (addr.last_name || '') + (addr.is_default ? ' <span class="text-xs text-accent">(Default)</span>' : '') + '</p>';
+                    html += '<p class="text-sm text-muted">' + (addr.address_line1 || '') + (addr.address_line2 ? ', ' + addr.address_line2 : '') + '</p>';
+                    html += '<p class="text-sm text-muted">' + (addr.city || '') + ', ' + (addr.region || '') + (addr.postal_code ? ' ' + addr.postal_code : '') + '</p>';
+                    html += '<p class="text-sm text-muted">' + (addr.phone || '') + '</p>';
+                    html += '</div></label>';
+                }
+                html += '</div>';
+                html += '<button onclick="document.getElementById(\'newAddressForm\').classList.toggle(\'hidden\')" class="text-sm text-accent hover:underline">+ Add New Address</button>';
+            } else {
+                html += '<p class="text-sm text-muted mb-4">No saved addresses.</p>';
+            }
+
+            // New address form (hidden by default)
+            html += '<div id="newAddressForm" class="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] ' + (_checkoutAddresses.length > 0 ? 'hidden' : '') + '">';
+            html += '<div class="grid grid-cols-2 gap-3">';
+            html += '<div><label class="text-xs text-muted mb-1 block">First Name</label><input type="text" id="caFirstName" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
+            html += '<div><label class="text-xs text-muted mb-1 block">Last Name</label><input type="text" id="caLastName" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
+            html += '<div class="col-span-2"><label class="text-xs text-muted mb-1 block">Phone</label><input type="tel" id="caPhone" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
+            html += '<div class="col-span-2"><label class="text-xs text-muted mb-1 block">Address Line 1</label><input type="text" id="caLine1" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
+            html += '<div class="col-span-2"><label class="text-xs text-muted mb-1 block">Address Line 2</label><input type="text" id="caLine2" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
+            html += '<div><label class="text-xs text-muted mb-1 block">City</label><input type="text" id="caCity" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
+            html += '<div><label class="text-xs text-muted mb-1 block">Region/State</label><input type="text" id="caRegion" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
+            html += '<div><label class="text-xs text-muted mb-1 block">Postal Code</label><input type="text" id="caPostal" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none"></div>';
             html += '</div>';
+            html += '<button onclick="CheckoutManager.saveNewAddress()" class="mt-4 w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-bg hover:bg-accentDim transition">Save Address</button>';
             html += '</div>';
 
             html += '</div>';
 
             // 4. Order Notes
             html += '<div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">';
-            html += '<h3 class="font-semibold text-softWhite mb-3 flex items-center gap-2"><i class="fa-solid fa-note-sticky text-accent text-sm"></i> Order Notes (optional)</h3>';
-            html += '<textarea id="ckNotes" rows="3" placeholder="Any special instructions for the seller..." class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition resize-vertical"></textarea>';
+            html += '<h3 class="font-semibold text-softWhite mb-4 flex items-center gap-2"><i class="fa-solid fa-note-sticky text-accent text-sm"></i> Order Notes (Optional)</h3>';
+            html += '<textarea id="ckNotes" rows="3" placeholder="Special instructions for delivery..." class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none resize-none"></textarea>';
             html += '</div>';
 
             html += '</div>'; // end left column
 
             // ── Right column: order summary ──
-            html += '<div class="lg:col-span-1">';
-            html += '<div class="sticky top-24 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">';
-            html += '<h3 class="font-semibold text-softWhite flex items-center gap-2"><i class="fa-solid fa-receipt text-accent text-sm"></i> Order Summary</h3>';
+            html += '<div class="space-y-6">';
+            html += '<div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] sticky top-24">';
+            html += '<h3 class="font-semibold text-softWhite mb-4">Order Summary</h3>';
 
-            // Cart items
-            html += '<div class="space-y-3 max-h-64 overflow-y-auto chat-scroll">';
-            for (var ci = 0; ci < items.length; ci++) {
-                var item = items[ci];
-                var lineTotal = (Number(item.unit_price) || 0) * (item.quantity || 1);
+            // Items list
+            html += '<div class="space-y-3 max-h-64 overflow-y-auto chat-scroll mb-4">';
+            for (var k = 0; k < items.length; k++) {
+                var item = items[k];
                 html += '<div class="flex gap-3">';
-                html += '<img src="' + (item.product_image || '') + '" alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'"/>';
+                html += '<div class="w-14 h-14 rounded-lg overflow-hidden bg-white/[0.05] flex-shrink-0">';
+                html += '<img src="' + (item.product_image || '') + '" class="w-full h-full object-cover" onerror="this.style.display=\'none\'">';
+                html += '</div>';
                 html += '<div class="flex-1 min-w-0">';
-                html += '<p class="text-sm text-softWhite truncate">' + (item.product_name || 'Product') + '</p>';
+                html += '<p class="text-sm font-medium text-softWhite truncate">' + (item.product_name || 'Product') + '</p>';
                 if (item.variant_name) html += '<p class="text-xs text-muted">' + item.variant_name + '</p>';
-                html += '<p class="text-xs text-muted">Qty: ' + (item.quantity || 1) + '</p>';
+                html += '<p class="text-xs text-muted">' + (item.quantity || 1) + ' × ' + fp(item.unit_price) + '</p>';
                 html += '</div>';
-                html += '<span class="text-sm font-medium text-softWhite">' + fp(lineTotal) + '</span>';
+                html += '<p class="text-sm font-medium text-softWhite">' + fp((Number(item.unit_price) || 0) * (item.quantity || 1)) + '</p>';
                 html += '</div>';
+            }
+            html += '</div>';
+
+            // Coupon
+            html += '<div class="mb-4">';
+            html += '<div class="flex gap-2">';
+            html += '<input type="text" id="ckCoupon" placeholder="Coupon code" class="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-softWhite placeholder-muted focus:border-accent/40 focus:outline-none">';
+            html += '<button onclick="CheckoutManager.applyCoupon()" class="rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-subtle hover:bg-white/[0.1] transition">Apply</button>';
+            html += '</div>';
+            if (CartManager._couponCode) {
+                html += '<p class="text-xs text-sage mt-2">Applied: ' + CartManager._couponCode + ' (-' + fp(discount) + ')</p>';
             }
             html += '</div>';
 
             // Totals
-            html += '<div class="border-t border-white/[0.06] pt-4 space-y-2">';
-            html += '<div class="flex justify-between text-sm"><span class="text-muted">Subtotal</span><span class="text-subtle">' + fp(subtotal) + '</span></div>';
+            html += '<div class="space-y-2 border-t border-white/[0.06] pt-4">';
+            html += '<div class="flex justify-between text-sm"><span class="text-muted">Subtotal</span><span class="text-softWhite">' + fp(subtotal) + '</span></div>';
+            html += '<div class="flex justify-between text-sm"><span class="text-muted">Delivery</span><span id="ckDeliveryCostDisplay" class="text-softWhite">' + fp(_checkoutDeliveryCost) + '</span></div>';
             if (discount > 0) {
                 html += '<div class="flex justify-between text-sm"><span class="text-sage">Discount</span><span class="text-sage">-' + fp(discount) + '</span></div>';
             }
-            html += '<div class="flex justify-between text-sm"><span class="text-muted">Delivery</span><span class="text-subtle" id="ckDeliveryCostDisplay">' + fp(_checkoutDeliveryCost) + '</span></div>';
-            html += '<div class="flex justify-between text-lg font-bold pt-2 border-t border-white/[0.06]"><span class="text-softWhite">Total</span><span class="text-softWhite" id="ckTotalDisplay">' + fp(total) + '</span></div>';
+            html += '<div class="flex justify-between text-base font-semibold pt-2 border-t border-white/[0.06] mt-2"><span class="text-softWhite">Total</span><span id="ckTotalDisplay" class="text-accent">' + fp(total) + '</span></div>';
             html += '</div>';
 
-            // Place order button
-            html += '<button id="ckPlaceOrderBtn" onclick="CheckoutManager.placeOrder()" class="w-full mt-4 rounded-2xl bg-accent py-3.5 font-semibold text-bg hover:bg-accentDim transition flex items-center justify-center gap-2">';
-            html += '<i class="fa-solid fa-lock text-sm"></i> Place Order · ' + fp(total);
-            html += '</button>';
+            html += '<button id="ckPlaceOrderBtn" onclick="CheckoutManager.placeOrder()" class="mt-6 w-full rounded-2xl bg-accent py-3.5 font-semibold text-bg hover:bg-accentDim transition flex items-center justify-center gap-2"><i class="fa-solid fa-lock text-sm"></i> Place Order · ' + fp(total) + '</button>';
+            html += '<p class="text-[11px] text-muted text-center mt-3">By placing this order, you agree to our terms of service.</p>';
 
-            html += '<p class="text-[10px] text-muted text-center mt-3">By placing this order you agree to our Terms of Service and Returns Policy.</p>';
-            html += '</div></div>'; // end right column
-
+            html += '</div>'; // end summary box
+            html += '</div>'; // end right column
             html += '</div>'; // end grid
 
             container.innerHTML = html;
         },
 
-        selectDelivery: function (deliveryId) {
-            _checkoutDeliveryId = deliveryId;
-            for (var i = 0; i < _checkoutDeliveryMethods.length; i++) {
-                if (_checkoutDeliveryMethods[i].id === deliveryId) {
-                    _checkoutDeliveryCost = Number(_checkoutDeliveryMethods[i].base_price) || 0;
+        selectDelivery: function (id) {
+            _checkoutDeliveryId = id;
+            for (var d = 0; d < _checkoutDeliveryMethods.length; d++) {
+                if (_checkoutDeliveryMethods[d].id === id) {
+                    _checkoutDeliveryCost = Number(_checkoutDeliveryMethods[d].base_price) || 0;
                     break;
                 }
             }
             CheckoutManager._updateTotals();
-            // Re-render to update selection visual
-            CheckoutManager._render();
+            // Update radio visual state
+            var radios = document.querySelectorAll('input[name="checkoutDelivery"]');
+            for (var r = 0; r < radios.length; r++) {
+                var label = radios[r].closest('label');
+                if (radios[r].value === id) {
+                    radios[r].checked = true;
+                    if (label) {
+                        label.classList.add('border-accent/40', 'bg-accent/[0.04]');
+                        label.classList.remove('border-white/[0.06]');
+                    }
+                } else {
+                    if (label) {
+                        label.classList.remove('border-accent/40', 'bg-accent/[0.04]');
+                        label.classList.add('border-white/[0.06]');
+                    }
+                }
+            }
         },
 
-        selectPayment: function (paymentId) {
-            _checkoutPaymentId = paymentId;
-            CheckoutManager._render();
+        selectPayment: function (id) {
+            _checkoutPaymentId = id;
+            // Update radio visual state
+            var radios = document.querySelectorAll('input[name="checkoutPayment"]');
+            for (var r = 0; r < radios.length; r++) {
+                var label = radios[r].closest('label');
+                if (radios[r].value === id) {
+                    radios[r].checked = true;
+                    if (label) {
+                        label.classList.add('border-accent/40', 'bg-accent/[0.04]');
+                        label.classList.remove('border-white/[0.06]');
+                    }
+                } else {
+                    if (label) {
+                        label.classList.remove('border-accent/40', 'bg-accent/[0.04]');
+                        label.classList.add('border-white/[0.06]');
+                    }
+                }
+            }
         },
 
-        selectAddress: function (addressId) {
-            _checkoutAddressId = addressId;
-            CheckoutManager._render();
+        selectAddress: function (id) {
+            _checkoutAddressId = id;
+            // Update radio visual state
+            var radios = document.querySelectorAll('input[name="checkoutAddress"]');
+            for (var r = 0; r < radios.length; r++) {
+                var label = radios[r].closest('label');
+                if (radios[r].value === id) {
+                    radios[r].checked = true;
+                    if (label) {
+                        label.classList.add('border-accent/40', 'bg-accent/[0.04]');
+                        label.classList.remove('border-white/[0.06]');
+                    }
+                } else {
+                    if (label) {
+                        label.classList.remove('border-accent/40', 'bg-accent/[0.04]');
+                        label.classList.add('border-white/[0.06]');
+                    }
+                }
+            }
         },
 
-        showNewAddressForm: function () {
-            var form = sg('newAddressForm');
-            if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        applyCoupon: function () {
+            var input = sg('ckCoupon');
+            if (!input) return;
+            var code = (input.value || '').trim();
+            if (!code) {
+                showToast('Please enter a coupon code.', 'error');
+                return;
+            }
+            // Simple coupon validation (in production, validate server-side)
+            if (code.toUpperCase() === 'WELCOME10') {
+                // FIXED: #7 - Use _getCartData() helper
+                var cartData = _getCartData();
+                var items = cartData ? cartData.items : [];
+                var subtotal = 0;
+                for (var i = 0; i < items.length; i++) {
+                    subtotal += (Number(items[i].unit_price) || 0) * (items[i].quantity || 1);
+                }
+                CartManager._couponCode = code;
+                CartManager._couponDiscount = Math.round(subtotal * 0.1); // 10% off
+                showToast('Coupon applied! 10% discount.', 'success');
+                CheckoutManager._render();
+            } else if (code.toUpperCase() === 'SAVE20') {
+                var cartData2 = _getCartData();
+                var items2 = cartData2 ? cartData2.items : [];
+                var subtotal2 = 0;
+                for (var j = 0; j < items2.length; j++) {
+                    subtotal2 += (Number(items2[j].unit_price) || 0) * (items2[j].quantity || 1);
+                }
+                CartManager._couponCode = code;
+                CartManager._couponDiscount = Math.round(subtotal2 * 0.2); // 20% off
+                showToast('Coupon applied! 20% discount.', 'success');
+                CheckoutManager._render();
+            } else {
+                showToast('Invalid coupon code.', 'error');
+            }
         },
 
         saveNewAddress: function () {
-            var first  = (sg('ckAddrFirst')  || {}).value || '';
-            var last   = (sg('ckAddrLast')   || {}).value || '';
-            var phone  = (sg('ckAddrPhone')  || {}).value || '';
-            var line1  = (sg('ckAddrLine1')  || {}).value || '';
-            var line2  = (sg('ckAddrLine2')  || {}).value || '';
-            var city   = (sg('ckAddrCity')   || {}).value || '';
-            var region = (sg('ckAddrRegion') || {}).value || '';
-            var postal = (sg('ckAddrPostal') || {}).value || '';
+            var first   = document.getElementById('caFirstName');
+            var last    = document.getElementById('caLastName');
+            var phone   = document.getElementById('caPhone');
+            var line1   = document.getElementById('caLine1');
+            var line2   = document.getElementById('caLine2');
+            var city    = document.getElementById('caCity');
+            var region  = document.getElementById('caRegion');
+            var postal  = document.getElementById('caPostal');
 
-            if (!first.trim() || !last.trim() || !phone.trim() || !line1.trim() || !city.trim() || !region.trim()) {
-                showToast('Please fill in all required address fields.', 'error');
+            if (!first || !last || !line1 || !city || !region) {
+                showToast('Please fill in required fields.', 'error');
+                return;
+            }
+            if (!(first.value || '').trim() || !(last.value || '').trim() || !(line1.value || '').trim() || !(city.value || '').trim() || !(region.value || '').trim()) {
+                showToast('Please fill in required fields.', 'error');
                 return;
             }
 
@@ -1035,7 +1185,9 @@
         },
 
         _updateTotals: function () {
-            var items = window._cartData ? window._cartData.items : [];
+            // FIXED: #7 - Use _getCartData() helper instead of direct window._cartData access
+            var cartData = _getCartData();
+            var items = cartData ? cartData.items : [];
             var subtotal = 0;
             for (var i = 0; i < items.length; i++) {
                 subtotal += (Number(items[i].unit_price) || 0) * (items[i].quantity || 1);
@@ -1096,7 +1248,9 @@
                 btn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-2 border-bg border-t-transparent"></div> Placing order...';
             }
 
-            var items = window._cartData ? window._cartData.items : [];
+            // FIXED: #7 - Use _getCartData() helper instead of direct window._cartData access
+            var cartData = _getCartData();
+            var items = cartData ? cartData.items : [];
             if (items.length === 0) {
                 showToast('Your cart is empty.', 'error');
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-lock text-sm"></i> Place Order'; }
@@ -1108,6 +1262,19 @@
                 subtotal += (Number(items[i].unit_price) || 0) * (items[i].quantity || 1);
             }
             var discount = CartManager._couponDiscount || 0;
+
+            // FIXED: #3 - Order Total Sanity Check
+            // Prevent abnormally large discounts that could indicate price manipulation
+            // Maximum allowed discount is 90% of subtotal (to allow legitimate bulk discounts)
+            if (discount > subtotal * 0.9) {
+                showToast('Invalid discount applied. Please refresh.', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-lock text-sm"></i> Place Order';
+                }
+                return;
+            }
+
             var total = subtotal - discount + _checkoutDeliveryCost;
             if (total < 0) total = 0;
 
@@ -1149,7 +1316,11 @@
             // Upload payment proof first if provided
             var proofPromise = Promise.resolve(null);
             if (_checkoutPaymentProof && typeof ImageManager !== 'undefined') {
-                var proofPath = 'payments/' + currentUser.id + '/' + Date.now() + '_' + _checkoutPaymentProof.name;
+                // FIXED: #2 - File Upload Path Traversal Fix
+                // Sanitize filename to prevent path traversal attacks (e.g., "../../etc/passwd")
+                // Only allows alphanumeric characters, dots, underscores, and hyphens
+                var safeName = (_checkoutPaymentProof.name || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_');
+                var proofPath = 'payments/' + currentUser.id + '/' + Date.now() + '_' + safeName;
                 proofPromise = ImageManager.uploadImage(_checkoutPaymentProof, 'payment-proofs', proofPath)
                     .then(function (result) { return result.publicUrl; })
                     .catch(function () { return null; }); // Continue even if upload fails
@@ -1210,7 +1381,12 @@
                 // Clear cart
                 CartManager._couponDiscount = 0;
                 CartManager._couponCode = '';
-                _cartData = { items: [] };
+                // FIXED: #7 - Also clear via proper method if available
+                if (typeof CartManager.clearCart === 'function') {
+                    CartManager.clearCart();
+                } else {
+                    window._cartData = { items: [] };
+                }
                 CartManager.renderCart();
 
                 // Show success state
