@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- FIXED: Disabled pinch-zoom on mobile + improved viewport handling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <!-- SEO & PWA Meta Tags -->
     <meta name="description" content="K.Subject-1 is a curated marketplace for discovering premium products across tech, fashion, beauty, and outdoor categories. Shop handpicked collections from verified brands and creators.">
     <meta name="theme-color" content="#08080d">
@@ -88,11 +89,32 @@
            1. BASE RESET & TYPOGRAPHY
         ═══════════════════════════════════════ */
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* FIXED: HTML base styles for mobile viewport stability */
+        html {
+            overflow-x: hidden;
+            width: 100%;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            /* Prevent iOS bounce/overscroll */
+            overscroll-behavior: none;
+            /* Disable double-tap zoom on mobile */
+            touch-action: manipulation;
+        }
+        
         body {
             font-family: 'DM Sans', system-ui, sans-serif;
             background: #08080d;
             color: #ede8e0;
             overflow-x: hidden;
+            width: 100%;
+            min-width: 100%;
+            max-width: 100vw;
+            position: relative;
+            /* Ensure body stays centered and doesn't shift left */
+            margin: 0 auto;
+            /* Prevent pull-to-refresh on mobile */
+            overscroll-behavior-y: contain;
         }
 
         /* ═══════════════════════════════════════
@@ -1425,6 +1447,174 @@
         .faq-cat-pill:hover:not(.active) { background: rgba(255,255,255,0.04); }
         .eligibility-grid-card { transition: all 0.3s ease; }
         .eligibility-grid-card:hover { transform: translateY(-2px); border-color: rgba(232,166,48,0.15); }
+
+        /* ═══════════════════════════════════════
+           MOBILE VIEWPORT & CENTERING FIXES
+           Prevents zoom, fixes right-edge gap, ensures centering
+        ═══════════════════════════════════════ */
+        
+        /* FIXED: Prevent zoom gestures on interactive elements */
+        button, 
+        a, 
+        input, 
+        select, 
+        textarea,
+        [onclick] {
+            touch-action: manipulation;
+        }
+        
+        /* FIXED: Ensure main container stays centered with no gap */
+        main,
+        [class*="relative.z-10"],
+        .view-section,
+        #main-content {
+            max-width: 100vw;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* FIXED: Background layers should not cause horizontal scroll */
+        canvas#particlesCanvas,
+        .atmo-bg,
+        .orb {
+            position: fixed;
+            left: 0;
+            right: 0;
+            width: 100%;
+            max-width: 100vw;
+            pointer-events: none;
+        }
+        
+        /* FIXED: Mobile-specific viewport lock (320px - 480px) */
+        @media (max-width: 480px) {
+            /* Lock body to exact viewport width */
+            html, body {
+                width: 100vw;
+                max-width: 100vw;
+                overflow-x: hidden;
+                position: relative;
+            }
+            
+            /* Ensure all direct children stay within bounds */
+            body > * {
+                max-width: 100vw;
+                overflow-x: hidden;
+            }
+            
+            /* Fix any container that might overflow */
+            div, section, header, footer, nav, main {
+                max-width: 100vw;
+                overflow-x: visible;
+            }
+            
+            /* Center content properly - prevent left shift */
+            .max-w-7xl,
+            .max-w-6xl,
+            .max-w-5xl,
+            .max-w-4xl,
+            .max-w-3xl,
+            .max-w-2xl,
+            .max-w-xl {
+                width: 100%;
+                max-width: 100%;
+                padding-left: 16px;
+                padding-right: 16px;
+                margin-left: auto;
+                margin-right: auto;
+                box-sizing: border-box;
+            }
+            
+            /* Fix grid containers from causing overflow */
+            [class*="grid"] {
+                overflow-x: hidden;
+            }
+            
+            /* Ensure images don't overflow */
+            img {
+                max-width: 100%;
+                height: auto;
+            }
+            
+            /* Prevent text from causing horizontal scroll */
+            h1, h2, h3, h4, h5, h6, p, span {
+                max-width: 100%;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
+            
+            /* Fixed/absolute positioned elements must stay in view */
+            [style*="position: fixed"],
+            [style*="position: absolute"] {
+                max-width: 100vw;
+            }
+            
+            /* Modal/overlay full viewport coverage */
+            .auth-overlay,
+            .cart-overlay {
+                width: 100vw;
+                max-width: 100vw;
+                left: 0 !important;
+                right: 0 !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+            
+            /* Auth modal centered on mobile */
+            .auth-modal {
+                max-width: calc(100vw - 32px);
+                margin-left: 16px !important;
+                margin-right: 16px !important;
+                left: 0 !important;
+                right: 0 !important;
+            }
+            
+            /* Cart panel full width on mobile */
+            .cart-panel {
+                max-width: 100vw;
+                width: 100vw;
+                left: 0 !important;
+                right: auto !important;
+            }
+            
+            /* Toast notifications within bounds */
+            .toast-container {
+                max-width: calc(100vw - 32px);
+                left: 16px !important;
+                right: 16px !important;
+                width: auto !important;
+            }
+            
+            /* Search results dropdown */
+            .search-results {
+                max-width: 100vw;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+            }
+            
+            /* Offline banner full width */
+            #offlineBanner {
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: 100vw;
+            }
+        }
+        
+        /* Tablet viewport fixes (481px - 768px) */
+        @media (min-width: 481px) and (max-width: 768px) {
+            html, body {
+                overflow-x: hidden;
+                max-width: 100vw;
+            }
+            
+            .max-w-7xl,
+            .max-w-6xl,
+            .max-w-5xl {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+        }
     </style>
 
     <script type="application/ld+json">
@@ -5010,6 +5200,69 @@ async function handleForgotPassword() {
 
 <!-- K.Subject-1 Marketplace: Security, Performance & Accessibility -->
 <script src="security.js"></script>
+
+<!-- FIXED: Mobile viewport & zoom prevention script -->
+<script>
+(function() {
+    'use strict';
+    
+    // Prevent iOS double-tap zoom on interactive elements
+    var lastTouchEnd = 0;
+    document.addEventListener('touchend', function(event) {
+        var now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+    
+    // Prevent pinch-zoom gesture
+    document.addEventListener('gesturestart', function(e) {
+        e.preventDefault();
+    }, { passive: false });
+    
+    document.addEventListener('gesturechange', function(e) {
+        e.preventDefault();
+    }, { passive: false });
+    
+    // Fix viewport on orientation change (prevents width issues)
+    var viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (viewportMeta && window.screen.orientation) {
+        window.screen.orientation.addEventListener('change', function() {
+            // Briefly disable then re-enable user scaling to reset viewport
+            var originalContent = viewportMeta.getAttribute('content');
+            viewportMeta.setAttribute('content', originalContent + ', maximum-scale=1');
+            setTimeout(function() {
+                viewportMeta.setAttribute('content', originalContent);
+            }, 100);
+        });
+    }
+    
+    // Ensure no horizontal scroll on mobile
+    function preventHorizontalScroll(e) {
+        if (e.touches && e.touches.length > 1) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    
+    document.addEventListener('touchmove', function(e) {
+        // Allow vertical scrolling but check for horizontal overflow attempts
+        var target = e.target;
+        if (target) {
+            var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            if (scrollLeft > 0 && Math.abs(e.touches[0].clientX - e.touches[0].pageX) > 10) {
+                // User is trying to scroll horizontally - allow only if needed
+            }
+        }
+    }, { passive: true });
+    
+    // Log mobile fixes applied (debug mode)
+    if (window.DEBUG_MODE) {
+        console.log('[mobile-fix] Viewport lock, zoom prevention, and centering fixes applied.');
+    }
+})();
+</script>
 
 </body>
 </html>
