@@ -381,15 +381,6 @@
                             setTimeout(function () {
                                 container.innerHTML = '<div class="empty-state">' +
                                     '<div class="empty-state-visual">' +
-                                        '<div class="empty-state-orb"></div>' +
-                                        '<div class="empty-state-sparkles">' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                        '</div>' +
                                         '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true"></i>' +
                                     '</div>' +
                                     '<h3 class="empty-state-title">' + catTitle + '</h3>' +
@@ -414,15 +405,6 @@
                         } else {
                             container.innerHTML = '<div class="empty-state">' +
                                 '<div class="empty-state-visual">' +
-                                    '<div class="empty-state-orb"></div>' +
-                                    '<div class="empty-state-sparkles">' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                    '</div>' +
                                     '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true"></i>' +
                                 '</div>' +
                                 '<h3 class="empty-state-title">' + catTitle + '</h3>' +
@@ -486,19 +468,10 @@
                             setTimeout(function () {
                                 container.innerHTML = '<div class="empty-state">' +
                                     '<div class="empty-state-visual">' +
-                                        '<div class="empty-state-orb"></div>' +
-                                        '<div class="empty-state-sparkles">' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                            '<span class="empty-sparkle"></span>' +
-                                        '</div>' +
                                         '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true"></i>' +
                                     '</div>' +
-                                    '<h3 class="empty-state-title">Library Being Stocked</h3>' +
-                                    '<p class="empty-state-desc">We\'re carefully selecting essential reads, guides, and resources. Quality takes time — the shelves will be ready soon.</p>' +
+                                    '<h3 class="empty-state-title">No items yet</h3>' +
+                                    '<p class="empty-state-desc">Library essentials are on the way. We\'re carefully selecting items for quality.</p>' +
                                     '<button onclick="navigateTo(\'collection\')" class="empty-state-action">' +
                                         '<i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i> Browse Collection' +
                                     '</button>' +
@@ -507,20 +480,11 @@
                         } else {
                             container.innerHTML = '<div class="empty-state">' +
                                 '<div class="empty-state-visual">' +
-                                    '<div class="empty-state-orb"></div>' +
-                                    '<div class="empty-state-sparkles">' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                        '<span class="empty-sparkle"></span>' +
-                                    '</div>' +
                                     '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true"></i>' +
                                 '</div>' +
-                                '<h3 class="empty-state-title">Library Being Stocked</h3>' +
-                                '<p class="empty-state-desc">We\'re carefully selecting essential reads, guides, and resources. Quality takes time — the shelves will be ready soon.</p>' +
-                                '<button onclick="navigateTo(\'collection\')" class="empty-state-action">' +
+                                '<h3 class="empty-state-title">No items yet</h3>' +
+                                '<p class="empty-state-desc">Library essentials are on the way. We\'re carefully selecting items for quality.</p>' +
+                                '<button onclick="navigateTo(\'collection\)" class="empty-state-action">' +
                                     '<i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i> Browse Collection' +
                                 '</button>' +
                             '</div>';
