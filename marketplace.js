@@ -374,72 +374,30 @@
                         var catBtnText = (activeCategory === 'library') ? 'Browse Collection' : 'Submit a Product';
                         var catBtnAction = (activeCategory === 'library') ? 'navigateTo(\'collection\')' : 'navigateTo(\'collaborate\')';
 
-                        // Fade out existing empty state if present
+                        // Replace empty state immediately (NO FADE to prevent flash)
                         var existingEmpty = container.querySelector('.empty-state');
-                        if (existingEmpty) {
-                            existingEmpty.classList.add('fade-out');
-                            setTimeout(function () {
-                                container.innerHTML = '<div class="empty-state">' +
-                                    '<div class="empty-state-visual">' +
-                                        '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true"></i>' +
-                                    '</div>' +
-                                    '<h3 class="empty-state-title">' + catTitle + '</h3>' +
-                                    '<p class="empty-state-desc">' + catDesc + '</p>' +
-                                    '<button onclick="' + catBtnAction + '" class="empty-state-action">' +
-                                        '<i class="fa-solid ' + catBtnIcon + ' text-xs" aria-hidden="true"></i> ' + catBtnText +
-                                    '</button>' +
-                                '</div>';
-                                // Trigger fade in
-                                requestAnimationFrame(function () {
-                                    var newEmpty = container.querySelector('.empty-state');
-                                    if (newEmpty) {
-                                        newEmpty.style.opacity = '0';
-                                        newEmpty.style.transform = 'translateY(20px)';
-                                        requestAnimationFrame(function () {
-                                            newEmpty.style.opacity = '';
-                                            newEmpty.style.transform = '';
-                                        });
-                                    }
-                                });
-                            }, 400);
-                        } else {
-                            container.innerHTML = '<div class="empty-state">' +
-                                '<div class="empty-state-visual">' +
-                                    '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true"></i>' +
+                        if (!existingEmpty || !existingEmpty.classList.contains('collection-empty-shown')) {
+                            container.innerHTML = '<div class="empty-state collection-empty-shown" style="opacity:1!important;animation:none!important;transition:none!important;">' +
+                                '<div class="empty-state-visual" style="opacity:1!important;animation:none!important;transition:none!important;">' +
+                                    '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true" style="animation:none!important;"></i>' +
                                 '</div>' +
-                                '<h3 class="empty-state-title">' + catTitle + '</h3>' +
-                                '<p class="empty-state-desc">' + catDesc + '</p>' +
-                                '<button onclick="' + catBtnAction + '" class="empty-state-action">' +
+                                '<h3 class="empty-state-title" style="opacity:1!important;animation:none!important;transition:none!important;">' + catTitle + '</h3>' +
+                                '<p class="empty-state-desc" style="opacity:1!important;animation:none!important;transition:none!important;">' + catDesc + '</p>' +
+                                '<button onclick="' + catBtnAction + '" class="empty-state-action" style="opacity:1!important;pointer-events:auto!important;z-index:100!important;cursor:pointer!important;animation:none!important;transition:none!important;">' +
                                     '<i class="fa-solid ' + catBtnIcon + ' text-xs" aria-hidden="true"></i> ' + catBtnText +
                                 '</button>' +
                             '</div>';
                         }
+                        // If already showing, do nothing to prevent re-render flash
                         return;
                     }
 
-                    // Products exist - fade out empty state and show products
+                    // Products exist - show immediately (NO FADE to prevent flash)
                     var existingEmptyState = container.querySelector('.empty-state');
                     var productHtml = buildProductGridHtml(products, total);
 
-                    if (existingEmptyState) {
-                        existingEmptyState.classList.add('fade-out');
-                        setTimeout(function () {
-                            container.innerHTML = productHtml;
-                            // Fade in products
-                            var grid = container.querySelector('.grid');
-                            if (grid) {
-                                grid.style.opacity = '0';
-                                grid.style.transform = 'translateY(20px)';
-                                requestAnimationFrame(function () {
-                                    grid.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                                    grid.style.opacity = '1';
-                                    grid.style.transform = 'translateY(0)';
-                                });
-                            }
-                        }, 400);
-                    } else {
-                        container.innerHTML = productHtml;
-                    }
+                    // Replace immediately without any transition
+                    container.innerHTML = productHtml;
                 })
                 .catch(function (err) {
                     console.error('Collection load error:', err);
@@ -461,38 +419,37 @@
                     var products = result.data || [];
 
                     if (products.length === 0) {
-                        // Check for existing empty state and fade it out first
+                        // Check for existing empty state - replace immediately (NO FADE to prevent flash)
                         var existingEmpty = container.querySelector('.empty-state');
-                        if (existingEmpty) {
-                            existingEmpty.classList.add('fade-out');
-                            setTimeout(function () {
-                                container.innerHTML = '<div class="empty-state">' +
-                                    '<div class="empty-state-visual">' +
-                                        '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true"></i>' +
-                                    '</div>' +
-                                    '<h3 class="empty-state-title">No items yet</h3>' +
-                                    '<p class="empty-state-desc">Library essentials are on the way. We\'re carefully selecting items for quality.</p>' +
-                                    '<button onclick="navigateTo(\'collection\')" class="empty-state-action">' +
-                                        '<i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i> Browse Collection' +
-                                    '</button>' +
-                                '</div>';
-                            }, 400);
-                        } else {
-                            container.innerHTML = '<div class="empty-state">' +
-                                '<div class="empty-state-visual">' +
-                                    '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true"></i>' +
+                        if (!existingEmpty || !existingEmpty.classList.contains('library-empty-shown')) {
+                            // Only update if not already showing or different
+                            container.innerHTML = '<div class="empty-state library-empty-shown" style="opacity:1!important;pointer-events:auto!important;animation:none!important;transition:none!important;">' +
+                                '<div class="empty-state-visual" style="opacity:1!important;pointer-events:none!important;animation:none!important;transition:none!important;">' +
+                                    '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true" style="animation:none!important;"></i>' +
                                 '</div>' +
-                                '<h3 class="empty-state-title">No items yet</h3>' +
-                                '<p class="empty-state-desc">Library essentials are on the way. We\'re carefully selecting items for quality.</p>' +
-                                '<button onclick="navigateTo(\'collection\)" class="empty-state-action">' +
+                                '<h3 class="empty-state-title" style="opacity:1!important;animation:none!important;transition:none!important;">No items yet</h3>' +
+                                '<p class="empty-state-desc" style="opacity:1!important;animation:none!important;transition:none!important;">Library essentials are on the way. We\'re carefully selecting items for quality.</p>' +
+                                '<button id="libraryBrowseBtnDynamic" type="button" onclick="navigateTo(\'collection\')" class="empty-state-action" style="opacity:1!important;pointer-events:auto!important;z-index:100!important;cursor:pointer!important;animation:none!important;transition:none!important;">' +
                                     '<i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i> Browse Collection' +
                                 '</button>' +
                             '</div>';
+                            // Attach backup click handler
+                            var dynamicBtn = document.getElementById('libraryBrowseBtnDynamic');
+                            if (dynamicBtn) {
+                                dynamicBtn.addEventListener('click', function(e) {
+                                    e.stopPropagation();
+                                    if (typeof navigateTo === 'function') {
+                                        navigateTo('collection');
+                                    }
+                                });
+                            }
                         }
+                        // If already showing library empty state, do nothing (prevents re-render flash)
                         return;
+                            // (handled above - no else block needed)
                     }
 
-                    // Products exist - fade out empty state and show products
+                    // Products exist - show them immediately (NO FADE to prevent flash)
                     var existingEmptyState = container.querySelector('.empty-state');
                     var libProductHtml = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">';
                     for (var j = 0; j < products.length; j++) {
@@ -500,25 +457,8 @@
                     }
                     libProductHtml += '</div>';
 
-                    if (existingEmptyState) {
-                        existingEmptyState.classList.add('fade-out');
-                        setTimeout(function () {
-                            container.innerHTML = libProductHtml;
-                            // Fade in products
-                            var grid = container.querySelector('.grid');
-                            if (grid) {
-                                grid.style.opacity = '0';
-                                grid.style.transform = 'translateY(20px)';
-                                requestAnimationFrame(function () {
-                                    grid.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                                    grid.style.opacity = '1';
-                                    grid.style.transform = 'translateY(0)';
-                                });
-                            }
-                        }, 400);
-                    } else {
-                        container.innerHTML = libProductHtml;
-                    }
+                    // Replace immediately without any transition
+                    container.innerHTML = libProductHtml;
                 })
                 .catch(function (err) {
                     console.error('Library load error:', err);
