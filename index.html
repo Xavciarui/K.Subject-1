@@ -552,6 +552,29 @@
          /* ═══════════════════════════════════════
            26. SELLER DASHBOARD STYLES
         ═══════════════════════════════════════ */
+        
+        /* Desktop Horizontal Tab Navigation */
+        .dash-tab-btn {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 18px; border-radius: 10px;
+            font-size: 13.5px; color: #9b97a8;
+            transition: all 0.2s ease; cursor: pointer;
+            border: 1px solid transparent;
+            background: transparent;
+        }
+        .dash-tab-btn:hover {
+            background: rgba(255,255,255,0.04);
+            color: #ede8e0;
+        }
+        .dash-tab-btn.active {
+            background: rgba(232,166,48,0.1);
+            color: #e8a630;
+            border-color: rgba(232,166,48,0.12);
+        }
+        .dash-tab-btn.active i {
+            color: #e8a630;
+        }
+        
         .dash-sidebar-link {
             display: flex; align-items: center; gap: 12px;
             padding: 11px 16px; border-radius: 12px;
@@ -2870,78 +2893,59 @@
              SELLER DASHBOARD SECTION
         ═══════════════════════════════════════ -->
          <div class="view-section" id="view-dashboard">
-             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                <div class="flex flex-col lg:flex-row gap-6">
+             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
 
-                    <!-- Sidebar -->
-                    <div class="lg:w-64 shrink-0">
-                        <div class="dash-sidebar-wrapper">
-                            <div class="dash-sidebar-card lg:sticky lg:top-24">
-                                <div class="dash-sidebar-glow"></div>
+                <!-- ═══ LAPTOP/DESKTOP: Horizontal Layout ═══ -->
+                <div class="hidden lg:block">
 
-                                <!-- Seller Info -->
-                                <div class="dash-seller-profile">
-                                    <div class="dash-avatar-ring">
-                                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center">
-                                            <span class="text-accent font-display font-bold text-sm" id="dashAvatar">KC</span>
-                                        </div>
-                                    </div>
-                                <div class="min-w-0">
-                                    <p class="text-sm font-semibold truncate text-softWhite" id="dashSellerName">Seller</p>
-                                    <p class="text-[11px] text-muted truncate" id="dashSellerEmail">seller@example.com</p>
+                    <!-- Top Bar: Seller Info + Actions -->
+                    <div class="flex items-center justify-between mb-6 pb-6 border-b border-white/[0.06]">
+                        <div class="flex items-center gap-4">
+                            <div class="dash-avatar-ring">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center">
+                                    <span class="text-accent font-display font-bold text-base" id="dashAvatar">KC</span>
                                 </div>
-                                </div>
-
-                                <!-- Nav Links -->
-                                <nav class="dash-nav-section space-y-1" role="navigation" aria-label="Dashboard">
-                                <button class="dash-sidebar-link active w-full" data-dash-tab="overview" onclick="switchDashTab('overview',this)">
-                                    <i class="fa-solid fa-chart-pie dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
-                                    <span>Overview</span>
-                                </button>
-                                <button class="dash-sidebar-link w-full" data-dash-tab="products" onclick="switchDashTab('products',this)">
-                                    <i class="fa-solid fa-box dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
-                                    <span>Products</span>
-                                </button>
-                                <button class="dash-sidebar-link w-full" data-dash-tab="orders" onclick="switchDashTab('orders',this)">
-                                    <i class="fa-solid fa-receipt dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
-                                    <span>Orders</span>
-                                </button>
-                                <button class="dash-sidebar-link w-full" data-dash-tab="settings" onclick="switchDashTab('settings',this)">
-                                    <i class="fa-solid fa-gear dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
-                                    <span>Settings</span>
-                                </button>
                             </div>
-
-                            </nav>
-
-                                <div class="dash-sidebar-divider"></div>
-
-                                <!-- Back to Shop -->
-                                <button onclick="navigateTo('home')" class="dash-back-link">
-                                    <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
-                                    <span>Back to Shop</span>
-                                </button>
+                            <div>
+                                <h1 class="font-display text-xl font-bold text-softWhite" id="dashTitle">Dashboard Overview</h1>
+                                <p class="text-xs text-muted mt-0.5"><span id="dashSellerName">Seller</span> · <span id="dashSellerEmail">seller@example.com</span></p>
                             </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="showToast('Product management will be available soon.','info')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
+                                <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add Product
+                            </button>
+                            <button onclick="navigateTo('home')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm hover:bg-white/[0.07] hover:text-softWhite transition">
+                                <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i> Back to Shop
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Main Content -->
-                    <div class="flex-1 min-w-0">
+                    <!-- Horizontal Navigation Tabs -->
+                    <nav class="flex items-center gap-1 mb-8 pb-4 border-b border-white/[0.04]" role="navigation" aria-label="Dashboard Navigation">
+                        <button class="dash-tab-btn active" data-dash-tab="overview" onclick="switchDashTab('overview',this)">
+                            <i class="fa-solid fa-chart-pie text-sm w-5 text-center" aria-hidden="true"></i>
+                            <span>Overview</span>
+                        </button>
+                        <button class="dash-tab-btn" data-dash-tab="products" onclick="switchDashTab('products',this)">
+                            <i class="fa-solid fa-box text-sm w-5 text-center" aria-hidden="true"></i>
+                            <span>Products</span>
+                        </button>
+                        <button class="dash-tab-btn" data-dash-tab="orders" onclick="switchDashTab('orders',this)">
+                            <i class="fa-solid fa-receipt text-sm w-5 text-center" aria-hidden="true"></i>
+                            <span>Orders</span>
+                        </button>
+                        <button class="dash-tab-btn" data-dash-tab="settings" onclick="switchDashTab('settings',this)">
+                            <i class="fa-solid fa-gear text-sm w-5 text-center" aria-hidden="true"></i>
+                            <span>Settings</span>
+                        </button>
+                    </nav>
 
-                        <!-- Dashboard Header -->
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                            <div>
-                                <h2 class="font-display text-2xl sm:text-3xl font-bold" id="dashTitle">Dashboard Overview</h2>
-                                <p class="text-sm text-muted mt-1" id="dashSubtitle">Welcome to your seller dashboard</p>
-                            </div>
-                            <button onclick="showToast('Product management will be available soon.','info')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition shrink-0">
-                                <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add Product
-                            </button>
-                        </div>
+                    <!-- Main Content Area (Desktop) -->
+                    <div id="dashDesktopContent">
 
-                        <!-- ── OVERVIEW TAB ── -->
+                        <!-- ── OVERVIEW TAB (Desktop) ── -->
                         <div class="dash-tab-content" id="dashTabOverview">
-                            <!-- Stats -->
                             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                                 <div class="dash-stat-card" style="--stat-color:#e8a630;">
                                     <div class="flex items-center justify-between mb-3">
@@ -3198,6 +3202,79 @@
 
                     </div>
                 </div>
+
+                <!-- ═══ MOBILE/TABLET: Sidebar Layout ═══ -->
+                <div class="block lg:hidden">
+                    <div class="flex flex-col gap-4">
+
+                        <!-- Sidebar Card (Mobile) -->
+                        <div class="dash-sidebar-wrapper">
+                            <div class="dash-sidebar-card">
+                                <div class="dash-sidebar-glow"></div>
+
+                                <!-- Seller Info -->
+                                <div class="dash-seller-profile">
+                                    <div class="dash-avatar-ring">
+                                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center">
+                                            <span class="text-accent font-display font-bold text-sm" id="dashAvatarMobile">KC</span>
+                                        </div>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold truncate text-softWhite" id="dashSellerNameMobile">Seller</p>
+                                        <p class="text-[11px] text-muted truncate" id="dashSellerEmailMobile">seller@example.com</p>
+                                    </div>
+                                </div>
+
+                                <!-- Nav Links -->
+                                <nav class="dash-nav-section space-y-1" role="navigation" aria-label="Dashboard Mobile">
+                                    <button class="dash-sidebar-link active w-full" data-dash-tab="overview" onclick="switchDashTab('overview',this)">
+                                        <i class="fa-solid fa-chart-pie dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
+                                        <span>Overview</span>
+                                    </button>
+                                    <button class="dash-sidebar-link w-full" data-dash-tab="products" onclick="switchDashTab('products',this)">
+                                        <i class="fa-solid fa-box dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
+                                        <span>Products</span>
+                                    </button>
+                                    <button class="dash-sidebar-link w-full" data-dash-tab="orders" onclick="switchDashTab('orders',this)">
+                                        <i class="fa-solid fa-receipt dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
+                                        <span>Orders</span>
+                                    </button>
+                                    <button class="dash-sidebar-link w-full" data-dash-tab="settings" onclick="switchDashTab('settings',this)">
+                                        <i class="fa-solid fa-gear dash-sidebar-icon text-sm w-5 text-center" aria-hidden="true"></i>
+                                        <span>Settings</span>
+                                    </button>
+                                </nav>
+
+                                <div class="dash-sidebar-divider"></div>
+
+                                <!-- Back to Shop + Add Product -->
+                                <div class="flex gap-2">
+                                    <button onclick="navigateTo('home')" class="flex-1 dash-back-link justify-center mb-0">
+                                        <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
+                                        <span>Back</span>
+                                    </button>
+                                    <button onclick="showToast('Product management will be available soon.','info')" class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-accent text-bg font-semibold text-xs hover:bg-accentDim transition">
+                                        <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Content Area (Mobile) - Same tabs as desktop but shown on mobile -->
+                        <div id="dashMobileContent">
+
+                            <!-- Mobile Header -->
+                            <div class="mb-4">
+                                <h2 class="font-display text-lg sm:text-xl font-bold" id="dashTitleMobile">Dashboard Overview</h2>
+                                <p class="text-xs text-muted mt-0.5" id="dashSubtitleMobile">Welcome to your seller dashboard</p>
+                            </div>
+
+                            <!-- Tabs are shared - switchDashTab toggles both -->
+
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -4050,15 +4127,29 @@ function updateDashboardUI() {
     if (!currentUser) return;
 
     var el;
+    // Desktop elements
     el = document.getElementById('dashSellerName');  if (el) el.textContent = currentUser.brand  || currentUser.name;
     el = document.getElementById('dashSellerEmail');  if (el) el.textContent = currentUser.email;
     el = document.getElementById('dashAvatar');       if (el) el.textContent = currentUser.initials || 'KC';
+
+    // Mobile elements
+    el = document.getElementById('dashSellerNameMobile');  if (el) el.textContent = currentUser.brand  || currentUser.name;
+    el = document.getElementById('dashSellerEmailMobile');  if (el) el.textContent = currentUser.email;
+    el = document.getElementById('dashAvatarMobile');       if (el) el.textContent = currentUser.initials || 'KC';
 
     var dashTitle    = document.getElementById('dashTitle');
     var dashSubtitle = document.getElementById('dashSubtitle');
     if (dashSubtitle && dashTitle && dashTitle.textContent === 'Dashboard Overview') {
         var first = currentUser.first || (currentUser.name || '').split(' ')[0] || 'there';
         dashSubtitle.textContent = 'Welcome, ' + first + '! Your dashboard is ready.';
+    }
+
+    // Mobile titles
+    var dashTitleMobile    = document.getElementById('dashTitleMobile');
+    var dashSubtitleMobile = document.getElementById('dashSubtitleMobile');
+    if (dashSubtitleMobile && dashTitleMobile) {
+        var firstMobile = currentUser.first || (currentUser.name || '').split(' ')[0] || 'there';
+        dashSubtitleMobile.textContent = 'Welcome, ' + firstMobile + '!';
     }
 
     el = document.getElementById('settingsShopName');  if (el) el.value = currentUser.brand  || '';
@@ -4275,17 +4366,20 @@ function switchDashTab(tab, btn) {
         tab = 'overview';
     }
 
-    document.querySelectorAll('.dash-sidebar-link[data-dash-tab]').forEach(function(l) {
+    // Update BOTH desktop tabs (.dash-tab-btn) AND mobile sidebar links (.dash-sidebar-link)
+    document.querySelectorAll('.dash-tab-btn[data-dash-tab], .dash-sidebar-link[data-dash-tab]').forEach(function(l) {
         l.classList.remove('active');
     });
 
     if (btn) {
         btn.classList.add('active');
     } else {
-        var sidebarBtn = document.querySelector('[data-dash-tab="' + tab + '"]');
-        if (sidebarBtn) sidebarBtn.classList.add('active');
+        // Activate matching buttons in BOTH desktop and mobile
+        var allBtns = document.querySelectorAll('[data-dash-tab="' + tab + '"]');
+        allBtns.forEach(function(b) { b.classList.add('active'); });
     }
 
+    // Show/hide tab content (shared between desktop and mobile)
     document.querySelectorAll('.dash-tab-content').forEach(function(c) {
         c.style.display = 'none';
     });
@@ -4311,10 +4405,18 @@ function switchDashTab(tab, btn) {
         orders: 'Track and fulfill orders',
         settings: 'Configure your shop details'
     };
+    
+    // Update Desktop titles
     var dashTitle = safeGet('dashTitle');
     var dashSubtitle = safeGet('dashSubtitle');
     if (dashTitle) dashTitle.textContent = titles[tab] || 'Dashboard';
     if (dashSubtitle) dashSubtitle.textContent = subtitles[tab] || '';
+    
+    // Update Mobile titles
+    var dashTitleMobile = safeGet('dashTitleMobile');
+    var dashSubtitleMobile = safeGet('dashSubtitleMobile');
+    if (dashTitleMobile) dashTitleMobile.textContent = titles[tab] || 'Dashboard';
+    if (dashSubtitleMobile) dashSubtitleMobile.textContent = subtitles[tab] || '';
 }
 
 // ─── Search ───
