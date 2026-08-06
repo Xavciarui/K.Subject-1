@@ -1360,49 +1360,265 @@
                 border-radius: 14px !important;
             }
             
-            /* ═══════════════════════════════════════
-               FOOTER MOBILE FIXES
-            ═══════════════════════════════════════ */
+            /* ════════════════════════════════════════════════════════════════════
+               FOOTER COMPREHENSIVE MOBILE AUDIT FIXES (≤480px ONLY)
+               Targets: overflow, alignment, spacing, visual hierarchy, newsletter layout
+               Desktop/Tablet layouts remain completely untouched.
+            ════════════════════════════════════════════════════════════════════ */
+
+            /* ─── FOOTER ROOT CONTAINER ────────────────────────────────────── */
             footer {
                 width: 100% !important;
                 max-width: 100vw !important;
+                min-width: 0 !important;
                 margin-left: 0 !important;
                 margin-right: 0 !important;
                 padding-left: 0 !important;
                 padding-right: 0 !important;
+                overflow-x: hidden !important;
+                box-sizing: border-box !important;
             }
-            
-            footer > div {
-                padding-left: 16px !important;
-                padding-right: 16px !important;
+
+            /* ─── FOOTER INNER CONTAINER ───────────────────────────────────── */
+            footer > div:first-of-type {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+                padding-top: 40px !important;      /* Reduced from py-12 (48px) */
+                padding-bottom: 32px !important;   /* Reduced for mobile compactness */
                 width: 100% !important;
                 max-width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+                margin: 0 auto !important;
             }
-            
-            footer .grid {
+
+            /* ─── MAIN GRID LAYOUT (4 columns → stacked single column) ─────── */
+            footer .grid.grid-cols-1,
+            footer [class*="grid-cols-1"][class*="sm:grid-cols-2"] {
                 grid-template-columns: 1fr !important;
-                gap: 24px !important;
+                gap: 28px !important;              /* Balanced vertical rhythm (was 40px) */
+                width: 100% !important;
+                max-width: 100% !important;
                 text-align: center !important;
             }
-            
+
+            /* ─── INDIVIDUAL GRID COLUMNS ──────────────────────────────────── */
             footer .grid > div {
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
+                justify-content: flex-start !important;
+                width: 100% !important;
+                max-width: 320px !important;       /* Constrain max width for readability */
+                margin: 0 auto !important;          /* Center each section */
+                padding: 0 !important;
+                box-sizing: border-box !important;
             }
-            
-            footer ul {
-                text-align: center !important;
-            }
-            
-            footer .flex.flex-col.sm\\:flex-row {
+
+            /* ─── SECTION 1: BRANDING (Logo + Name + Description) ─────────── */
+            /* Brand row: logo + name horizontal alignment */
+            footer .grid > div:first-child > div:first-child {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
                 justify-content: center !important;
-                text-align: center !important;
+                gap: 10px !important;               /* Slightly tighter on mobile */
+                margin-bottom: 12px !important;
+                width: 100% !important;
             }
-            
-            footer input[type="email"] {
+
+            /* Logo icon container */
+            footer .grid > div:first-child .w-9.h-9 {
+                width: 36px !important;
+                height: 36px !important;
+                flex-shrink: 0 !important;
+            }
+
+            /* Brand name text */
+            footer .grid > div:first-child .font-display.font-semibold {
+                font-size: 17px !important;
+                white-space: nowrap !important;
+            }
+
+            /* Brand description paragraph */
+            footer .grid > div:first-child p {
+                text-align: center !important;
+                font-size: 13px !important;         /* Slightly smaller for mobile */
+                line-height: 1.6 !important;
                 max-width: 280px !important;
                 margin: 0 auto !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+            }
+
+            /* ─── SECTIONS 2 & 3: NAVIGATION + SUPPORT LINKS ──────────────── */
+            /* Section headings (Navigate, Support) */
+            footer .grid > div:nth-child(2) h4,
+            footer .grid > div:nth-child(3) h4 {
+                font-size: 14px !important;
+                margin-bottom: 14px !important;     /* Tighter heading spacing */
+                letter-spacing: 0.02em !important;
+            }
+
+            /* Link lists */
+            footer .grid > div:nth-child(2) ul,
+            footer .grid > div:nth-child(3) ul {
+                list-style: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                text-align: center !important;
+            }
+
+            /* Individual link items - consistent spacing */
+            footer .grid > div:nth-child(2) ul li,
+            footer .grid > div:nth-child(3) ul li {
+                margin-bottom: 10px !important;     /* Consistent link spacing */
+            }
+            footer .grid > div:nth-child(2) ul li:last-child,
+            footer .grid > div:nth-child(3) ul li:last-child {
+                margin-bottom: 0 !important;
+            }
+
+            /* Link text styling */
+            footer .grid > div:nth-child(2) ul a,
+            footer .grid > div:nth-child(3) ul a {
+                font-size: 13px !important;
+                display: inline-block !important;
+                padding: 4px 0 !important;           /* Larger tap target */
+                transition: color 0.2s ease !important;
+            }
+
+            /* ─── SECTION 4: NEWSLETTER (Stay Updated) ────────────────────── */
+            /* Newsletter heading */
+            footer .grid > div:last-child h4 {
+                font-size: 14px !important;
+                margin-bottom: 8px !important;
+            }
+
+            /* Newsletter description text */
+            footer .grid > div:last-child p {
+                font-size: 13px !important;
+                margin-bottom: 14px !important;
+                text-align: center !important;
+                max-width: 260px !important;
+            }
+
+            /* ═══════════════════════════════════════════════════════════════
+               NEWSLETTER INPUT + BUTTON — CRITICAL OVERFLOW FIX
+               Ensures both elements stay fully within viewport at all times
+            ═══════════════════════════════════════════════════════════════ */
+            footer .grid > div:last-child .flex.gap-2 {
+                display: flex !important;
+                flex-direction: row !important;
+                width: 100% !important;
+                max-width: 320px !important;        /* Constrain total form width */
+                gap: 8px !important;                 /* Tighter gap for mobile */
+                align-items: stretch !important;
+                justify-content: center !important;
+                margin: 0 auto !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+            }
+
+            /* Email input field */
+            footer #emailInput {
+                flex: 1 1 auto !important;
+                min-width: 0 !important;             /* Allows shrinking */
+                max-width: 220px !important;         /* Prevents excessive growth */
+                width: 100% !important;
+                height: 42px !important;             /* Consistent touch target */
+                font-size: 13px !important;
+                padding-left: 14px !important;
+                padding-right: 14px !important;
+                border-radius: 10px !important;
+                outline: none !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            /* Submit button with arrow icon */
+            footer .grid > div:last-child button[onclick*="handleSubscribe"] {
+                flex: 0 0 auto !important;           /* Prevents button from shrinking */
+                width: 44px !important;              /* Square button, easy to tap */
+                height: 42px !important;
+                padding: 0 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 10px !important;
+                font-size: 14px !important;
+                box-sizing: border-box !important;
+                white-space: nowrap !important;
+            }
+
+            /* Button icon sizing */
+            footer .grid > div:last-child button[onclick*="handleSubscribe"] i {
+                font-size: 13px !important;
+                margin: 0 !important;
+            }
+
+            /* ─── COPYRIGHT BAR (Bottom bar with copyright + social icons) ── */
+            footer > div:first-of-type > div:last-child {
+                margin-top: 28px !important;        /* Reduced from mt-10 (40px) */
+                padding-top: 20px !important;        /* Reduced from pt-8 (32px) */
+                display: flex !important;
+                flex-direction: column !important;   /* Stack vertically on mobile */
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 14px !important;                /* Space between copyright and social */
+                text-align: center !important;
+                width: 100% !important;
+            }
+
+            /* Copyright text */
+            footer > div:first-of-type > div:last-child p {
+                font-size: 11px !important;          /* Slightly smaller for mobile */
+                line-height: 1.5 !important;
+                color: rgba(237, 232, 224, 0.5) !important;
+                order: 1 !important;                  /* Copyright first */
+            }
+
+            /* Social icons container */
+            footer > div:first-of-type > div:last-child > div:last-child {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 20px !important;                /* Generous spacing between icons */
+                order: 2 !important;                  /* Social icons second */
+                width: auto !important;
+            }
+
+            /* Individual social icon links */
+            footer > div:first-of-type > div:last-child > div:last-child a {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 34px !important;              /* Consistent tap target size */
+                height: 34px !important;
+                border-radius: 50% !important;
+                transition: all 0.25s ease !important;
+                padding: 0 !important;
+            }
+
+            /* Social icon sizing */
+            footer > div:first-of-type > div:last-child > div:last-child a i {
+                font-size: 15px !important;
+            }
+
+            /* ─── HORIZONTAL OVERFLOW PREVENTION (Footer-specific) ────────── */
+            footer * {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            footer img,
+            footer svg,
+            footer video {
+                max-width: 100% !important;
+                height: auto !important;
             }
             
             /* ═══════════════════════════════════════
