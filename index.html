@@ -1159,6 +1159,7 @@
             }
         }
 
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: 0.01ms !important;
@@ -1202,9 +1203,8 @@
                 font-size: 1.5rem !important;
             }
             
-            /* Card grids - ensure 2 columns on mobile */
-            .grid.grid-cols-2.sm\:grid-cols-3.lg\:grid-cols-4,
-            [class*="grid-cols-4"] {
+            /* Card grids - ensure 2 columns on mobile (NOT footer) */
+            .grid.grid-cols-2.sm\:grid-cols-3.lg\:grid-cols-4 {
                 grid-template-columns: repeat(2, 1fr) !important;
                 gap: 12px !important;
             }
@@ -1252,12 +1252,7 @@
                 flex-direction: column !important;
             }
             
-            /* Footer grid mobile */
-            footer [class*="grid-cols-4"] {
-                grid-template-columns: repeat(2, 1fr) !important;
-                gap: 16px !important;
-            }
-            
+
             /* Auth modal mobile sizing */
             .max-w-md.w-full {
                 width: 95% !important;
@@ -3511,84 +3506,22 @@
 
         <!-- FOOTER -->
         <footer class="border-t border-white/[0.03] bg-surface/50 mt-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-                <!-- Brand + Newsletter Row (Mobile First) -->
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10 pb-8 border-b border-white/[0.04]">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center border border-accent/10 shrink-0">
-                            <span class="text-accent font-display font-bold text-lg">KC</span>
-                        </div>
-                        <span class="font-display font-semibold text-lg">K.Subject-1</span>
-                    </div>
-                    <div class="w-full sm:w-auto">
-                        <p class="text-xs text-muted mb-2 sm:hidden">New drops & deals, weekly.</p>
-                        <div class="flex gap-2 max-w-md">
-                            <label for="emailInput" class="sr-only">Email address</label>
-                            <input type="email" id="emailInput" autocomplete="email" placeholder="your@email.com" class="flex-1 min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm text-softWhite placeholder-muted outline-none focus:border-accent/25 transition">
-                            <button onclick="handleSubscribe()" aria-label="Subscribe to newsletter" class="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-bg hover:bg-accentDim transition">
-                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Links Grid -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 mb-10">
-                    <!-- About Column -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+                    <div><div class="flex items-center gap-2.5 mb-4"><div class="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center border border-accent/10"><span class="text-accent font-display font-bold text-lg">KC</span></div><span class="font-display font-semibold text-lg">K.Subject-1</span></div><p class="text-sm text-muted leading-relaxed">A curated marketplace for discovering premium products with a modern shopping experience.</p></div>
+                    <div><h4 class="font-semibold text-sm mb-4 text-softWhite">Navigate</h4><ul class="space-y-2.5 text-sm text-muted"><li><a href="#" onclick="navigateTo('home');return false;" class="hover:text-accent transition">Home</a></li><li><a href="#" onclick="navigateTo('collection');return false;" class="hover:text-accent transition">Collection</a></li><li><a href="#" onclick="navigateTo('library');return false;" class="hover:text-accent transition">Library</a></li><li><a href="#" onclick="navigateTo('collaborate');return false;" class="hover:text-accent transition">Collaborate</a></li></ul></div>
                     <div>
-                        <p class="text-sm text-muted leading-relaxed mb-4 col-span-2 sm:col-span-1">A curated marketplace for discovering premium products with a modern shopping experience.</p>
-                    </div>
-                    <!-- Navigate -->
-                    <div>
-                        <h4 class="font-semibold text-xs uppercase tracking-wider mb-3 text-subtle">Navigate</h4>
-                        <ul class="space-y-2 text-sm text-muted">
-                            <li><a href="#" onclick="navigateTo('home');return false;" class="hover:text-accent transition block">Home</a></li>
-                            <li><a href="#" onclick="navigateTo('collection');return false;" class="hover:text-accent transition block">Collection</a></li>
-                            <li><a href="#" onclick="navigateTo('library');return false;" class="hover:text-accent transition block">Library</a></li>
-                            <li><a href="#" onclick="navigateTo('collaborate');return false;" class="hover:text-accent transition block">Collaborate</a></li>
+                        <h4 class="font-semibold text-sm mb-4 text-softWhite">Support</h4>
+                        <ul class="space-y-2.5 text-sm text-muted">
+                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('returns');return false;">Returns</a></li>
+                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('faq');return false;">FAQ</a></li>
+                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('contact');return false;">Contact us</a></li>
+                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('policy');return false;">Terms of Policy</a></li>
                         </ul>
                     </div>
-                    <!-- Support -->
-                    <div>
-                        <h4 class="font-semibold text-xs uppercase tracking-wider mb-3 text-subtle">Support</h4>
-                        <ul class="space-y-2 text-sm text-muted">
-                            <li><a href="#" onclick="navigateTo('returns');return false;" class="hover:text-accent transition block">Returns</a></li>
-                            <li><a href="#" onclick="navigateTo('faq');return false;" class="hover:text-accent transition block">FAQ</a></li>
-                            <li><a href="#" onclick="navigateTo('contact');return false;" class="hover:text-accent transition block">Contact us</a></li>
-                            <li><a href="#" onclick="navigateTo('policy');return false;" class="hover:text-accent transition block">Terms of Policy</a></li>
-                        </ul>
-                    </div>
-                    <!-- Social (Mobile visible) -->
-                    <div class="hidden sm:block">
-                        <h4 class="font-semibold text-xs uppercase tracking-wider mb-3 text-subtle">Connect</h4>
-                        <div class="flex gap-4">
-                            <a href="#" class="hover:text-accent transition w-9 h-9 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="Facebook">
-                                <i class="fa-brands fa-facebook-f text-sm" aria-hidden="true"></i>
-                            </a>
-                            <a href="#" class="hover:text-accent transition w-9 h-9 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="TikTok">
-                                <i class="fa-brands fa-tiktok text-sm" aria-hidden="true"></i>
-                            </a>
-                        </div>
-                    </div>
+                    <div><h4 class="font-semibold text-sm mb-4 text-softWhite">Stay updated</h4><p class="text-sm text-muted mb-3">New drops and deals, weekly.</p><div class="flex gap-2"><label for="emailInput" class="sr-only">Email address</label><input type="email" id="emailInput" autocomplete="email" placeholder="your@email.com" class="flex-1 min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm text-softWhite placeholder-muted outline-none focus:border-accent/25 transition"><button onclick="handleSubscribe()" aria-label="Subscribe to newsletter" class="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-bg hover:bg-accentDim transition"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></div></div>
                 </div>
-
-                <!-- Bottom Bar -->
-                <div class="pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
-                    <p><span id="copyrightYear"></span> K.Subject-1. Curated with care.</p>
-                    <!-- Social icons on mobile bottom -->
-                    <div class="flex gap-4 sm:hidden">
-                        <a href="#" class="hover:text-accent transition w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="Facebook">
-                            <i class="fa-brands fa-facebook-f text-xs" aria-hidden="true"></i>
-                        </a>
-                        <a href="#" class="hover:text-accent transition w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="TikTok">
-                            <i class="fa-brands fa-tiktok text-xs" aria-hidden="true"></i>
-                        </a>
-                    </div>
-                    <div class="hidden sm:flex gap-5">
-                        <a href="#" class="hover:text-accent transition" aria-label="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
-                        <a href="#" class="hover:text-accent transition" aria-label="TikTok"><i class="fa-brands fa-tiktok" aria-hidden="true"></i></a>
-                    </div>
-                </div>
+                <div class="mt-10 pt-8 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted"><p><span id="copyrightYear"></span> K.Subject-1. Curated with care.</p><div class="flex gap-5"><a href="#" class="hover:text-accent transition" aria-label="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a><a href="#" class="hover:text-accent transition" aria-label="TikTok"><i class="fa-brands fa-tiktok" aria-hidden="true"></i></a></div></div>
             </div>
         </footer>
 
