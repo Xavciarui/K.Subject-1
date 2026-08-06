@@ -96,21 +96,27 @@
         }
 
         /* ═══════════════════════════════════════
-           2. SCROLLBAR
+           2. SCROLLBAR — COMPLETELY HIDDEN (scroll still works!)
         ═══════════════════════════════════════ */
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #0e0e15; }
-        ::-webkit-scrollbar-thumb { background: #2a2a38; border-radius: 3px; }
 
-        .chat-scroll::-webkit-scrollbar { width: 6px; }
-        .chat-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
-        .chat-scroll::-webkit-scrollbar-thumb { background: rgba(232,166,48,0.2); border-radius: 10px; }
-        .chat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(232,166,48,0.4); }
-
-        /* FIXED: Firefox scrollbar support for cross-browser consistency */
+        /* 🔒 FORCE HIDE scrollbar on ALL screens — scrolling still works! */
+        html {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        html::-webkit-scrollbar {
+            display: none;
+            width: 0 !important;
+            height: 0 !important;
+        }
         * {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(232,166,48,0.2) transparent;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        *::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
         }
 
         /* ═══════════════════════════════════════
@@ -3289,16 +3295,210 @@
                             </div>
                         </div>
 
-                        <!-- Main Content Area (Mobile) - Same tabs as desktop but shown on mobile -->
+                        <!-- Main Content Area (Mobile) - Full featured mobile dashboard -->
                         <div id="dashMobileContent">
 
                             <!-- Mobile Header -->
-                            <div class="mb-4">
-                                <h2 class="font-display text-lg sm:text-xl font-bold" id="dashTitleMobile">Dashboard Overview</h2>
-                                <p class="text-xs text-muted mt-0.5" id="dashSubtitleMobile">Welcome to your seller dashboard</p>
+                            <div class="mb-5 pb-4 border-b border-white/[0.05]">
+                                <h2 class="font-display text-lg sm:text-xl font-bold text-softWhite" id="dashTitleMobile">Dashboard Overview</h2>
+                                <p class="text-xs text-muted mt-1" id="dashSubtitleMobile">Welcome to your seller dashboard</p>
                             </div>
 
-                            <!-- Tabs are shared - switchDashTab toggles both -->
+                            <!-- ── MOBILE OVERVIEW TAB ── -->
+                            <div class="dash-tab-content" id="dashTabOverviewMobile">
+                                <!-- Stats Grid - 2x2 on mobile -->
+                                <div class="grid grid-cols-2 gap-3 mb-6">
+                                    <div class="bg-card border border-white/[0.05] rounded-2xl p-4 relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 w-16 h-16 bg-accent/5 rounded-full blur-2xl"></div>
+                                        <div class="relative">
+                                            <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center mb-2">
+                                                <i class="fa-solid fa-box text-accent text-xs" aria-hidden="true"></i>
+                                            </div>
+                                            <p class="text-xl font-bold font-display text-softWhite dash-count-anim">0</p>
+                                            <p class="text-[11px] text-muted">Products</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.05] rounded-2xl p-4 relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 w-16 h-16 bg-sage/5 rounded-full blur-2xl"></div>
+                                        <div class="relative">
+                                            <div class="w-8 h-8 rounded-lg bg-sage/10 flex items-center justify-center mb-2">
+                                                <i class="fa-solid fa-receipt text-sage text-xs" aria-hidden="true"></i>
+                                            </div>
+                                            <p class="text-xl font-bold font-display text-softWhite dash-count-anim" style="animation-delay:0.1s;">0</p>
+                                            <p class="text-[11px] text-muted">Orders</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.05] rounded-2xl p-4 relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 w-16 h-16 bg-[#648cc8]/5 rounded-full blur-2xl"></div>
+                                        <div class="relative">
+                                            <div class="w-8 h-8 rounded-lg bg-[#648cc8]/10 flex items-center justify-center mb-2">
+                                                <i class="fa-solid fa-money-bill-wave text-[#648cc8] text-xs" aria-hidden="true"></i>
+                                            </div>
+                                            <p class="text-xl font-bold font-display text-softWhite dash-count-anim" style="animation-delay:0.2s;">0 <span class="text-xs text-muted font-body">MMK</span></p>
+                                            <p class="text-[11px] text-muted">Revenue</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.05] rounded-2xl p-4 relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 w-16 h-16 bg-coral/5 rounded-full blur-2xl"></div>
+                                        <div class="relative">
+                                            <div class="w-8 h-8 rounded-lg bg-coral/10 flex items-center justify-center mb-2">
+                                                <i class="fa-solid fa-eye text-coral text-xs" aria-hidden="true"></i>
+                                            </div>
+                                            <p class="text-xl font-bold font-display text-softWhite dash-count-anim" style="animation-delay:0.3s;">0</p>
+                                            <p class="text-[11px] text-muted">Views</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Actions - 2x2 Grid -->
+                                <div class="mb-6">
+                                    <h3 class="text-xs font-semibold text-subtle mb-3 uppercase tracking-wider">Quick Actions</h3>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="dash-quick-action" onclick="showToast('Product management will be available soon.','info')">
+                                            <div class="dash-qa-icon">
+                                                <i class="fa-solid fa-plus text-base" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="text-[11px] font-medium text-subtle">Add Product</span>
+                                        </div>
+                                        <div class="dash-quick-action" onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))">
+                                            <div class="dash-qa-icon">
+                                                <i class="fa-solid fa-clipboard-list text-base" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="text-[11px] font-medium text-subtle">View Orders</span>
+                                        </div>
+                                        <div class="dash-quick-action" onclick="showToast('Analytics will be available soon.','info')">
+                                            <div class="dash-qa-icon">
+                                                <i class="fa-solid fa-chart-bar text-base" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="text-[11px] font-medium text-subtle">Analytics</span>
+                                        </div>
+                                        <div class="dash-quick-action" onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))">
+                                            <div class="dash-qa-icon">
+                                                <i class="fa-solid fa-store text-base" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="text-[11px] font-medium text-subtle">Settings</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Recent Products (Empty State) -->
+                                <div class="mb-6">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-xs font-semibold text-subtle uppercase tracking-wider">Recent Products</h3>
+                                        <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="text-[11px] text-accent hover:text-accentDim transition">View All →</button>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.04] rounded-2xl p-6 text-center">
+                                        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/[0.03] flex items-center justify-center">
+                                            <i class="fa-solid fa-box-open text-xl text-muted" aria-hidden="true"></i>
+                                        </div>
+                                        <h4 class="text-sm font-semibold text-softWhite mb-1">Your Product Showcase</h4>
+                                        <p class="text-[11px] text-muted leading-relaxed">Start by adding your first product to see it appear here.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Recent Orders (Empty State) -->
+                                <div class="mb-6">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-xs font-semibold text-subtle uppercase tracking-wider">Recent Orders</h3>
+                                        <button onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))" class="text-[11px] text-accent hover:text-accentDim transition">View All →</button>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.04] rounded-2xl p-6 text-center">
+                                        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/[0.03] flex items-center justify-center">
+                                            <i class="fa-solid fa-receipt text-xl text-muted" aria-hidden="true"></i>
+                                        </div>
+                                        <h4 class="text-sm font-semibold text-softWhite mb-1">Orders Will Appear Here</h4>
+                                        <p class="text-[11px] text-muted leading-relaxed">Once customers start purchasing, orders will show here.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Activity Feed (Empty State) -->
+                                <div>
+                                    <h3 class="text-xs font-semibold text-subtle uppercase tracking-wider mb-3">Activity</h3>
+                                    <div class="bg-card border border-white/[0.04] rounded-2xl p-6 text-center">
+                                        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/[0.03] flex items-center justify-center">
+                                            <i class="fa-solid fa-clock-rotate-left text-xl text-muted" aria-hidden="true"></i>
+                                        </div>
+                                        <h4 class="text-sm font-semibold text-softWhite mb-1">Activity Awaits</h4>
+                                        <p class="text-[11px] text-muted leading-relaxed">Your recent actions will appear here as your shop grows.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ── MOBILE PRODUCTS TAB ── -->
+                            <div class="dash-tab-content" id="dashTabProductsMobile" style="display:none;">
+                                <div class="bg-card border border-white/[0.04] rounded-2xl p-6 text-center">
+                                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] flex items-center justify-center">
+                                        <i class="fa-solid fa-boxes-stacked text-2xl text-muted" aria-hidden="true"></i>
+                                    </div>
+                                    <h3 class="text-base font-semibold text-softWhite mb-2">Your Product Catalog</h3>
+                                    <p class="text-xs text-muted leading-relaxed mb-5">You haven't added any products yet. Start building your collection!</p>
+                                    <div class="flex flex-col gap-2">
+                                        <button onclick="showToast('Product management will be available soon.','info')" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
+                                            <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add First Product
+                                        </button>
+                                        <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm font-medium hover:bg-white/[0.08] transition">
+                                            <i class="fa-solid fa-gear text-xs" aria-hidden="true"></i> Configure Shop
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ── MOBILE ORDERS TAB ── -->
+                            <div class="dash-tab-content" id="dashTabOrdersMobile" style="display:none;">
+                                <!-- Order Stats Mini -->
+                                <div class="grid grid-cols-2 gap-3 mb-5">
+                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
+                                        <p class="text-lg font-bold text-sage font-display">0</p>
+                                        <p class="text-[10px] text-muted uppercase tracking-wide">Pending</p>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
+                                        <p class="text-lg font-bold text-accent font-display">0</p>
+                                        <p class="text-[10px] text-muted uppercase tracking-wide">Shipped</p>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
+                                        <p class="text-lg font-bold text-[#648cc8] font-display">0</p>
+                                        <p class="text-[10px] text-muted uppercase tracking-wide">Delivered</p>
+                                    </div>
+                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
+                                        <p class="text-lg font-bold text-coral font-display">0</p>
+                                        <p class="text-[10px] text-muted uppercase tracking-wide">Total</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Orders Empty State -->
+                                <div class="bg-card border border-white/[0.04] rounded-2xl p-6 text-center">
+                                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] flex items-center justify-center">
+                                        <i class="fa-solid fa-truck text-2xl text-muted" aria-hidden="true"></i>
+                                    </div>
+                                    <h3 class="text-base font-semibold text-softWhite mb-2">No Orders Yet</h3>
+                                    <p class="text-xs text-muted leading-relaxed">When customers place orders, they'll appear here with full details.</p>
+                                </div>
+                            </div>
+
+                            <!-- ── MOBILE SETTINGS TAB ── -->
+                            <div class="dash-tab-content" id="dashTabSettingsMobile" style="display:none;">
+                                <div class="bg-card border border-white/[0.04] rounded-2xl p-5 space-y-5">
+                                    <!-- Shop Name -->
+                                    <div>
+                                        <label class="block text-xs font-medium text-subtle mb-2" for="settingsShopNameMobile">Shop Name</label>
+                                        <input type="text" id="settingsShopNameMobile" placeholder="Your shop name" class="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-softWhite placeholder-muted outline-none focus:border-accent/30 transition">
+                                    </div>
+                                    <!-- Email -->
+                                    <div>
+                                        <label class="block text-xs font-medium text-subtle mb-2" for="settingsEmailMobile">Email</label>
+                                        <input type="email" id="settingsEmailMobile" placeholder="your@email.com" disabled class="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-softWhite placeholder-muted outline-none opacity-60 cursor-not-allowed">
+                                    </div>
+                                    <!-- Member Since -->
+                                    <div class="flex items-center justify-between py-3 border-t border-white/[0.04]">
+                                        <span class="text-xs text-muted">Member since</span>
+                                        <span class="text-xs text-subtle font-medium" id="settingsMemberSinceMobile">—</span>
+                                    </div>
+                                    <!-- Save Button -->
+                                    <button onclick="showToast('Settings saved successfully.','success')" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
+                                        <i class="fa-solid fa-check text-xs" aria-hidden="true"></i> Save Changes
+                                    </button>
+                                </div>
+                            </div>
 
                         </div>
                     </div>
@@ -3311,22 +3511,84 @@
 
         <!-- FOOTER -->
         <footer class="border-t border-white/[0.03] bg-surface/50 mt-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-                    <div><div class="flex items-center gap-2.5 mb-4"><div class="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center border border-accent/10"><span class="text-accent font-display font-bold text-lg">KC</span></div><span class="font-display font-semibold text-lg">K.Subject-1</span></div><p class="text-sm text-muted leading-relaxed">A curated marketplace for discovering premium products with a modern shopping experience.</p></div>
-                    <div><h4 class="font-semibold text-sm mb-4 text-softWhite">Navigate</h4><ul class="space-y-2.5 text-sm text-muted"><li><a href="#" onclick="navigateTo('home');return false;" class="hover:text-accent transition">Home</a></li><li><a href="#" onclick="navigateTo('collection');return false;" class="hover:text-accent transition">Collection</a></li><li><a href="#" onclick="navigateTo('library');return false;" class="hover:text-accent transition">Library</a></li><li><a href="#" onclick="navigateTo('collaborate');return false;" class="hover:text-accent transition">Collaborate</a></li></ul></div>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+                <!-- Brand + Newsletter Row (Mobile First) -->
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10 pb-8 border-b border-white/[0.04]">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center border border-accent/10 shrink-0">
+                            <span class="text-accent font-display font-bold text-lg">KC</span>
+                        </div>
+                        <span class="font-display font-semibold text-lg">K.Subject-1</span>
+                    </div>
+                    <div class="w-full sm:w-auto">
+                        <p class="text-xs text-muted mb-2 sm:hidden">New drops & deals, weekly.</p>
+                        <div class="flex gap-2 max-w-md">
+                            <label for="emailInput" class="sr-only">Email address</label>
+                            <input type="email" id="emailInput" autocomplete="email" placeholder="your@email.com" class="flex-1 min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm text-softWhite placeholder-muted outline-none focus:border-accent/25 transition">
+                            <button onclick="handleSubscribe()" aria-label="Subscribe to newsletter" class="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-bg hover:bg-accentDim transition">
+                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Links Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 mb-10">
+                    <!-- About Column -->
                     <div>
-                        <h4 class="font-semibold text-sm mb-4 text-softWhite">Support</h4>
-                        <ul class="space-y-2.5 text-sm text-muted">
-                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('returns');return false;">Returns</a></li>
-                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('faq');return false;">FAQ</a></li>
-                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('contact');return false;">Contact us</a></li>
-                            <li><a href="#" class="hover:text-accent transition" onclick="navigateTo('policy');return false;">Terms of Policy</a></li>
+                        <p class="text-sm text-muted leading-relaxed mb-4 col-span-2 sm:col-span-1">A curated marketplace for discovering premium products with a modern shopping experience.</p>
+                    </div>
+                    <!-- Navigate -->
+                    <div>
+                        <h4 class="font-semibold text-xs uppercase tracking-wider mb-3 text-subtle">Navigate</h4>
+                        <ul class="space-y-2 text-sm text-muted">
+                            <li><a href="#" onclick="navigateTo('home');return false;" class="hover:text-accent transition block">Home</a></li>
+                            <li><a href="#" onclick="navigateTo('collection');return false;" class="hover:text-accent transition block">Collection</a></li>
+                            <li><a href="#" onclick="navigateTo('library');return false;" class="hover:text-accent transition block">Library</a></li>
+                            <li><a href="#" onclick="navigateTo('collaborate');return false;" class="hover:text-accent transition block">Collaborate</a></li>
                         </ul>
                     </div>
-                    <div><h4 class="font-semibold text-sm mb-4 text-softWhite">Stay updated</h4><p class="text-sm text-muted mb-3">New drops and deals, weekly.</p><div class="flex gap-2"><label for="emailInput" class="sr-only">Email address</label><input type="email" id="emailInput" autocomplete="email" placeholder="your@email.com" class="flex-1 min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm text-softWhite placeholder-muted outline-none focus:border-accent/25 transition"><button onclick="handleSubscribe()" aria-label="Subscribe to newsletter" class="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-bg hover:bg-accentDim transition"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></div></div>
+                    <!-- Support -->
+                    <div>
+                        <h4 class="font-semibold text-xs uppercase tracking-wider mb-3 text-subtle">Support</h4>
+                        <ul class="space-y-2 text-sm text-muted">
+                            <li><a href="#" onclick="navigateTo('returns');return false;" class="hover:text-accent transition block">Returns</a></li>
+                            <li><a href="#" onclick="navigateTo('faq');return false;" class="hover:text-accent transition block">FAQ</a></li>
+                            <li><a href="#" onclick="navigateTo('contact');return false;" class="hover:text-accent transition block">Contact us</a></li>
+                            <li><a href="#" onclick="navigateTo('policy');return false;" class="hover:text-accent transition block">Terms of Policy</a></li>
+                        </ul>
+                    </div>
+                    <!-- Social (Mobile visible) -->
+                    <div class="hidden sm:block">
+                        <h4 class="font-semibold text-xs uppercase tracking-wider mb-3 text-subtle">Connect</h4>
+                        <div class="flex gap-4">
+                            <a href="#" class="hover:text-accent transition w-9 h-9 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="Facebook">
+                                <i class="fa-brands fa-facebook-f text-sm" aria-hidden="true"></i>
+                            </a>
+                            <a href="#" class="hover:text-accent transition w-9 h-9 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="TikTok">
+                                <i class="fa-brands fa-tiktok text-sm" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div class="mt-10 pt-8 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted"><p><span id="copyrightYear"></span> K.Subject-1. Curated with care.</p><div class="flex gap-5"><a href="#" class="hover:text-accent transition" aria-label="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a><a href="#" class="hover:text-accent transition" aria-label="TikTok"><i class="fa-brands fa-tiktok" aria-hidden="true"></i></a></div></div>
+
+                <!-- Bottom Bar -->
+                <div class="pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
+                    <p><span id="copyrightYear"></span> K.Subject-1. Curated with care.</p>
+                    <!-- Social icons on mobile bottom -->
+                    <div class="flex gap-4 sm:hidden">
+                        <a href="#" class="hover:text-accent transition w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="Facebook">
+                            <i class="fa-brands fa-facebook-f text-xs" aria-hidden="true"></i>
+                        </a>
+                        <a href="#" class="hover:text-accent transition w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center" aria-label="TikTok">
+                            <i class="fa-brands fa-tiktok text-xs" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    <div class="hidden sm:flex gap-5">
+                        <a href="#" class="hover:text-accent transition" aria-label="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
+                        <a href="#" class="hover:text-accent transition" aria-label="TikTok"><i class="fa-brands fa-tiktok" aria-hidden="true"></i></a>
+                    </div>
+                </div>
             </div>
         </footer>
 
@@ -4408,19 +4670,33 @@ function switchDashTab(tab, btn) {
         allBtns.forEach(function(b) { b.classList.add('active'); });
     }
 
-    // Show/hide tab content (shared between desktop and mobile)
+    // Show/hide tab content (BOTH desktop and mobile)
     document.querySelectorAll('.dash-tab-content').forEach(function(c) {
         c.style.display = 'none';
     });
 
+    // Desktop tabs
     var tabMap = {
         overview: 'dashTabOverview',
         products: 'dashTabProducts',
         orders: 'dashTabOrders',
         settings: 'dashTabSettings'
     };
-    var target = safeGet(tabMap[tab]);
-    if (target) target.style.display = 'block';
+    
+    // Mobile tabs
+    var tabMapMobile = {
+        overview: 'dashTabOverviewMobile',
+        products: 'dashTabProductsMobile',
+        orders: 'dashTabOrdersMobile',
+        settings: 'dashTabSettingsMobile'
+    };
+    
+    // Show both desktop and mobile versions
+    var targetDesktop = safeGet(tabMap[tab]);
+    if (targetDesktop) targetDesktop.style.display = 'block';
+    
+    var targetMobile = safeGet(tabMapMobile[tab]);
+    if (targetMobile) targetMobile.style.display = 'block';
 
     var titles = {
         overview: 'Dashboard Overview',
