@@ -1361,8 +1361,8 @@
             }
             
             /* ════════════════════════════════════════════════════════════════════
-               FOOTER MOBILE FIXES (≤480px ONLY) — AGGRESSIVE OVERRIDES
-               Layout: Branding(top) → Navigate(LEFT)|Support(RIGHT) → Newsletter(bottom)
+               FOOTER MOBILE FIXES (≤480px ONLY) — CLEAN SINGLE-COLUMN LAYOUT
+               Layout: Branding → Navigate → Support → Newsletter (all stacked, centered)
                Desktop/Tablet layouts remain 100% untouched.
             ════════════════════════════════════════════════════════════════════ */
 
@@ -1379,26 +1379,21 @@
 
             /* === INNER WRAPPER === */
             footer#site-footer > div:first-child {
-                padding: 28px 16px 20px !important;
+                padding: 32px 20px 24px !important;
                 max-width: 100% !important;
             }
 
-            /* === MAIN GRID — FORCE 2-COLUMN LAYOUT === 
-               CRITICAL: Must override Tailwind's grid-cols-1
-               Row 1: Branding (spans full width)
-               Row 2: Navigate (col 1 LEFT) | Support (col 2 RIGHT)
-               Row 3: Newsletter (spans full width)
+            /* === MAIN GRID — FORCE SINGLE-COLUMN STACKED LAYOUT === 
+               All sections stack vertically: Branding → Navigate → Support → Newsletter
             */
             footer#site-footer div.footer-grid,
             footer#site-footer div.footer-grid.grid,
             footer#site-footer div[class*="footer-grid"] {
                 display: -ms-grid !important;
                 display: grid !important;
-                -ms-grid-columns: 1fr 1fr !important;
-                grid-template-columns: 1fr 1fr !important;
-                -ms-grid-rows: auto auto auto !important;
-                grid-template-rows: auto auto auto !important;
-                gap: 18px 12px !important;
+                -ms-grid-columns: 1fr !important;
+                grid-template-columns: 1fr !important;
+                gap: 24px !important;
                 width: 100% !important;
                 max-width: 100% !important;
             }
@@ -1406,156 +1401,135 @@
             /* Extra safety: override ALL tailwind grid classes on this element */
             footer#site-footer div.footer-grid.grid-cols-1,
             footer#site-footer div[class*="footer-grid"][class*="grid-cols"] {
-                grid-template-columns: 1fr 1fr !important;
-                -ms-grid-columns: 1fr 1fr !important;
+                grid-template-columns: 1fr !important;
+                -ms-grid-columns: 1fr !important;
             }
 
-            /* --- ROW 1: BRANDING (spans full width) --- */
+            /* --- SECTION 1: BRANDING (centered) --- */
             #site-footer .footer-grid > div:nth-child(1) {
-                grid-column: 1 / -1 !important;                 /* Span both columns */
                 text-align: center !important;
-                padding-bottom: 16px !important;
-                border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+                padding-bottom: 8px !important;
             }
             
             /* Logo + name row - horizontal, centered */
             #site-footer .footer-grid > div:nth-child(1) > div:first-child {
                 justify-content: center !important;
-                gap: 8px !important;
-                margin-bottom: 8px !important;
+                gap: 10px !important;
+                margin-bottom: 10px !important;
             }
             
             /* Logo icon */
             #site-footer .footer-grid > div:nth-child(1) .w-9 {
-                width: 30px !important;
-                height: 30px !important;
+                width: 36px !important;
+                height: 36px !important;
             }
             
             /* Brand name */
             #site-footer .footer-grid > div:nth-child(1) span.font-display {
-                font-size: 15px !important;
+                font-size: 16px !important;
             }
             
             /* Description */
             #site-footer .footer-grid > div:nth-child(1) p {
-                font-size: 11px !important;
-                max-width: 260px !important;
+                font-size: 12px !important;
+                max-width: 280px !important;
                 margin: 0 auto !important;
+                line-height: 1.6 !important;
             }
 
-            /* --- ROW 2 COLUMN 1: NAVIGATE (LEFT aligned) --- */
+            /* --- SECTION 2: NAVIGATE (centered) --- */
             footer#site-footer div.footer-grid > div:nth-child(2),
             footer#site-footer div[class*="footer-grid"] > div:nth-child(2) {
-                -ms-grid-column: 1 !important;
-                grid-column: 1 !important;
-                -ms-grid-row: 2 !important;
-                grid-row: 2 !important;
-                align-items: flex-start !important;
-                -webkit-box-align: start !important;
-                text-align: left !important;
-                padding-left: 0 !important;
-                padding-right: 8px !important;
+                text-align: center !important;
+                padding: 0 !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(2) h4,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(2) h4 {
-                font-size: 12px !important;
-                margin-bottom: 10px !important;
-                text-align: left !important;
+                font-size: 13px !important;
+                margin-bottom: 12px !important;
+                text-align: center !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(2) ul,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(2) ul {
-                text-align: left !important;
+                text-align: center !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 list-style: none !important;
+                display: inline-block !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(2) ul li,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(2) ul li {
-                margin-bottom: 6px !important;
-                text-align: left !important;
+                margin-bottom: 8px !important;
+                text-align: center !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(2) ul a,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(2) ul a {
-                font-size: 11px !important;
-                color: rgba(237,232,224,0.6) !important;
-                text-align: left !important;
+                font-size: 12px !important;
+                color: rgba(237,232,224,0.65) !important;
+                text-align: center !important;
                 display: inline-block !important;
             }
 
-            /* --- ROW 2 COLUMN 2: SUPPORT (RIGHT aligned) --- */
+            /* --- SECTION 3: SUPPORT (centered) --- */
             footer#site-footer div.footer-grid > div:nth-child(3),
             footer#site-footer div[class*="footer-grid"] > div:nth-child(3) {
-                -ms-grid-column: 2 !important;
-                grid-column: 2 !important;
-                -ms-grid-row: 2 !important;
-                grid-row: 2 !important;
-                align-items: flex-end !important;
-                -webkit-box-align: end !important;
-                text-align: right !important;
-                padding-left: 8px !important;
-                padding-right: 0 !important;
+                text-align: center !important;
+                padding: 0 !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(3) h4,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(3) h4 {
-                font-size: 12px !important;
-                margin-bottom: 10px !important;
-                text-align: right !important;
+                font-size: 13px !important;
+                margin-bottom: 12px !important;
+                text-align: center !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(3) ul,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(3) ul {
-                text-align: right !important;
+                text-align: center !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 list-style: none !important;
+                display: inline-block !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(3) ul li,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(3) ul li {
-                margin-bottom: 6px !important;
-                text-align: right !important;
+                margin-bottom: 8px !important;
+                text-align: center !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(3) ul a,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(3) ul a {
-                font-size: 11px !important;
-                color: rgba(237,232,224,0.6) !important;
-                text-align: right !important;
+                font-size: 12px !important;
+                color: rgba(237,232,224,0.65) !important;
+                text-align: center !important;
                 display: inline-block !important;
             }
 
-            /* --- ROW 3: NEWSLETTER/STAY UPDATED (spans full width, at BOTTOM) --- */
+            /* --- SECTION 4: NEWSLETTER/STAY UPDATED (centered) --- */
             footer#site-footer div.footer-grid > div:nth-child(4),
             footer#site-footer div[class*="footer-grid"] > div:nth-child(4) {
-                -ms-grid-column: 1 !important;
-                grid-column: 1 / -1 !important;                 /* Span both columns */
-                -ms-grid-column-span: 2 !important;
-                -ms-grid-row: 3 !important;
-                grid-row: 3 !important;
-                align-items: center !important;
-                -webkit-box-align: center !important;
                 text-align: center !important;
-                padding-top: 14px !important;
-                border-top: 1px solid rgba(255,255,255,0.06) !important;
+                padding-top: 8px !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(4) h4,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(4) h4 {
-                font-size: 12px !important;
-                margin-bottom: 6px !important;
+                font-size: 13px !important;
+                margin-bottom: 8px !important;
                 text-align: center !important;
             }
             
             footer#site-footer div.footer-grid > div:nth-child(4) p,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(4) p {
-                font-size: 11px !important;
-                margin-bottom: 10px !important;
-                max-width: 240px !important;
+                font-size: 12px !important;
+                margin-bottom: 14px !important;
+                max-width: 260px !important;
                 margin-left: auto !important;
                 margin-right: auto !important;
                 text-align: center !important;
@@ -1566,18 +1540,18 @@
             footer#site-footer div.footer-grid > div:nth-child(4) > div[class*="flex"],
             footer#site-footer div[class*="footer-grid"] > div:nth-child(4) > .flex,
             footer#site-footer div[class*="footer-grid"] > div:nth-child(4) > div[class*="flex"] {
-                max-width: 280px !important;
+                max-width: 300px !important;
                 margin: 0 auto !important;
-                gap: 6px !important;
+                gap: 8px !important;
                 justify-content: center !important;
                 -webkit-box-pack: center !important;
             }
 
             /* Email input */
             footer#site-footer #emailInput {
-                max-width: 180px !important;
-                height: 36px !important;
-                font-size: 11px !important;
+                max-width: 200px !important;
+                height: 40px !important;
+                font-size: 12px !important;
                 flex: 1 1 auto !important;
                 -webkit-box-flex: 1 !important;
             }
@@ -1585,8 +1559,8 @@
             /* Submit button */
             footer#site-footer div.footer-grid > div:nth-child(4) button[onclick*="handleSubscribe"],
             footer#site-footer div[class*="footer-grid"] > div:nth-child(4) button[onclick*="handleSubscribe"] {
-                width: 36px !important;
-                height: 36px !important;
+                width: 40px !important;
+                height: 40px !important;
                 padding: 0 !important;
                 flex-shrink: 0 !important;
             }
@@ -1594,18 +1568,18 @@
             /* === COPYRIGHT BAR === */
             #site-footer > div:first-child > div:last-child {
                 flex-direction: column !important;
-                gap: 10px !important;
-                margin-top: 20px !important;
-                padding-top: 16px !important;
+                gap: 12px !important;
+                margin-top: 24px !important;
+                padding-top: 20px !important;
                 text-align: center !important;
             }
             
             #site-footer > div:first-child > div:last-child p {
-                font-size: 10px !important;
+                font-size: 11px !important;
             }
             
             #site-footer > div:first-child > div:last-child > div:last-child {
-                gap: 16px !important;
+                gap: 20px !important;
             }
             
             /* ═══════════════════════════════════════
