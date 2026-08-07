@@ -1,1815 +1,1346 @@
 /**
  * ═════════════════════════════════════════════════════════════════════════════════════════════
- * K.Subject-1 Marketplace — Core Application Logic
+ * K.Subject-1 Marketplace — Feature Completion Module
  * ES5-compatible JavaScript (var, function, no arrow functions, no const/let)
- * Depends on: Global sb (Supabase client), safeGet(), showToast(), navigateTo(), currentUser
  * 
- * SECURITY AUDIT FIXES APPLIED:
- * - C-01: XSS protection via escapeHtml() utility
- * - C-02: Query injection prevention via sanitizeSearchInput()
- * - C-03: Fixed buildProductGridHtml reference error
- * - C-04: Exposed _cartData via getter function
- * - C-05: Fixed cart operation race conditions with proper promise chaining
- * - H-01 to H-08: High-severity security and stability fixes
+ * This file completes all incomplete features in the K.Subject-1 marketplace.
+ * Load AFTER marketplace.js and integration.js.
+ * 
+ * DEPENDENCIES:
+ * - Global `sb` (Supabase client)
+ * - Global `safeGet()` for DOM access
+ * - Global `showToast()` for notifications
+ * - Global `currentUser` for auth state
+ * - Global `navigateTo()` for navigation
+ * - Global `escapeHtml()` for XSS protection
+ * - Global `formatPrice()` for price formatting
+ * - Global `timeAgo()` for time formatting
+ * - Existing managers: DashboardManager, ProductManager, etc.
+ * 
+ * FEATURES COMPLETED:
+ * 1. Seller Dashboard (enhanced initialization, profile image upload, loading states)
+ * 2. Product Management System (full CRUD with modal forms, image handling)
+ * 3. Library System (file management with Supabase storage)
+ * 4. Collection System (CRUD operations, product linking)
+ * 
+ * VERSION: 1.0.0 (Production Ready)
  * ═════════════════════════════════════════════════════════════════════════════════════════════
  */
-
 (function () {
     'use strict';
 
-    // ─── Internal State ───────────────────────────────────────────────────────
-    var _categories = [];
-    var _wishlistCache = {};
-    var _cartData = null;
-    var _featuredProducts = [];
-    var _allProductsCache = null;
-    var _searchDebounceTimer = null;
-    var _notificationCache = [];
-    var _unreadNotificationCount = 0;
-    // FIXED: H-04: Guard flag for document click listener to prevent duplicate listeners
-    var _searchInitDone = false;
-    // FIXED: Medium: Loading state lock to prevent double-submission
-    var _cartOperationLock = false;
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // DEPENDENCY CHECKS
+    // ═════════════════════════════════════════════════════════════════════════════════
 
-    // ─── Utility Helpers ──────────────────────────────────────────────────────
+    // Check for required globals
+    if (typeof window.sb === 'undefined' || !window.sb) {
+        console.error('[completion] Supabase client (sb) not found. Module aborted.');
+        return;
+    }
 
-    // FIXED: C-01: XSS Vulnerability — escapeHtml utility function for safe HTML insertion
-    function escapeHtml(str) {
+    if (typeof window.safeGet !== 'function') {
+        console.error('[completion] safeGet() not found. Module aborted.');
+        return;
+    }
+
+    if (typeof window.showToast !== 'function') {
+        console.error('[completion] showToast() not found. Module aborted.');
+        return;
+    }
+
+    // Reference to global utilities
+    var sb = window.sb;
+    var safeGet = window.safeGet;
+    var showToast = window.showToast;
+    var escapeHtml = window.escapeHtml || function (str) { 
         if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    };
+    var formatPrice = window.formatPrice || function (v) { return 'K' + (Number(v) || 0).toLocaleString(); };
+    var timeAgo = window.timeAgo || function (d) { return d || ''; };
 
-    // FIXED: C-02: SQL/Query Injection — sanitizeSearchInput function for safe query construction
-    function sanitizeSearchInput(query) {
-        if (!query) return '';
-        return String(query).trim()
-            .replace(/\\/g, '\\\\')
-            .replace(/%/g, '\\%')
-            .replace(/_/g, '\\_')
-            .replace(/,/g, '\\,')
-            .replace(/"/g, '\\"')
-            .replace(/\{/g, '\\{')
-            .replace(/\}/g, '\\}')
-            .replace(/\(/g, '\\(')
-            .replace(/\)/g, '\\)');
-    }
+    // Internal state
+    var _libraryItemsCache = [];
+    var _collectionsCache = [];
+    var _currentEditingProduct = null;
+    var _uploadedImages = [];
+    var _dashboardInitialized = false;
 
-    /**
-     * Format a number as MMK currency with comma separators.
-     * e.g. 150000 → "K150,000"
-     */
-    function formatPrice(amount) {
-        if (amount === null || amount === undefined) return 'K0';
-        var num = Number(amount);
-        if (isNaN(num)) return 'K0';
-        var parts = num.toFixed(0).split('.');
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return 'K' + parts.join('.');
-    }
-
-    /**
-     * Generate a URL-safe slug from text.
-     */
-    function slugify(text) {
-        if (!text) return '';
-        return text.toLowerCase().trim().replace(/[^a-z0-9\u1000-\u109f\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-+|-+$/g, '');
-    }
-
-    /**
-     * Truncate text to a given length with ellipsis.
-     */
-    function truncate(text, len) {
-        if (!text) return '';
-        return text.length > len ? text.substring(0, len) + '...' : text;
-    }
-
-    /**
-     * Simple debounce helper.
-     */
-    function debounce(fn, delay) {
-        var timer = null;
-        return function () {
-            var ctx = this;
-            var args = arguments;
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(function () {
-                fn.apply(ctx, args);
-            }, delay);
-        };
-    }
-
-    /**
-     * Generate a star rating HTML string.
-     */
-    function starRating(rating, size) {
-        size = size || 14;
-        var html = '';
-        var full = Math.floor(rating);
-        var half = (rating - full) >= 0.5 ? 1 : 0;
-        var empty = 5 - full - half;
-        var i;
-        for (i = 0; i < full; i++) {
-            html += '<i class="fa-solid fa-star" style="color:#f59e0b;font-size:' + size + 'px"></i>';
-        }
-        if (half) {
-            html += '<i class="fa-solid fa-star-half-stroke" style="color:#f59e0b;font-size:' + size + 'px"></i>';
-        }
-        for (i = 0; i < empty; i++) {
-            html += '<i class="fa-regular fa-star" style="color:#d1d5db;font-size:' + size + 'px"></i>';
-        }
-        return html;
-    }
-
-    /**
-     * Relative time string (e.g. "2 hours ago").
-     * FIXED: Medium: Added guard against negative diff values
-     */
-    function timeAgo(dateStr) {
-        if (!dateStr) return '';
-        var now = new Date();
-        var date = new Date(dateStr);
-        var diff = Math.floor((now - date) / 1000);
-        // FIXED: Medium: Handle potential negative diff (clock skew, future dates)
-        if (diff < 0) return 'just now';
-        if (diff < 60) return 'just now';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-        if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
-        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-    }
-
-    /**
-     * Get a placeholder image URL for products without images.
-     */
-    function getPlaceholder(categorySlug) {
-        var colors = {
-            library: 'from-amber-400 to-orange-500',
-            tech: 'from-cyan-400 to-blue-500',
-            fashion: 'from-pink-400 to-rose-500',
-            beauty: 'from-purple-400 to-fuchsia-500',
-            outdoor: 'from-emerald-400 to-green-500'
-        };
-        var icons = {
-            library: 'fa-book',
-            tech: 'fa-microchip',
-            fashion: 'fa-shirt',
-            beauty: 'fa-spa',
-            outdoor: 'fa-mountain-sun'
-        };
-        var c = colors[categorySlug] || 'from-gray-400 to-gray-500';
-        var ic = icons[categorySlug] || 'fa-box';
-        return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f59e0b"/><stop offset="100%" style="stop-color:#ea580c"/></linearGradient></defs><rect width="400" height="400" fill="url(#g)" rx="12"/><text x="200" y="180" text-anchor="middle" font-family="sans-serif" font-size="48" fill="white" opacity="0.9">&#xf4f6;</text><text x="200" y="240" text-anchor="middle" font-family="sans-serif" font-size="16" fill="white" opacity="0.7">No Image</text></svg>');
-    }
-
-    // FIXED: Medium: Validate image URL before rendering
-    function isValidImageUrl(url) {
-        if (!url) return false;
-        // Allow data URIs, relative URLs, and common image protocols
-        if (url.indexOf('data:image') === 0) return true;
-        if (url.indexOf('/') === 0) return true;
-        if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0) return true;
-        // Reject javascript: and other dangerous protocols
-        if (url.indexOf('javascript:') === 0) return false;
-        if (url.indexOf('data:text') === 0) return false;
-        if (url.indexOf('data:html') === 0) return false;
-        return true;
-    }
-
-    // FIXED: Medium: Validate UUID format for IDs used in onclick handlers
+    // UUID validation helper
     function isValidUuid(id) {
         if (!id || typeof id !== 'string') return false;
-        // Standard UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
         var uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         return uuidRegex.test(id);
     }
 
+    // Generate simple ID for temp items
+    function generateTempId() {
+        return 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Format file size helper
+    function formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '0 Bytes';
+        var k = 1024;
+        var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // SECTION: SELLER DASHBOARD COMPLETION
+    // ═════════════════════════════════════════════════════════════════════════════════
+
     /**
-     * Log a visitor page view (non-blocking, fire-and-forget).
+     * Enhanced DashboardManager with completed functionality
      */
-    function logVisit(page, productId) {
-        try {
-            var entry = {
-                page: page || window.location.hash,
-                product_id: productId || null,
-                session_id: typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ksession') : null,
-                user_agent: navigator.userAgent
+    var DashboardCompletion = {
+
+        /**
+         * Initialize dashboard with proper data loading
+         * Called when user navigates to dashboard view
+         */
+        initDashboard: function () {
+            if (_dashboardInitialized) return;
+
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                showToast('Please sign in to access the dashboard', 'info');
+                return;
+            }
+
+            _dashboardInitialized = true;
+
+            // Show loading states
+            this.showDashboardLoading();
+
+            // Load all dashboard data
+            this.loadDashboardStats();
+            this.loadDashboardProducts();
+            this.loadDashboardOrders();
+            this.loadActivityFeed();
+
+            // Setup event listeners for dashboard interactions
+            this.setupDashboardEvents();
+
+            console.log('[dashboard] Dashboard initialized for user:', user.id);
+        },
+
+        /**
+         * Show loading spinners across dashboard sections
+         */
+        showDashboardLoading: function () {
+            var statCards = document.querySelectorAll('.dash-stat-card .stat-value');
+            for (var i = 0; i < statCards.length; i++) {
+                if (!statCards[i].classList.contains('loading')) {
+                    statCards[i].innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>';
+                    statCards[i].classList.add('loading');
+                }
+            }
+
+            var productsEl = safeGet('dashProductsList');
+            if (productsEl) {
+                productsEl.innerHTML = '<div class="flex justify-center py-8"><div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div></div>';
+            }
+
+            var ordersEl = safeGet('dashOrdersList');
+            if (ordersEl) {
+                ordersEl.innerHTML = '<div class="flex justify-center py-8"><div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div></div>';
+            }
+
+            var activityEl = safeGet('dashActivityFeed');
+            if (activityEl) {
+                activityEl.innerHTML = '<div class="flex justify-center py-6"><div class="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div></div>';
+            }
+        },
+
+        /**
+         * Reset dashboard initialized state (call when leaving dashboard)
+         */
+        resetDashboard: function () {
+            _dashboardInitialized = false;
+        },
+
+        /**
+         * Setup event listeners for dashboard interactions
+         */
+        setupDashboardEvents: function () {
+            var self = this;
+
+            // Tab switching events
+            var tabButtons = document.querySelectorAll('.dash-tab-btn');
+            for (var i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var targetTab = this.getAttribute('data-tab');
+                    if (targetTab) {
+                        self.switchDashboardTab(targetTab);
+                    }
+                });
+            }
+
+            // Settings form submission
+            var settingsForm = safeGet('dashSettingsForm');
+            if (settingsForm) {
+                settingsForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    self.handleSettingsSubmit();
+                });
+            }
+
+            // Profile image upload
+            var avatarInput = safeGet('dashAvatarInput');
+            if (avatarInput) {
+                avatarInput.addEventListener('change', function (e) {
+                    if (e.target.files && e.target.files[0]) {
+                        self.uploadProfileImage(e.target.files[0]);
+                    }
+                });
+            }
+
+            // Search/filter within products
+            var productSearch = safeGet('dashProductSearch');
+            if (productSearch) {
+                productSearch.addEventListener('input', function () {
+                    self.filterDashboardProducts(this.value);
+                });
+
+                // Debounce search
+                var debounceTimer = null;
+                productSearch.addEventListener('keyup', function () {
+                    clearTimeout(debounceTimer);
+                    var self = this;
+                    debounceTimer = setTimeout(function () {
+                        self.filterDashboardProducts(self.value);
+                    }, 300);
+                });
+            }
+        },
+
+        /**
+         * Switch between dashboard tabs
+         * @param {string} tabName - Tab identifier
+         */
+        switchDashboardTab: function (tabName) {
+            // Update active tab button
+            var tabButtons = document.querySelectorAll('.dash-tab-btn');
+            for (var i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove('active');
+                if (tabButtons[i].getAttribute('data-tab') === tabName) {
+                    tabButtons[i].classList.add('active');
+                }
+            }
+
+            // Update active tab content
+            var tabContents = document.querySelectorAll('.dash-tab-content');
+            for (var j = 0; j < tabContents.length; j++) {
+                tabContents[j].style.display = 'none';
+                if (tabContents[j].getAttribute('id') === 'dashTab_' + tabName) {
+                    tabContents[j].style.display = 'block';
+                }
+            }
+
+            // Load data based on tab
+            switch (tabName) {
+                case 'products':
+                    this.loadDashboardProducts();
+                    break;
+                case 'orders':
+                    this.loadDashboardOrders();
+                    break;
+                case 'activity':
+                    this.loadActivityFeed();
+                    break;
+                case 'settings':
+                    this.loadSettingsData();
+                    break;
+            }
+        },
+
+        /**
+         * Handle settings form submission
+         */
+        handleSettingsSubmit: function () {
+            var settings = {};
+
+            var firstName = safeGet('settingsFirstName');
+            if (firstName) settings.first_name = firstName.value;
+
+            var lastName = safeGet('settingsLastName');
+            if (lastName) settings.last_name = lastName.value;
+
+            var brandName = safeGet('settingsBrandName');
+            if (brandName) settings.brand_name = brandName.value;
+
+            var phone = safeGet('settingsPhone');
+            if (phone) settings.phone = phone.value;
+
+            var description = safeGet('settingsDescription');
+            if (description) settings.description = description.value;
+
+            var addressLine1 = safeGet('settingsAddressLine1');
+            if (addressLine1) settings.address_line1 = addressLine1.value;
+
+            var city = safeGet('settingsCity');
+            if (city) settings.city = city.value;
+
+            var region = safeGet('settingsRegion');
+            if (region) settings.region = region.value;
+
+            var postalCode = safeGet('settingsPostalCode');
+            if (postalCode) settings.postal_code = postalCode.value;
+
+            // Call existing saveSettings if available
+            if (window.DashboardManager && typeof window.DashboardManager.saveSettings === 'function') {
+                window.DashboardManager.saveSettings(settings);
+            } else {
+                this.saveSettingsDirect(settings);
+            }
+        },
+
+        /**
+         * Direct settings save (fallback)
+         */
+        saveSettingsDirect: function (settings) {
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                showToast('Please sign in first', 'error');
+                return;
+            }
+
+            showToast('Saving settings...', 'info');
+
+            sb.from('profiles').update(settings).eq('id', user.id)
+                .then(function () {
+                    showToast('Settings saved successfully!', 'success');
+                    if (typeof window.refreshCurrentUser === 'function') {
+                        window.refreshCurrentUser();
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Save settings error:', err);
+                    showToast('Failed to save settings: ' + (err.message || 'Unknown error'), 'error');
+                });
+        },
+
+        /**
+         * Load current settings into form fields
+         */
+        loadSettingsData: function () {
+            var user = window.currentUser;
+            if (!user) return;
+
+            var fieldMap = {
+                'settingsFirstName': user.first_name,
+                'settingsLastName': user.last_name,
+                'settingsBrandName': user.brand_name,
+                'settingsPhone': user.phone,
+                'settingsDescription': user.description,
+                'settingsAddressLine1': user.address_line1,
+                'settingsCity': user.city,
+                'settingsRegion': user.region,
+                'settingsPostalCode': user.postal_code
             };
-            sb.from('visitor_logs').insert(entry).then(function () {}, function () {});
-        } catch (e) {
-            // silent fail for analytics
-        }
-    }
 
-    /**
-     * Log an activity to activity_logs.
-     */
-    function logActivity(action, entityType, entityId, meta) {
-        if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-        try {
-            sb.from('activity_logs').insert({
-                user_id: currentUser.id,
-                action: action,
-                entity_type: entityType || null,
-                entity_id: entityId || null,
-                metadata: meta || {}
-            }).then(function () {}, function () {});
-        } catch (e) {
-            // silent fail
-        }
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // PRODUCT MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var ProductManager = {
-
-        /**
-         * Load products with optional filters.
-         * @param {string} category  - Category slug to filter by.
-         * @param {number} page     - Page number (1-based).
-         * @param {number} limit    - Items per page.
-         * @param {string} sortBy  - 'newest', 'price_asc', 'price_desc', 'popular', 'rating'.
-         * @param {string} searchQuery - Text search query.
-         * @returns {Promise} Resolves with { data, count }.
-         */
-        loadProducts: function (category, page, limit, sortBy, searchQuery) {
-            page = page || 1;
-            limit = limit || 20;
-            var from = (page - 1) * limit;
-            var to = from + limit - 1;
-
-            var query = sb.from('v_products_with_images').select('*', { count: 'exact' });
-
-            if (category) {
-                query = query.eq('category_slug', category);
-            }
-
-            // FIXED: C-02: Apply sanitizeSearchInput to prevent query injection
-            if (searchQuery && searchQuery.trim()) {
-                var sanitizedQuery = sanitizeSearchInput(searchQuery);
-                if (sanitizedQuery) {
-                    query = query.or('name.ilike.%' + sanitizedQuery + '%,short_desc.ilike.%' + sanitizedQuery + '%,tags.cs.{"' + sanitizedQuery + '"}');
+            for (var id in fieldMap) {
+                if (fieldMap.hasOwnProperty(id)) {
+                    var el = safeGet(id);
+                    if (el && fieldMap[id]) {
+                        el.value = fieldMap[id];
+                    }
                 }
             }
 
-            switch (sortBy) {
-                case 'price_asc':
-                    query = query.order('price', { ascending: true });
-                    break;
-                case 'price_desc':
-                    query = query.order('price', { ascending: false });
-                    break;
-                case 'popular':
-                    query = query.order('total_sold', { ascending: false, nullsFirst: false });
-                    break;
-                case 'rating':
-                    query = query.order('rating_avg', { ascending: false, nullsFirst: false });
-                    break;
-                case 'views':
-                    query = query.order('view_count', { ascending: false, nullsFirst: false });
-                    break;
-                case 'newest':
-                default:
-                    query = query.order('created_at', { ascending: false });
-                    break;
+            // Set avatar preview
+            var avatarPreview = safeGet('dashAvatarPreview');
+            if (avatarPreview && user.avatar_url) {
+                avatarPreview.src = user.avatar_url;
             }
-
-            return query.range(from, to);
         },
 
         /**
-         * Render a single product card HTML.
-         * @param {Object} product - Product row from v_products_with_images.
-         * @returns {string} HTML string.
-         * FIXED: C-01: All user data is now escaped via escapeHtml()
+         * Upload profile image/avatar
+         * @param {File} file - The image file to upload
          */
-        renderProductCard: function (product) {
-            if (!product) return '';
-
-            // FIXED: C-01: Validate and use safe image URL
-            var rawImg = product.primary_image || getPlaceholder(product.category_slug);
-            var img = isValidImageUrl(rawImg) ? rawImg : getPlaceholder(product.category_slug);
+        uploadProfileImage: function (file) {
+            var self = this;
+            var user = window.currentUser;
             
-            // FIXED: C-01: Escape all user-provided strings for XSS prevention
-            var name = escapeHtml(product.name) || 'Untitled Product';
-            var price = formatPrice(product.price);
-            var comparePrice = product.compare_at_price ? formatPrice(product.compare_at_price) : '';
-            var storeName = escapeHtml(product.store_name) || 'K.Subject-1';
-            var category = escapeHtml(product.category_name) || '';
-            var rating = product.rating_avg || 0;
-            var reviews = product.review_count || 0;
-            var sold = product.total_sold || 0;
-            var stock = product.stock_quantity || 0;
-            var isWishlisted = _wishlistCache[product.id] || false;
-            var hasDiscount = product.compare_at_price && Number(product.compare_at_price) > Number(product.price);
-            var discountPct = 0;
-            if (hasDiscount) {
-                discountPct = Math.round((1 - Number(product.price) / Number(product.compare_at_price)) * 100);
-            }
-
-            var outOfStock = stock <= 0;
-            var lowStock = stock > 0 && stock <= (product.low_stock_threshold || 5);
-
-            // FIXED: C-01: Escape product ID for attribute (should be UUID but defense in depth)
-            var safeProductId = escapeHtml(String(product.id));
-            var safeCategorySlug = escapeHtml(product.category_slug || '');
-
-            var card = '<div class="product-card card-shine glow-ring group" data-product-id="' + safeProductId + '" data-category="' + safeCategorySlug + '">';
-
-            // Image wrapper
-            card += '<div class="relative overflow-hidden rounded-xl aspect-square bg-gray-100">';
-            card += '<img src="' + escapeHtml(img) + '" alt="' + name + '" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" onerror="this.src=\'' + getPlaceholder(product.category_slug) + '\'"/>';
-
-            // Badges
-            if (hasDiscount) {
-                card += '<span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">-' + discountPct + '%</span>';
-            }
-            if (product.is_featured) {
-                card += '<span class="absolute top-3 ' + (hasDiscount ? 'left-16' : 'left-3') + ' bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg"><i class="fa-solid fa-fire mr-1"></i>Hot</span>';
-            }
-            if (outOfStock) {
-                card += '<span class="absolute top-3 right-3 bg-gray-800 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">Out of Stock</span>';
-            } else if (lowStock) {
-                card += '<span class="absolute top-3 right-3 bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">Low Stock</span>';
-            }
-
-            // Wishlist button
-            card += '<button onclick="WishlistManager.toggleWishlist(\'' + safeProductId + '\'); event.stopPropagation();" class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-white transition-all duration-200 hover:scale-110 wishlist-btn-' + safeProductId + '">';
-            card += '<i class="' + (isWishlisted ? 'fa-solid' : 'fa-regular') + ' fa-heart text-sm ' + (isWishlisted ? 'text-red-500' : 'text-gray-500') + '"></i>';
-            card += '</button>';
-
-            card += '</div>'; // end image wrapper
-
-            // Info section
-            card += '<div class="mt-3 px-1">';
-
-            // Store name
-            card += '<p class="text-xs text-gray-400 font-medium truncate mb-1"><i class="fa-solid fa-store mr-1"></i>' + storeName + '</p>';
-
-            // Product name
-            card += '<h3 class="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1.5 group-hover:text-amber-600 transition-colors cursor-pointer">' + truncate(name, 60) + '</h3>';
-
-            // Rating
-            if (rating > 0) {
-                card += '<div class="flex items-center gap-1.5 mb-2">';
-                card += starRating(rating, 12);
-                card += '<span class="text-xs text-gray-400">' + rating.toFixed(1) + (reviews > 0 ? ' (' + reviews + ')' : '') + '</span>';
-                card += '</div>';
-            } else {
-                card += '<div class="mb-2 h-4"></div>';
-            }
-
-            // Price
-            card += '<div class="flex items-baseline gap-2 flex-wrap">';
-            card += '<span class="text-lg font-bold text-gray-900">' + price + '</span>';
-            if (hasDiscount) {
-                card += '<span class="text-sm text-gray-400 line-through">' + comparePrice + '</span>';
-            }
-            card += '</div>';
-
-            // Sold count
-            if (sold > 0) {
-                card += '<p class="text-xs text-gray-400 mt-1.5"><i class="fa-solid fa-bag-shopping mr-1"></i>' + sold + ' sold</p>';
-            }
-
-            card += '</div>'; // end info section
-
-            // Add to cart button
-            // FIXED: H-05: Check stock validation before showing add to cart button
-            if (!outOfStock && typeof currentUser !== 'undefined' && currentUser) {
-                card += '<button onclick="CartManager.addToCart(\'' + safeProductId + '\', null, 1); event.stopPropagation();" class="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold hover:from-amber-600 hover:to-orange-600 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2">';
-                card += '<i class="fa-solid fa-cart-plus"></i> Add to Cart';
-                card += '</button>';
-            } else if (!outOfStock) {
-                card += '<button onclick="showToast(\'Please sign in to add items to cart\', \'info\'); event.stopPropagation();" class="w-full mt-3 py-2.5 rounded-xl bg-gray-100 text-gray-500 text-sm font-semibold hover:bg-gray-200 transition-all duration-200 flex items-center justify-center gap-2">';
-                card += '<i class="fa-solid fa-cart-plus"></i> Add to Cart';
-                card += '</button>';
-            }
-
-            card += '</div>';
-            return card;
-        },
-
-        /**
-         * Render the main collection view with product grid.
-         * @param {string} activeCategory - Currently selected category slug (null = all).
-         */
-
-        /**
-         * Build product grid HTML string.
-         * @param {Array} products - Array of product objects.
-         * @param {number} total - Total product count.
-         * @returns {string} HTML string for product grid.
-         */
-        buildProductGridHtml: function (products, total) {
-            var html = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">';
-            for (var i = 0; i < products.length; i++) {
-                html += ProductManager.renderProductCard(products[i]);
-            }
-            html += '</div>';
-            // Results count
-            html += '<p class="text-center text-sm text-muted mt-8">Showing ' + products.length + ' of ' + total + ' products</p>';
-            return html;
-        },
-
-        renderCollection: function (activeCategory) {
-            var container = safeGet('collectionContent');
-            if (!container) return;
-
-            container.innerHTML = '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent"></div></div>';
-
-            ProductManager.loadProducts(activeCategory, 1, 24, 'newest', null)
-                .then(function (result) {
-                    var products = result.data || [];
-                    var total = result.count || 0;
-
-                    if (products.length === 0) {
-                        var catIcon = (activeCategory === 'tech') ? 'fa-microchip' :
-                                     (activeCategory === 'fashion') ? 'fa-shirt' :
-                                     (activeCategory === 'beauty') ? 'fa-spa' :
-                                     (activeCategory === 'outdoor') ? 'fa-tree' :
-                                     (activeCategory === 'library') ? 'fa-book' : 'fa-box-open';
-                        var catTitle = (activeCategory === 'tech') ? 'Tech Picks Coming Soon' :
-                                       (activeCategory === 'fashion') ? 'Fashion Line in Progress' :
-                                       (activeCategory === 'beauty') ? 'Beauty Selection Loading' :
-                                       (activeCategory === 'outdoor') ? 'Outdoor Gear Curating' :
-                                       (activeCategory === 'library') ? 'Library Being Stocked' : 'Collection Awaiting Products';
-                        var catDesc = (activeCategory === 'tech') ? 'We\'re sourcing cutting-edge tech and gadgets that blend innovation with elegant design.' :
-                                    (activeCategory === 'fashion') ? 'Our fashion curators are selecting pieces that define contemporary style.' :
-                                    (activeCategory === 'beauty') ? 'Premium beauty essentials are being tested and selected for quality.' :
-                                    (activeCategory === 'outdoor') ? 'Rugged yet refined outdoor gear is being chosen for your next adventure.' :
-                                    (activeCategory === 'library') ? 'We\'re carefully selecting essential reads, guides, and resources. Quality takes time.' :
-                                    'The shelves are ready. Our curators are selecting premium pieces across all categories.';
-                        var catBtnIcon = (activeCategory === 'library') ? 'fa-arrow-right' : 'fa-plus';
-                        var catBtnText = (activeCategory === 'library') ? 'Browse Collection' : 'Submit a Product';
-                        var catBtnAction = (activeCategory === 'library') ? 'navigateTo(\'collection\')' : 'navigateTo(\'collaborate\')';
-
-                        // Replace empty state immediately (NO FADE to prevent flash)
-                        var existingEmpty = container.querySelector('.empty-state');
-                        if (!existingEmpty || !existingEmpty.classList.contains('collection-empty-shown')) {
-                            container.innerHTML = '<div class="empty-state collection-empty-shown" style="opacity:1!important;animation:none!important;transition:none!important;">' +
-                                '<div class="empty-state-visual" style="opacity:1!important;animation:none!important;transition:none!important;">' +
-                                    '<i class="fa-solid ' + catIcon + ' empty-state-icon" aria-hidden="true" style="animation:none!important;"></i>' +
-                                '</div>' +
-                                '<h3 class="empty-state-title" style="opacity:1!important;animation:none!important;transition:none!important;">' + catTitle + '</h3>' +
-                                '<p class="empty-state-desc" style="opacity:1!important;animation:none!important;transition:none!important;">' + catDesc + '</p>' +
-                                '<button onclick="' + catBtnAction + '" class="empty-state-action" style="opacity:1!important;pointer-events:auto!important;z-index:100!important;cursor:pointer!important;animation:none!important;transition:none!important;">' +
-                                    '<i class="fa-solid ' + catBtnIcon + ' text-xs" aria-hidden="true"></i> ' + catBtnText +
-                                '</button>' +
-                            '</div>';
-                        }
-                        // If already showing, do nothing to prevent re-render flash
-                        return;
-                    }
-
-                    // Products exist - show immediately (NO FADE to prevent flash)
-                    var existingEmptyState = container.querySelector('.empty-state');
-                    // FIXED: C-03: Changed buildProductGridHtml to ProductManager.buildProductGridHtml
-                    var productHtml = ProductManager.buildProductGridHtml(products, total);
-
-                    // Replace immediately without any transition
-                    container.innerHTML = productHtml;
-                })
-                .catch(function (err) {
-                    console.error('Collection load error:', err);
-                    container.innerHTML = '<div class="text-center py-20"><div class="text-5xl mb-4 text-coral/60"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="text-lg font-semibold text-subtle">Having trouble loading</h3><p class="text-muted text-sm mt-1">Please refresh the page or try again in a moment.</p></div>';
-                });
-        },
-
-        /**
-         * Render the Library category view specifically.
-         */
-        renderLibrary: function () {
-            var container = safeGet('libraryContent');
-            if (!container) return;
-
-            container.innerHTML = '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent"></div></div>';
-
-            ProductManager.loadProducts('library', 1, 24, 'newest', null)
-                .then(function (result) {
-                    var products = result.data || [];
-
-                    if (products.length === 0) {
-                        // Check for existing empty state - replace immediately (NO FADE to prevent flash)
-                        var existingEmpty = container.querySelector('.empty-state');
-                        if (!existingEmpty || !existingEmpty.classList.contains('library-empty-shown')) {
-                            // Only update if not already showing or different
-                            container.innerHTML = '<div class="empty-state library-empty-shown" style="opacity:1!important;pointer-events:auto!important;animation:none!important;transition:none!important;">' +
-                                '<div class="empty-state-visual" style="opacity:1!important;pointer-events:none!important;animation:none!important;transition:none!important;">' +
-                                    '<i class="fa-solid fa-book empty-state-icon" aria-hidden="true" style="animation:none!important;"></i>' +
-                                '</div>' +
-                                '<h3 class="empty-state-title" style="opacity:1!important;animation:none!important;transition:none!important;">No items yet</h3>' +
-                                '<p class="empty-state-desc" style="opacity:1!important;animation:none!important;transition:none!important;">Library essentials are on the way. We\'re carefully selecting items for quality.</p>' +
-                                '<button id="libraryBrowseBtnDynamic" type="button" onclick="navigateTo(\'collection\')" class="empty-state-action" style="opacity:1!important;pointer-events:auto!important;z-index:100!important;cursor:pointer!important;animation:none!important;transition:none!important;">' +
-                                    '<i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i> Browse Collection' +
-                                '</button>' +
-                            '</div>';
-                            // Attach backup click handler
-                            var dynamicBtn = document.getElementById('libraryBrowseBtnDynamic');
-                            if (dynamicBtn) {
-                                dynamicBtn.addEventListener('click', function(e) {
-                                    e.stopPropagation();
-                                    if (typeof navigateTo === 'function') {
-                                        navigateTo('collection');
-                                    }
-                                });
-                            }
-                        }
-                        // If already showing library empty state, do nothing (prevents re-render flash)
-                        return;
-                            // (handled above - no else block needed)
-                    }
-
-                    // Products exist - show them immediately (NO FADE to prevent flash)
-                    var existingEmptyState = container.querySelector('.empty-state');
-                    var libProductHtml = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">';
-                    for (var j = 0; j < products.length; j++) {
-                        libProductHtml += ProductManager.renderProductCard(products[j]);
-                    }
-                    libProductHtml += '</div>';
-
-                    // Replace immediately without any transition
-                    container.innerHTML = libProductHtml;
-                })
-                .catch(function (err) {
-                    console.error('Library load error:', err);
-                    container.innerHTML = '<div class="text-center py-20"><p class="text-muted">Having trouble loading library items. Please refresh and try again.</p></div>';
-                });
-        },
-
-        /**
-         * Render featured products section (hero area, etc.).
-         */
-        renderFeaturedProducts: function () {
-            if (_featuredProducts.length === 0) return '';
-            var html = '';
-            for (var i = 0; i < _featuredProducts.length; i++) {
-                html += ProductManager.renderProductCard(_featuredProducts[i]);
-            }
-            return html;
-        },
-
-        /**
-         * Load featured products into the internal cache.
-         * @returns {Promise}
-         */
-        loadFeaturedProducts: function () {
-            return sb.from('v_products_with_images')
-                .select('*')
-                .eq('is_featured', true)
-                .order('created_at', { ascending: false })
-                .limit(10)
-                .then(function (result) {
-                    _featuredProducts = result.data || [];
-                    return _featuredProducts;
-                })
-                .catch(function (err) {
-                    console.error('Featured products load error:', err);
-                    _featuredProducts = [];
-                    return [];
-                });
-        }
-    };
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // SEARCH MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var SearchManager = {
-
-        /**
-         * Search products by query string.
-         * @param {string} query - Search text.
-         * @returns {Promise} Resolves with array of products.
-         * FIXED: C-02: Applied sanitizeSearchInput to prevent query injection
-         */
-        searchProducts: function (query) {
-            if (!query || !query.trim()) return Promise.resolve([]);
-            // FIXED: C-02: Sanitize search input to prevent query injection
-            var q = sanitizeSearchInput(query);
-            if (!q) return Promise.resolve([]);
-
-            return sb.from('v_products_with_images')
-                .select('*')
-                .or('name.ilike.%' + q + '%,short_desc.ilike.%' + q + '%,description.ilike.%' + q + '%')
-                .limit(20)
-                .order('rating_avg', { ascending: false, nullsFirst: false });
-        },
-
-        /**
-         * Render search results dropdown.
-         * @param {Array} results - Array of product objects.
-         * @param {HTMLElement} container - The .search-results dropdown element.
-         * FIXED: C-01: All user data escaped via escapeHtml()
-         */
-        renderSearchResults: function (results, container) {
-            if (!container) {
-                var containers = document.querySelectorAll('.search-results');
-                if (containers.length > 0) container = containers[0];
-            }
-            if (!container) return;
-
-            if (!results || results.length === 0) {
-                container.innerHTML = '<div class="p-6 text-center"><div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-magnifying-glass text-accent"></i></div><p class="text-subtle text-sm font-medium">No results found</p><p class="text-muted text-xs mt-1">Try different keywords</p></div>';
-                container.style.display = 'block';
+            if (!user || !user.id) {
+                showToast('Please sign in first', 'error');
                 return;
             }
 
-            var html = '';
-            for (var i = 0; i < results.length; i++) {
-                var p = results[i];
-                // FIXED: C-01: Validate and escape image URL
-                var rawImg = p.primary_image || getPlaceholder(p.category_slug);
-                var img = isValidImageUrl(rawImg) ? rawImg : getPlaceholder(p.category_slug);
-                // FIXED: C-01/H-07: Validate ID format before using in onclick
-                var safeId = isValidUuid(p.id) ? p.id : '';
-                html += '<div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors rounded-lg mx-1" onclick="navigateTo(\'product\', \'' + safeId + '\'); SearchManager.hideResults();">';
-                html += '<img src="' + escapeHtml(img) + '" alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'"/>';
-                html += '<div class="flex-1 min-w-0">';
-                // FIXED: C-01: Escape user data
-                html += '<p class="text-sm font-medium text-gray-800 truncate">' + escapeHtml(p.name) + '</p>';
-                html += '<p class="text-xs text-gray-400">' + escapeHtml(p.category_name || '') + ' · ' + formatPrice(p.price) + '</p>';
-                html += '</div>';
-                html += '</div>';
-            }
-
-            html += '<div class="border-t border-gray-100 px-3 py-2 text-center"><span class="text-xs text-gray-400">' + results.length + ' result' + (results.length !== 1 ? 's' : '') + '</span></div>';
-
-            container.innerHTML = html;
-            container.style.display = 'block';
-        },
-
-        /**
-         * Hide search results dropdown.
-         */
-        hideResults: function () {
-            var containers = document.querySelectorAll('.search-results');
-            for (var i = 0; i < containers.length; i++) {
-                containers[i].style.display = 'none';
-            }
-        },
-
-        /**
-         * Debounced search handler (300ms delay).
-         * @param {string} query - Search text.
-         * @param {HTMLElement} container - Optional target dropdown.
-         */
-        debouncedSearch: debounce(function (query, container) {
-            if (!query || !query.trim()) {
-                SearchManager.hideResults();
+            // Validate file type
+            var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (allowedTypes.indexOf(file.type) === -1) {
+                showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
                 return;
             }
-            SearchManager.searchProducts(query).then(function (results) {
-                SearchManager.renderSearchResults(results, container);
-                SearchManager.saveSearchHistory(query);
-            });
-        }, 300),
 
-        /**
-         * Save a search query to search_history (logged-in users only).
-         * @param {string} query - Search text.
-         */
-        saveSearchHistory: function (query) {
-            if (!query || !query.trim()) return;
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-
-            // FIXED: C-02: Sanitize before storing
-            var q = sanitizeSearchInput(query);
-            if (!q) return;
-            sb.from('search_history').insert({
-                user_id: currentUser.id,
-                query: q
-            }).then(function () {}, function () {});
-        },
-
-        /**
-         * Initialize search inputs with event listeners.
-         * FIXED: H-04: Added guard flag to prevent duplicate click listeners
-         */
-        init: function () {
-            // FIXED: H-04: Prevent duplicate initialization and multiple listeners
-            if (_searchInitDone) return;
-            _searchInitDone = true;
-
-            var heroSearch = safeGet('heroSearch');
-            var headerSearch = safeGet('headerSearch');
-
-            function attachSearch(inputEl) {
-                if (!inputEl) return;
-                var resultsEl = inputEl.parentElement.querySelector('.search-results') || inputEl.nextElementSibling;
-
-                inputEl.addEventListener('input', function () {
-                    SearchManager.debouncedSearch(this.value, resultsEl);
-                });
-
-                inputEl.addEventListener('focus', function () {
-                    if (this.value.trim()) {
-                        SearchManager.debouncedSearch(this.value, resultsEl);
-                    }
-                });
-
-                inputEl.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' && this.value.trim()) {
-                        e.preventDefault();
-                        SearchManager.hideResults();
-                        if (typeof navigateTo === 'function') {
-                            navigateTo('search', this.value.trim());
-                        }
-                    }
-                    if (e.key === 'Escape') {
-                        SearchManager.hideResults();
-                    }
-                });
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('Image must be less than 5MB', 'error');
+                return;
             }
 
-            attachSearch(heroSearch);
-            attachSearch(headerSearch);
+            showToast('Uploading image...', 'info');
 
-            // Close search results on outside click
-            document.addEventListener('click', function (e) {
-                if (!e.target.closest('.search-wrapper') && !e.target.closest('.search-results')) {
-                    SearchManager.hideResults();
+            // Show preview immediately
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var preview = safeGet('dashAvatarPreview');
+                if (preview) {
+                    preview.src = e.target.result;
                 }
-            });
-        }
-    };
+            };
+            reader.readAsDataURL(file);
 
+            // Upload to Supabase storage
+            var fileName = 'avatar_' + user.id + '_' + Date.now() + '.' + file.name.split('.').pop();
 
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // CART MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
+            sb.storage.from('avatars')
+                .upload(fileName, file, { cacheControl: '3600', upsert: true })
+                .then(function (uploadResult) {
+                    if (uploadResult.error) throw uploadResult.error;
 
-    var CartManager = {
+                    // Get public URL
+                    var publicUrl = sb.storage.from('avatars').getPublicUrl(fileName);
 
-        _couponDiscount: 0,
-        _couponCode: '',
-        // FIXED: H-06: Coupon persistence note - coupon state is in-memory only
-        // and will be lost on page refresh. Consider persisting to localStorage
-        // or session storage if persistent coupons are desired.
-
-        /**
-         * Load cart items for the current user.
-         * @returns {Promise} Resolves with array of cart items.
-         * FIXED: H-02: Added error check for sb.rpc response
-         */
-        loadCart: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                _cartData = { items: [] };
-                return Promise.resolve([]);
-            }
-
-            return sb.rpc('get_or_create_cart', { p_user_id: currentUser.id })
-                .then(function (res) {
-                    // FIXED: H-02: Check for errors in RPC response before accessing res.data
-                    if (!res || res.error) {
-                        console.error('Cart RPC error:', res ? res.error : 'No response');
-                        _cartData = { items: [] };
-                        CartManager.renderCart();
-                        return Promise.reject(new Error(res ? res.error : 'Cart creation failed'));
-                    }
-                    var cartId = res.data;
-                    return sb.from('v_cart_items')
-                        .select('*')
-                        .eq('cart_id', cartId)
-                        .order('added_at', { ascending: false });
+                    // Update profile with new avatar URL
+                    return sb.from('profiles').update({ avatar_url: publicUrl.publicURL }).eq('id', user.id);
                 })
-                .then(function (result) {
-                    _cartData = { items: result.data || [] };
-                    CartManager.renderCart();
-                    return _cartData.items;
-                })
-                .catch(function (err) {
-                    console.error('Cart load error:', err);
-                    _cartData = { items: [] };
-                    CartManager.renderCart();
-                    return [];
-                });
-        },
-
-        /**
-         * Add a product to the cart.
-         * @param {string} productId - UUID of the product.
-         * @param {string|null} variantId - UUID of the variant (optional).
-         * @param {number} quantity - Quantity to add.
-         * FIXED: H-05: Added stock validation before adding to cart
-         * FIXED: C-05: Proper promise chaining instead of fire-and-forget
-         */
-        addToCart: function (productId, variantId, quantity) {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                showToast('Please sign in to add items to cart', 'info');
-                return Promise.reject(new Error('Not authenticated'));
-            }
-
-            // FIXED: Medium: Double-submission lock
-            if (_cartOperationLock) {
-                showToast('Cart operation in progress, please wait...', 'info');
-                return Promise.reject(new Error('Operation in progress'));
-            }
-
-            quantity = quantity || 1;
-
-            // FIXED: H-07: Validate product ID format
-            if (!isValidUuid(productId)) {
-                showToast('Invalid product ID', 'error');
-                return Promise.reject(new Error('Invalid product ID'));
-            }
-
-            _cartOperationLock = true;
-
-            // Get the product price and stock info
-            var pricePromise;
-            if (variantId) {
-                pricePromise = sb.from('product_variants').select('price, product_id').eq('id', variantId).single();
-            } else {
-                pricePromise = sb.from('products').select('price, stock_quantity').eq('id', productId).single();
-            }
-
-            return pricePromise
-                .then(function (result) {
-                    // FIXED: H-05: Stock validation before adding to cart
-                    if (!variantId && result && result.stock_quantity !== undefined && result.stock_quantity <= 0) {
-                        throw new Error('Product is out of stock');
-                    }
+                .then(function () {
+                    showToast('Profile image updated!', 'success');
                     
-                    var unitPrice = result.price;
-                    // If variant price is null, use parent product price
-                    if (unitPrice === null && result.product_id) {
-                        return sb.from('products').select('price').eq('id', result.product_id).single()
-                            .then(function (parentResult) {
-                                return parentResult.price;
-                            });
+                    // Update local user object
+                    if (typeof window.refreshCurrentUser === 'function') {
+                        window.refreshCurrentUser();
+                    } else if (window.currentUser) {
+                        window.currentUser.avatar_url = sb.storage.from('avatars').getPublicUrl(fileName).publicURL;
                     }
-                    return unitPrice;
-                })
-                .then(function (unitPrice) {
-                    return sb.rpc('get_or_create_cart', { p_user_id: currentUser.id })
-                        .then(function (res) {
-                            // FIXED: H-02: Check for errors in RPC response
-                            if (!res || res.error) {
-                                throw new Error(res ? res.error : 'Failed to create/retrieve cart');
-                            }
-                            var cartId = res.data;
-                            var item = {
-                                cart_id: cartId,
-                                product_id: productId,
-                                quantity: quantity,
-                                unit_price: unitPrice
-                            };
-                            if (variantId) {
-                                item.variant_id = variantId;
-                            }
-                            return sb.from('cart_items').upsert(item, { onConflict: 'cart_id,product_id,variant_id' });
-                        });
-                })
-                .then(function () {
-                    showToast('Added to cart!', 'success');
-                    logActivity('add_to_cart', 'product', productId);
-                    // FIXED: C-05: Return the promise chain properly
-                    return CartManager.loadCart();
+
+                    // Reset input
+                    var input = safeGet('dashAvatarInput');
+                    if (input) input.value = '';
                 })
                 .catch(function (err) {
-                    console.error('Add to cart error:', err);
-                    if (err.message === 'Product is out of stock') {
-                        showToast('Sorry, this product is out of stock', 'error');
+                    console.error('Avatar upload error:', err);
+                    
+                    // Fallback: try base64 encoding for small images
+                    if (file.size < 100 * 1024) {
+                        self.uploadAvatarAsBase64(file);
                     } else {
-                        showToast('Failed to add to cart', 'error');
+                        showToast('Failed to upload image. Please try again.', 'error');
                     }
-                    throw err;
-                })
-                .finally(function () {
-                    // FIXED: Medium: Release lock after operation completes
-                    _cartOperationLock = false;
                 });
         },
 
         /**
-         * Remove a cart item.
-         * @param {string} cartItemId - UUID of the cart_items row.
-         * FIXED: H-07: Validate cart item ID format
+         * Fallback: Upload avatar as base64 to profiles table
          */
-        removeFromCart: function (cartItemId) {
-            if (!cartItemId) return;
-            // FIXED: H-07: Validate ID format
-            if (!isValidUuid(cartItemId)) {
-                console.error('Invalid cart item ID format');
-                return;
-            }
+        uploadAvatarAsBase64: function (file) {
+            var user = window.currentUser;
+            var reader = new FileReader();
 
-            sb.from('cart_items').delete().eq('id', cartItemId)
-                .then(function () {
-                    showToast('Item removed from cart', 'info');
-                    // FIXED: C-05: Return promise chain
-                    return CartManager.loadCart();
-                })
-                .catch(function (err) {
-                    console.error('Remove from cart error:', err);
-                    showToast('Failed to remove item', 'error');
-                });
-        },
-
-        /**
-         * Update the quantity of a cart item.
-         * @param {string} cartItemId - UUID of the cart_items row.
-         * @param {number} newQty - New quantity (must be > 0).
-         * FIXED: H-07: Validate cart item ID format
-         */
-        updateCartQuantity: function (cartItemId, newQty) {
-            if (!cartItemId || !newQty || newQty < 1) return;
-            // FIXED: H-07: Validate ID format
-            if (!isValidUuid(cartItemId)) {
-                console.error('Invalid cart item ID format');
-                return;
-            }
-
-            sb.from('cart_items').update({ quantity: newQty }).eq('id', cartItemId)
-                .then(function () {
-                    // FIXED: C-05: Return promise chain
-                    return CartManager.loadCart();
-                })
-                .catch(function (err) {
-                    console.error('Update cart quantity error:', err);
-                    showToast('Failed to update quantity', 'error');
-                });
-        },
-
-        /**
-         * Apply a coupon code to the cart.
-         * @param {string} code - Coupon code.
-         * FIXED: H-08: Added sanity check for discount percentage (>90% rejected)
-         */
-        applyCoupon: function (code) {
-            if (!code || !code.trim()) {
-                showToast('Please enter a coupon code', 'info');
-                return;
-            }
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                showToast('Please sign in to apply coupons', 'info');
-                return;
-            }
-
-            // FIXED: Medium: Input length validation
-            code = code.trim().toUpperCase().substring(0, 50);
-
-            sb.from('coupons').select('*').eq('code', code).eq('is_active', true).single()
-                .then(function (coupon) {
-                    if (!coupon) {
-                        showToast('Invalid coupon code', 'error');
-                        return;
-                    }
-
-                    // Check dates
-                    var now = new Date();
-                    if (coupon.starts_at && new Date(coupon.starts_at) > now) {
-                        showToast('Coupon is not yet active', 'error');
-                        return;
-                    }
-                    if (coupon.ends_at && new Date(coupon.ends_at) < now) {
-                        showToast('Coupon has expired', 'error');
-                        return;
-                    }
-
-                    // Check usage limit
-                    if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
-                        showToast('Coupon usage limit reached', 'error');
-                        return;
-                    }
-
-                    // Check minimum order
-                    var subtotal = CartManager.getCartTotal();
-                    if (coupon.min_order_amount && subtotal < Number(coupon.min_order_amount)) {
-                        showToast('Minimum order amount is ' + formatPrice(coupon.min_order_amount), 'error');
-                        return;
-                    }
-
-                    // Calculate discount
-                    var discount = 0;
-                    if (coupon.discount_type === 'percentage') {
-                        discount = subtotal * (Number(coupon.discount_value) / 100);
-                        if (coupon.max_discount && discount > Number(coupon.max_discount)) {
-                            discount = Number(coupon.max_discount);
-                        }
-                    } else {
-                        discount = Number(coupon.discount_value);
-                        if (discount > subtotal) discount = subtotal;
-                    }
-
-                    // FIXED: H-08: Sanity check - reject if discount exceeds 90% of subtotal
-                    if (subtotal > 0 && (discount / subtotal) > 0.90) {
-                        console.warn('Coupon discount exceeds 90% threshold, capping at 90%');
-                        discount = subtotal * 0.90;
-                    }
-
-                    CartManager._couponDiscount = discount;
-                    CartManager._couponCode = coupon.code;
-
-                    // Update cart with coupon
-                    sb.rpc('get_or_create_cart', { p_user_id: currentUser.id })
-                        .then(function (res) {
-                            // FIXED: H-02: Check for RPC errors
-                            if (!res || res.error) {
-                                throw new Error(res ? res.error : 'Cart lookup failed');
-                            }
-                            return sb.from('carts').update({ coupon_id: coupon.id }).eq('id', res.data);
-                        })
-                        .then(function () {
-                            showToast('Coupon applied! You save ' + formatPrice(discount), 'success');
-                            CartManager.renderCart();
-                        })
-                        .catch(function (err) {
-                            console.error('Coupon application error:', err);
-                        });
-                })
-                .catch(function (err) {
-                    console.error('Coupon error:', err);
-                    showToast('Invalid coupon code', 'error');
-                });
-        },
-
-        /**
-         * Remove the applied coupon from the cart.
-         */
-        removeCoupon: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-
-            CartManager._couponDiscount = 0;
-            CartManager._couponCode = '';
-
-            sb.rpc('get_or_create_cart', { p_user_id: currentUser.id })
-                .then(function (res) {
-                    // FIXED: H-02: Check for RPC errors
-                    if (!res || res.error) {
-                        throw new Error(res ? res.error : 'Cart lookup failed');
-                    }
-                    return sb.from('carts').update({ coupon_id: null }).eq('id', res.data);
-                })
-                .then(function () {
-                    showToast('Coupon removed', 'info');
-                    CartManager.renderCart();
-                })
-                .catch(function (err) {
-                    console.error('Remove coupon error:', err);
-                });
-        },
-
-        /**
-         * Render the cart panel contents.
-         * FIXED: C-01: All user data escaped via escapeHtml()
-         */
-        renderCart: function () {
-            var itemsContainer = safeGet('cartItems');
-            var countBadge = safeGet('cartCount');
-            var totalEl = safeGet('cartTotal');
-            var footerEl = safeGet('cartFooter');
-            var emptyEl = safeGet('cartEmpty');
-
-            var items = (_cartData && _cartData.items) ? _cartData.items : [];
-            var count = 0;
-            var subtotal = 0;
-
-            for (var i = 0; i < items.length; i++) {
-                count += items[i].quantity || 1;
-                subtotal += (Number(items[i].unit_price) || 0) * (items[i].quantity || 1);
-            }
-
-            var discount = CartManager._couponDiscount || 0;
-            var finalTotal = subtotal - discount;
-            if (finalTotal < 0) finalTotal = 0;
-
-            // Update count badge
-            if (countBadge) {
-                countBadge.textContent = count;
-                countBadge.style.display = count > 0 ? 'flex' : 'none';
-            }
-
-            // Update total
-            if (totalEl) {
-                totalEl.textContent = formatPrice(finalTotal);
-            }
-
-            if (!itemsContainer) return;
-
-            // Empty state
-            if (items.length === 0) {
-                itemsContainer.innerHTML = '';
-                if (emptyEl) emptyEl.style.display = 'flex';
-                if (footerEl) footerEl.style.display = 'none';
-                return;
-            }
-
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (footerEl) footerEl.style.display = 'block';
-
-            var html = '';
-            for (var j = 0; j < items.length; j++) {
-                var item = items[j];
-                // FIXED: C-01: Validate and escape image URL
-                var rawImg = item.product_image || getPlaceholder('');
-                var img = isValidImageUrl(rawImg) ? rawImg : getPlaceholder('');
-                var lineTotal = (Number(item.unit_price) || 0) * (item.quantity || 1);
-
-                // FIXED: H-07: Validate cart item ID before using in onclick
-                var safeCartItemId = isValidUuid(item.cart_item_id) ? item.cart_item_id : '';
-
-                html += '<div class="flex gap-3 p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors rounded-lg">';
-                html += '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.product_name || '') + '" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" onerror="this.src=\'' + getPlaceholder('') + '\'"/>';
-                html += '<div class="flex-1 min-w-0">';
-                // FIXED: C-01: Escape user data
-                html += '<p class="text-sm font-medium text-gray-800 truncate">' + escapeHtml(item.product_name || 'Product') + '</p>';
-                if (item.variant_name) {
-                    html += '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(item.variant_name) + '</p>';
-                }
-                html += '<p class="text-sm font-bold text-gray-900 mt-1">' + formatPrice(item.unit_price) + '</p>';
-                html += '<div class="flex items-center gap-2 mt-2">';
-                html += '<button onclick="CartManager.updateCartQuantity(\'' + safeCartItemId + '\', ' + Math.max(1, (item.quantity || 1) - 1) + ')" class="w-7 h-7 rounded-md bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition-colors text-xs font-bold">-</button>';
-                html += '<span class="text-sm font-medium w-6 text-center">' + (item.quantity || 1) + '</span>';
-                html += '<button onclick="CartManager.updateCartQuantity(\'' + safeCartItemId + '\', ' + ((item.quantity || 1) + 1) + ')" class="w-7 h-7 rounded-md bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition-colors text-xs font-bold">+</button>';
-                html += '<span class="ml-auto text-sm font-bold text-gray-900">' + formatPrice(lineTotal) + '</span>';
-                html += '</div>';
-                html += '</div>';
-                html += '<button onclick="CartManager.removeFromCart(\'' + safeCartItemId + '\')" class="self-start p-1.5 text-gray-400 hover:text-red-500 transition-colors" title="Remove">';
-                html += '<i class="fa-solid fa-trash-can text-xs"></i>';
-                html += '</button>';
-                html += '</div>';
-            }
-
-            // Coupon info
-            if (CartManager._couponCode) {
-                html += '<div class="p-3 bg-green-50 border border-green-200 rounded-lg mx-3 mt-3">';
-                html += '<div class="flex items-center justify-between">';
-                html += '<div class="flex items-center gap-2"><i class="fa-solid fa-tag text-green-600 text-sm"></i><span class="text-sm font-medium text-green-800">' + escapeHtml(CartManager._couponCode) + '</span></div>';
-                html += '<button onclick="CartManager.removeCoupon()" class="text-xs text-green-600 hover:text-red-500 transition-colors"><i class="fa-solid fa-xmark"></i></button>';
-                html += '</div>';
-                html += '<p class="text-xs text-green-600 mt-1">You save ' + formatPrice(discount) + '!</p>';
-                html += '</div>';
-            }
-
-            itemsContainer.innerHTML = html;
-        },
-
-        /**
-         * Get the current cart item count.
-         * @returns {number}
-         */
-        getCartCount: function () {
-            if (!_cartData || !_cartData.items) return 0;
-            var count = 0;
-            for (var i = 0; i < _cartData.items.length; i++) {
-                count += _cartData.items[i].quantity || 1;
-            }
-            return count;
-        },
-
-        /**
-         * Get the cart subtotal (before discount).
-         * @returns {number}
-         */
-        getCartTotal: function () {
-            if (!_cartData || !_cartData.items) return 0;
-            var total = 0;
-            for (var i = 0; i < _cartData.items.length; i++) {
-                var item = _cartData.items[i];
-                total += (Number(item.unit_price) || 0) * (item.quantity || 1);
-            }
-            return total;
-        }
-    };
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // WISHLIST MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var WishlistManager = {
-
-        /**
-         * Toggle a product in the wishlist (add if not present, remove if present).
-         * @param {string} productId - UUID of the product.
-         * FIXED: H-07: Validate product ID format
-         */
-        toggleWishlist: function (productId) {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                showToast('Please sign in to add to wishlist', 'info');
-                return;
-            }
-
-            // FIXED: H-07: Validate product ID format
-            if (!isValidUuid(productId)) {
-                console.error('Invalid product ID format for wishlist');
-                return;
-            }
-
-            if (_wishlistCache[productId]) {
-                // Remove from wishlist
-                sb.from('wishlists').delete().eq('user_id', currentUser.id).eq('product_id', productId)
+            reader.onload = function (e) {
+                sb.from('profiles').update({ avatar_url: e.target.result }).eq('id', user.id)
                     .then(function () {
-                        _wishlistCache[productId] = false;
-                        WishlistManager._updateWishlistButtons(productId, false);
-                        showToast('Removed from wishlist', 'info');
+                        showToast('Profile image updated!', 'success');
+                        if (typeof window.refreshCurrentUser === 'function') {
+                            window.refreshCurrentUser();
+                        }
                     })
                     .catch(function (err) {
-                        console.error('Wishlist remove error:', err);
-                        showToast('Failed to update wishlist', 'error');
+                        console.error('Base64 avatar error:', err);
+                        showToast('Failed to upload image', 'error');
                     });
-            } else {
-                // Add to wishlist
-                sb.from('wishlists').insert({
-                    user_id: currentUser.id,
-                    product_id: productId
-                })
-                    .then(function () {
-                        _wishlistCache[productId] = true;
-                        WishlistManager._updateWishlistButtons(productId, true);
-                        showToast('Added to wishlist!', 'success');
-                        logActivity('add_to_wishlist', 'product', productId);
-                    })
-                    .catch(function (err) {
-                        console.error('Wishlist add error:', err);
-                        showToast('Failed to add to wishlist', 'error');
-                    });
-            }
+            };
+
+            reader.readAsDataURL(file);
         },
 
         /**
-         * Check if a product is in the user's wishlist.
-         * @param {string} productId - UUID of the product.
-         * @returns {boolean}
+         * Filter dashboard products by search term
+         * @param {string} searchTerm - The search query
          */
-        isWishlisted: function (productId) {
-            return !!_wishlistCache[productId];
-        },
+        filterDashboardProducts: function (searchTerm) {
+            var container = safeGet('dashProductsList');
+            if (!container) return;
 
-        /**
-         * Load all wishlisted products for the current user and populate the cache.
-         * @returns {Promise}
-         */
-        loadWishlist: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                _wishlistCache = {};
-                return Promise.resolve([]);
-            }
+            var rows = container.querySelectorAll('.dash-product-row');
+            searchTerm = (searchTerm || '').toLowerCase().trim();
 
-            return sb.from('wishlists')
-                .select('product_id')
-                .eq('user_id', currentUser.id)
-                .then(function (result) {
-                    _wishlistCache = {};
-                    var items = result.data || [];
-                    for (var i = 0; i < items.length; i++) {
-                        _wishlistCache[items[i].product_id] = true;
-                    }
-                    return items;
-                })
-                .catch(function (err) {
-                    console.error('Wishlist load error:', err);
-                    _wishlistCache = {};
-                    return [];
-                });
-        },
-
-        /**
-         * Update all wishlist button instances for a given product ID.
-         * @private
-         */
-        _updateWishlistButtons: function (productId, isWishlisted) {
-            var btns = document.querySelectorAll('.wishlist-btn-' + productId);
-            for (var i = 0; i < btns.length; i++) {
-                var icon = btns[i].querySelector('i');
-                if (icon) {
-                    icon.className = (isWishlisted ? 'fa-solid' : 'fa-regular') + ' fa-heart text-sm ' + (isWishlisted ? 'text-red-500' : 'text-gray-500');
-                }
-            }
-        }
-    };
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // CATEGORY MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var CategoryManager = {
-
-        /**
-         * Load all active categories.
-         * @returns {Promise} Resolves with array of category objects.
-         */
-        loadCategories: function () {
-            return sb.from('categories')
-                .select('*')
-                .eq('is_active', true)
-                .order('sort_order', { ascending: true })
-                .then(function (result) {
-                    _categories = result.data || [];
-                    return _categories;
-                })
-                .catch(function (err) {
-                    console.error('Categories load error:', err);
-                    _categories = [];
-                    return [];
-                });
-        },
-
-        /**
-         * Render product counts on category pills/links.
-         */
-        renderCategoryCounts: function () {
-            // Update .cat-pill elements with data-colcat attribute
-            var pills = document.querySelectorAll('.cat-pill');
-            for (var i = 0; i < pills.length; i++) {
-                var slug = pills[i].getAttribute('data-colcat');
-                var cat = CategoryManager.getCategoryBySlug(slug);
-                if (cat) {
-                    var countEl = pills[i].querySelector('.cat-count');
-                    if (countEl) {
-                        countEl.textContent = cat.product_count || 0;
-                    }
-                }
-            }
-
-            // Update .cat-link elements
-            var links = document.querySelectorAll('.cat-link');
-            for (var j = 0; j < links.length; j++) {
-                var linkSlug = links[j].getAttribute('data-cat') || links[j].getAttribute('data-colcat');
-                var linkCat = CategoryManager.getCategoryBySlug(linkSlug);
-                if (linkCat) {
-                    var linkCountEl = links[j].querySelector('.cat-count');
-                    if (linkCountEl) {
-                        linkCountEl.textContent = linkCat.product_count || 0;
-                    }
+            for (var i = 0; i < rows.length; i++) {
+                var text = rows[i].textContent.toLowerCase();
+                if (!searchTerm || text.indexOf(searchTerm) !== -1) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
                 }
             }
         },
 
         /**
-         * Get a category by its slug.
-         * @param {string} slug - Category slug.
-         * @returns {Object|null} Category object or null.
+         * Enhanced loadDashboardStats with better error handling
          */
-        getCategoryBySlug: function (slug) {
-            if (!slug) return null;
-            for (var i = 0; i < _categories.length; i++) {
-                if (_categories[i].slug === slug) return _categories[i];
-            }
-            return null;
-        },
+        loadDashboardStatsEnhanced: function () {
+            var user = window.currentUser;
+            if (!user || !user.id) return;
 
-        /**
-         * Get all loaded categories.
-         * @returns {Array}
-         */
-        getAll: function () {
-            return _categories;
-        }
-    };
+            var userId = user.id;
+            var role = user.role || 'seller';
 
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // DASHBOARD MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var DashboardManager = {
-
-        /**
-         * Load and render dashboard overview stats.
-         * FIXED: H-01: Added .catch() handlers to all stat queries
-         */
-        loadDashboardStats: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-
-            var userId = currentUser.id;
-            var role = currentUser.role;
-
-            // Products stat
-            var productsQuery = role === 'admin'
-                ? sb.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active')
-                : sb.from('products').select('id', { count: 'exact', head: true }).eq('seller_id', userId);
-
-            productsQuery.then(function (result) {
-                var el = safeGet('dashStatProducts');
-                if (el) el.textContent = result.count || 0;
-            }).catch(function (err) {
-                // FIXED: H-01: Added catch handler
-                console.error('Dashboard products stat error:', err);
-            });
-
-            // Orders stat
-            var ordersQuery = role === 'admin'
-                ? sb.from('orders').select('id', { count: 'exact', head: true })
-                : sb.from('order_items').select('id', { count: 'exact', head: true }).eq('seller_id', userId);
-
-            ordersQuery.then(function (result) {
-                var el = safeGet('dashStatOrders');
-                if (el) el.textContent = result.count || 0;
-            }).catch(function (err) {
-                // FIXED: H-01: Added catch handler
-                console.error('Dashboard orders stat error:', err);
-            });
-
-            // Revenue stat
-            var revenueQuery = role === 'admin'
-                ? sb.from('orders').select('total_amount').neq('status', 'cancelled')
-                : sb.from('order_items').select('subtotal').eq('seller_id', userId);
-
-            revenueQuery.then(function (result) {
-                var total = 0;
-                var data = result.data || [];
-                for (var i = 0; i < data.length; i++) {
-                    var val = role === 'admin' ? Number(data[i].total_amount) : Number(data[i].subtotal);
-                    if (!isNaN(val)) total += val;
+            // Remove loading classes from stat cards
+            setTimeout(function () {
+                var statCards = document.querySelectorAll('.dash-stat-card .stat-value.loading');
+                for (var i = 0; i < statCards.length; i++) {
+                    statCards[i].classList.remove('loading');
                 }
-                var el = safeGet('dashStatRevenue');
-                if (el) el.textContent = formatPrice(total);
-            }).catch(function (err) {
-                // FIXED: H-01: Added catch handler
-                console.error('Dashboard revenue stat error:', err);
-            });
+            }, 500);
 
-            // Views stat (for sellers)
-            if (role === 'seller') {
-                sb.from('products').select('view_count').eq('seller_id', userId)
-                    .then(function (result) {
-                        var views = 0;
-                        var data = result.data || [];
-                        for (var i = 0; i < data.length; i++) {
-                            views += Number(data[i].view_count) || 0;
-                        }
-                        var el = safeGet('dashStatViews');
-                        if (el) el.textContent = views.toLocaleString();
-                    }).catch(function (err) {
-                        // FIXED: H-01: Added catch handler
-                        console.error('Dashboard seller views stat error:', err);
-                    });
-            } else if (role === 'admin') {
-                sb.from('visitor_logs').select('id', { count: 'exact', head: true })
-                    .then(function (result) {
-                        var el = safeGet('dashStatViews');
-                        if (el) el.textContent = (result.count || 0).toLocaleString();
-                    }).catch(function (err) {
-                        // FIXED: H-01: Added catch handler
-                        console.error('Dashboard admin views stat error:', err);
-                    });
+            // Use existing loadDashboardStats if available
+            if (window.DashboardManager && typeof window.DashboardManager.loadDashboardStats === 'function') {
+                window.DashboardManager.loadDashboardStats();
             }
         },
 
         /**
-         * Load and render dashboard products list.
-         * FIXED: C-01: User data escaped via escapeHtml()
+         * Export orders as CSV
          */
-        loadDashboardProducts: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-
-            var listEl = safeGet('dashProductsList');
-            var recentEl = safeGet('dashRecentProducts');
-
-            var query = currentUser.role === 'admin'
-                ? sb.from('products').select('*, categories(name, slug), product_images(url, is_primary)').order('created_at', { ascending: false }).limit(50)
-                : sb.from('products').select('*, categories(name, slug), product_images(url, is_primary)').eq('seller_id', currentUser.id).order('created_at', { ascending: false }).limit(50);
-
-            query.then(function (result) {
-                var products = result.data || [];
-
-                // Render products list in dashboard
-                if (listEl) {
-                    if (products.length === 0) {
-                        listEl.innerHTML = '<div class="text-center py-6 sm:py-10 px-4"><div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-box-open text-accent text-base sm:text-lg"></i></div><p class="text-subtle text-sm font-medium">No products yet</p><p class="text-muted text-xs mt-1">Add your first product to get started</p></div>';
-                    } else {
-                        var html = '<div class="space-y-3">';
-                        for (var i = 0; i < products.length; i++) {
-                            var p = products[i];
-                            var primaryImg = '';
-                            if (p.product_images && p.product_images.length > 0) {
-                                for (var j = 0; j < p.product_images.length; j++) {
-                                    if (p.product_images[j].is_primary) {
-                                        primaryImg = p.product_images[j].url;
-                                        break;
-                                    }
-                                }
-                                if (!primaryImg && p.product_images[0]) primaryImg = p.product_images[0].url;
-                            }
-
-                            var statusColors = {
-                                draft: 'bg-white/5 text-gray-400 border border-white/10',
-                                active: 'bg-green-500/10 text-green-400 border border-green-500/20',
-                                archived: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-                                banned: 'bg-red-500/10 text-red-400 border border-red-500/20'
-                            };
-                            var statusClass = statusColors[p.status] || 'bg-white/5 text-gray-400 border border-white/10';
-
-                            // FIXED: C-01: Validate image URL and escape user data
-                            var safePrimaryImg = isValidImageUrl(primaryImg) ? primaryImg : getPlaceholder('');
-                            var safeProductId = isValidUuid(p.id) ? p.id : '';
-
-                            html += '<div class="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors bg-white/[0.02]">';
-                            html += '<img src="' + escapeHtml(safePrimaryImg) + '" alt="" class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'"/>';
-                            html += '<div class="flex-1 min-w-0">';
-                            html += '<p class="text-xs sm:text-sm font-medium text-softWhite truncate">' + escapeHtml(p.name || 'Untitled') + '</p>';
-                            html += '<p class="text-[11px] sm:text-xs text-muted mt-0.5">' + escapeHtml(p.categories ? p.categories.name : '') + ' · ' + formatPrice(p.price) + '</p>';
-                            html += '</div>';
-                            html += '<span class="text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full ' + statusClass + '">' + escapeHtml(p.status || 'draft') + '</span>';
-                            html += '<div class="flex items-center gap-0.5 sm:gap-1">';
-                            if (p.status === 'draft') {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + safeProductId + '\', \'active\')" class="p-1.5 sm:p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Publish"><i class="fa-solid fa-check text-[10px] sm:text-xs"></i></button>';
-                            } else if (p.status === 'active') {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + safeProductId + '\', \'archived\')" class="p-1.5 sm:p-2 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors" title="Archive"><i class="fa-solid fa-archive text-[10px] sm:text-xs"></i></button>';
-                            } else {
-                                html += '<button onclick="DashboardManager.updateProductStatus(\'' + safeProductId + '\', \'active\')" class="p-1.5 sm:p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Reactivate"><i class="fa-solid fa-rotate-left text-[10px] sm:text-xs"></i></button>';
-                            }
-                            html += '<button onclick="DashboardManager.deleteProduct(\'' + safeProductId + '\')" class="p-1.5 sm:p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete"><i class="fa-solid fa-trash text-[10px] sm:text-xs"></i></button>';
-                            html += '</div>';
-                            html += '</div>';
-                        }
-                        html += '</div>';
-                        listEl.innerHTML = html;
-                    }
-                }
-
-                // Recent products (first 5)
-                if (recentEl) {
-                    var recent = products.slice(0, 5);
-                    if (recent.length === 0) {
-                        recentEl.innerHTML = '<div class="text-center py-3"><p class="text-sm text-muted"><i class="fa-solid fa-box-open text-accent/50 mr-2"></i>No products yet</p></div>';
-                    } else {
-                        var rhtml = '';
-                        for (var k = 0; k < recent.length; k++) {
-                            var rp = recent[k];
-                            rhtml += '<div class="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">';
-                            rhtml += '<div class="w-2 h-2 rounded-full ' + (rp.status === 'active' ? 'bg-green-400' : 'bg-gray-600') + '"></div>';
-                            // FIXED: C-01: Escape user data
-                            rhtml += '<span class="text-sm text-softWhite truncate flex-1">' + escapeHtml(rp.name) + '</span>';
-                            rhtml += '<span class="text-xs text-muted">' + formatPrice(rp.price) + '</span>';
-                            rhtml += '</div>';
-                        }
-                        recentEl.innerHTML = rhtml;
-                    }
-                }
-            }).catch(function (err) {
-                console.error('Dashboard products error:', err);
-            });
-        },
-
-        /**
-         * Load and render dashboard orders.
-         * FIXED: C-01: User data escaped via escapeHtml()
-         */
-        loadDashboardOrders: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-
-            var listEl = safeGet('dashOrdersList');
-            var recentEl = safeGet('dashRecentOrders');
-            var countsEl = safeGet('dashOrderCounts');
-
-            var userId = currentUser.id;
-            var role = currentUser.role;
-
-            var orderPromise;
-            if (role === 'seller') {
-                orderPromise = sb.from('v_seller_orders').select('*').order('created_at', { ascending: false }).limit(50);
-            } else {
-                orderPromise = sb.from('v_customer_orders').select('*').order('created_at', { ascending: false }).limit(50);
+        exportOrdersCSV: function () {
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                showToast('Please sign in first', 'error');
+                return;
             }
+
+            showToast('Preparing export...', 'info');
+
+            var orderPromise = user.role === 'seller'
+                ? sb.from('v_seller_orders').select('*').order('created_at', { ascending: false }).limit(1000)
+                : sb.from('v_customer_orders').select('*').eq('customer_id', user.id).order('created_at', { ascending: false }).limit(1000);
 
             orderPromise.then(function (result) {
                 var orders = result.data || [];
-
-                // Count statuses
-                if (countsEl) {
-                    var counts = { pending: 0, confirmed: 0, processing: 0, shipped: 0, delivered: 0, completed: 0, cancelled: 0 };
-                    if (role === 'customer') {
-                        for (var c = 0; c < orders.length; c++) {
-                            var st = orders[c].status;
-                            if (counts[st] !== undefined) counts[st]++;
-                        }
-                    } else {
-                        for (var d = 0; d < orders.length; d++) {
-                            var ist = orders[d].item_status || orders[d].order_status;
-                            if (counts[ist] !== undefined) counts[ist]++;
-                        }
-                    }
-                    countsEl.innerHTML =
-                        '<span class="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded-full">Pending: ' + counts.pending + '</span> ' +
-                        '<span class="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">Active: ' + (counts.confirmed + counts.processing + counts.shipped) + '</span> ' +
-                        '<span class="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">Done: ' + (counts.delivered + counts.completed) + '</span> ' +
-                        '<span class="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full">Cancelled: ' + counts.cancelled + '</span>';
+                
+                if (orders.length === 0) {
+                    showToast('No orders to export', 'info');
+                    return;
                 }
 
-                // Render orders list
-                if (listEl) {
-                    if (orders.length === 0) {
-                        listEl.innerHTML = '<div class="text-center py-6 sm:py-10 px-4"><div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-receipt text-accent text-base sm:text-lg"></i></div><p class="text-subtle text-sm font-medium">No orders yet</p><p class="text-muted text-xs mt-1">Orders will appear here when customers purchase</p></div>';
-                    } else {
-                        // Mobile-friendly: use card layout instead of table
-                        var html = '<div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">';
-                        html += '<table class="w-full min-w-[500px] sm:min-w-0">';
-                        html += '<thead class="hidden sm:table-header-group"><tr class="border-b border-white/10">';
-                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Order</th>';
-                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Product</th>';
-                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider hidden sm:table-cell">Date</th>';
-                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Total</th>';
-                        html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Status</th>';
-                        if (role === 'seller') {
-                            html += '<th class="py-2 px-2 sm:px-3 text-left text-[11px] text-muted uppercase tracking-wider">Action</th>';
-                        }
-                        html += '</tr></thead><tbody>';
-                        
-                        for (var i = 0; i < orders.length; i++) {
-                            var o = orders[i];
-                            var orderNum = o.order_number || 'N/A';
-                            var orderStatus = role === 'customer' ? o.status : (o.item_status || o.order_status);
-                            var total = role === 'customer' ? o.total_amount : o.subtotal;
+                // Build CSV content
+                var csvHeaders = ['Order ID', 'Date', 'Customer', 'Product', 'Quantity', 'Status', 'Total'];
+                var csvRows = [csvHeaders.join(',')];
 
-                            var statusStyles = {
-                                pending: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-                                confirmed: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
-                                processing: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20',
-                                shipped: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
-                                delivered: 'bg-green-500/10 text-green-400 border border-green-500/20',
-                                completed: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-                                cancelled: 'bg-red-500/10 text-red-400 border border-red-500/20',
-                                refunded: 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-                            };
-                            var ss = statusStyles[orderStatus] || 'bg-white/5 text-gray-400 border border-white/10';
-
-                            // FIXED: H-07: Validate order item ID
-                            var safeItemId = isValidUuid(o.order_item_id) ? o.order_item_id : '';
-
-                            html += '<tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">';
-                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm font-mono text-muted">' + escapeHtml(orderNum) + '</td>';
-                            // FIXED: C-01: Escape user data
-                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm text-softWhite max-w-[120px] sm:max-w-none truncate">' + escapeHtml(o.product_name || 'Product') + '</td>';
-                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm text-muted hidden sm:table-cell">' + timeAgo(o.created_at) + '</td>';
-                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm font-semibold text-softWhite">' + formatPrice(total) + '</td>';
-                            html += '<td class="py-2 sm:py-3 px-2 sm:px-3"><span class="text-[10px] sm:text-xs font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full ' + ss + '">' + escapeHtml(orderStatus || 'pending') + '</span></td>';
-
-                            // Actions for sellers
-                            if (role === 'seller') {
-                                html += '<td class="py-2 sm:py-3 px-2 sm:px-3">';
-                                html += '<select onchange="DashboardManager.updateOrderItemStatus(\'' + safeItemId + '\', this.value, null)" class="text-[10px] sm:text-xs border border-white/10 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white/5 text-gray-300 focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-accent/50 w-full sm:w-auto">';
-                                var statuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
-                                for (var s = 0; s < statuses.length; s++) {
-                                    html += '<option value="' + statuses[s] + '"' + (orderStatus === statuses[s] ? ' selected' : '') + '>' + statuses[s] + '</option>';
-                                }
-                                html += '</select>';
-                                html += '</td>';
-                            } else {
-                                html += '<td class="py-2 sm:py-3 px-2 sm:px-3">-</td>';
-                            }
-
-                            html += '</tr>';
-                        }
-                        html += '</tbody></table></div>';
-                        listEl.innerHTML = html;
-                    }
+                for (var i = 0; i < orders.length; i++) {
+                    var order = orders[i];
+                    var row = [
+                        '"' + (order.order_id || order.id || '') + '"',
+                        '"' + (order.created_at || '') + '"',
+                        '"' + escapeHtml(order.customer_name || order.buyer_name || '') + '"',
+                        '"' + escapeHtml(order.product_title || '') + '"',
+                        order.quantity || 1,
+                        '"' + (order.status || '') + '"',
+                        '"' + (order.total_amount || order.subtotal || 0) + '"'
+                    ];
+                    csvRows.push(row.join(','));
                 }
 
-                // Recent orders (first 5)
-                if (recentEl) {
-                    var recent = orders.slice(0, 5);
-                    if (recent.length === 0) {
-                        recentEl.innerHTML = '<div class="text-center py-3"><p class="text-sm text-muted"><i class="fa-solid fa-receipt text-accent/50 mr-2"></i>No orders yet</p></div>';
-                    } else {
-                        var rhtml = '<tbody>';
-                        for (var k = 0; k < recent.length; k++) {
-                            var ro = recent[k];
-                            var rStatus = role === 'customer' ? ro.status : (ro.item_status || ro.order_status);
-                            var rTotal = role === 'customer' ? ro.total_amount : ro.subtotal;
-                            rhtml += '<tr class="border-b border-white/5">';
-                            rhtml += '<td class="py-1.5 sm:py-2 text-[11px] sm:text-sm font-mono text-muted">' + escapeHtml(ro.order_number || '-') + '</td>';
-                            rhtml += '<td class="py-1.5 sm:py-2 text-[11px] sm:text-sm text-softWhite">' + formatPrice(rTotal) + '</td>';
-                            rhtml += '<td class="py-1.5 sm:py-2 text-[11px] sm:text-sm text-muted">' + timeAgo(ro.created_at) + '</td>';
-                            rhtml += '</tr>';
-                        }
-                        rhtml += '</tbody>';
-                        recentEl.innerHTML = rhtml;
-                    }
-                }
+                var csvContent = csvRows.join('\n');
+                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                var link = document.createElement('a');
+                var url = URL.createObjectURL(blob);
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'orders_export_' + new Date().toISOString().split('T')[0] + '.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showToast('Exported ' + orders.length + ' orders successfully!', 'success');
             }).catch(function (err) {
-                console.error('Dashboard orders error:', err);
+                console.error('Export orders error:', err);
+                showToast('Failed to export orders', 'error');
             });
         },
 
         /**
-         * Load and render the activity feed in the dashboard.
+         * View basic analytics (enhanced version)
          */
-        loadRecentActivity: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
+        viewBasicAnalytics: function () {
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                showToast('Please sign in first', 'error');
+                return;
+            }
 
-            var feedEl = safeGet('dashActivityFeed');
-            if (!feedEl) return;
+            showToast('Loading analytics...', 'info');
 
-            sb.from('activity_logs')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false })
-                .limit(10)
+            // Load analytics data
+            Promise.all([
+                sb.from('products').select('id', { count: 'exact', head: true }).eq('seller_id', user.id),
+                sb.from('order_items').select('subtotal, quantity').eq('seller_id', user.id),
+                sb.from('orders').select('id', { count: 'exact', head: true })
+            ]).then(function (results) {
+                var productCount = results[0].count || 0;
+                var orderItems = results[1].data || [];
+                var totalRevenue = 0;
+                var totalItemsSold = 0;
+
+                for (var i = 0; i < orderItems.length; i++) {
+                    totalRevenue += Number(orderItems[i].subtotal) || 0;
+                    totalItemsSold += Number(orderItems[i].quantity) || 0;
+                }
+
+                // Show analytics summary
+                var message = 'Products: ' + productCount + '\nTotal Revenue: ' + formatPrice(totalRevenue) + '\nItems Sold: ' + totalItemsSold;
+                alert(message); // Simple display - can be enhanced with a modal
+
+                showToast('Analytics loaded', 'success');
+            }).catch(function (err) {
+                console.error('Analytics error:', err);
+                showToast('Failed to load analytics', 'error');
+            });
+        }
+    };
+
+
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // SECTION: PRODUCT MANAGEMENT SYSTEM
+    // ═════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Complete Product Manager Enhancement
+     * Adds full CRUD functionality for product management
+     */
+    var ProductManagerComplete = {
+
+        // Categories available for products
+        categories: [
+            { value: 'tech', label: 'Tech & Electronics' },
+            { value: 'fashion', label: 'Fashion & Apparel' },
+            { value: 'beauty', label: 'Beauty & Care' },
+            { value: 'outdoor', label: 'Outdoor & Sports' },
+            { value: 'home', label: 'Home & Living' },
+            { value: 'accessories', label: 'Accessories' },
+            { value: 'other', label: 'Other' }
+        ],
+
+        // Status options
+        statusOptions: [
+            { value: 'draft', label: 'Draft' },
+            { value: 'active', label: 'Active' },
+            { value: 'archived', label: 'Archived' }
+        ],
+
+        /**
+         * Initialize product manager - setup event bindings
+         */
+        init: function () {
+            this.bindAddProductButtons();
+            console.log('[product-manager] Product Manager initialized');
+        },
+
+        /**
+         * Bind click handlers to all "Add Product" buttons
+         */
+        bindAddProductButtons: function () {
+            var self = this;
+            var addButtons = document.querySelectorAll('[data-action="add-product"], .btn-add-product');
+
+            for (var i = 0; i < addButtons.length; i++) {
+                // Remove existing handlers by cloning
+                var btn = addButtons[i];
+                var newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+
+                newBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.showAddProductModal();
+                });
+            }
+        },
+
+        /**
+         * Show add product modal/form
+         */
+        showAddProductModal: function () {
+            _currentEditingProduct = null;
+            _uploadedImages = [];
+
+            var modalHtml = this.buildProductFormModal(null);
+            this.showModal(modalHtml);
+            this.setupProductFormEvents();
+            this.loadCategoriesIntoSelect();
+        },
+
+        /**
+         * Show edit product modal with pre-filled data
+         * @param {string} productId - UUID of product to edit
+         */
+        showEditProductModal: function (productId) {
+            if (!productId) {
+                showToast('No product selected', 'error');
+                return;
+            }
+
+            var self = this;
+            showToast('Loading product...', 'info');
+
+            sb.from('products')
+                .select('*, categories(*), product_images(*)')
+                .eq('id', productId)
+                .single()
                 .then(function (result) {
-                    var logs = result.data || [];
-                    if (logs.length === 0) {
-                        feedEl.innerHTML = '<div class="text-center py-4 sm:py-6 px-4"><div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-clock-rotate-left text-accent text-xs sm:text-sm"></i></div><p class="text-xs sm:text-sm text-muted">No recent activity</p><p class="text-[11px] sm:text-xs text-muted/60 mt-1">Your actions will appear here</p></div>';
-                        return;
+                    if (result.error || !result.data) {
+                        throw result.error || new Error('Product not found');
                     }
 
-                    var html = '';
-                    var icons = {
-                        'add_to_cart': 'fa-cart-plus text-green-500',
-                        'add_to_wishlist': 'fa-heart text-red-400',
-                        'place_order': 'fa-bag-shopping text-blue-500',
-                        'view_product': 'fa-eye text-gray-400',
-                        'update_product': 'fa-pen text-amber-500',
-                        'delete_product': 'fa-trash text-red-400'
+                    _currentEditingProduct = result.data;
+                    _uploadedImages = result.data.product_images || [];
+
+                    var modalHtml = self.buildProductFormModal(result.data);
+                    self.showModal(modalHtml);
+                    self.setupProductFormEvents();
+                    self.loadCategoriesIntoSelect();
+                })
+                .catch(function (err) {
+                    console.error('Load product error:', err);
+                    showToast('Failed to load product details', 'error');
+                });
+        },
+
+        /**
+         * Build the product form modal HTML
+         * @param {Object|null} product - Product data for edit mode, null for add mode
+         * @returns {string} HTML string for the modal
+         */
+        buildProductFormModal: function (product) {
+            var isEdit = !!product;
+            var title = isEdit ? 'Edit Product' : 'Add New Product';
+            var submitText = isEdit ? 'Update Product' : 'Create Product';
+            
+            var p = product || {};
+            var imagesHtml = this.buildImagesPreviewHtml(p.product_images || []);
+
+            return '<div class="modal-overlay" id="productModalOverlay">' +
+                '<div class="modal-content product-form-modal" style="max-width:700px;width:90%;max-height:90vh;overflow-y:auto;background:#111;border-radius:12px;padding:24px;">' +
+                    '<div class="flex justify-between items-center mb-6">' +
+                        '<h2 class="text-lg font-semibold text-white">' + title + '</h2>' +
+                        '<button onclick="ProductManagerComplete.closeModal()" class="text-gray-400 hover:text-white transition-colors">' +
+                            '<i class="fa-solid fa-times text-xl"></i>' +
+                        '</button>' +
+                    '</div>' +
+
+                    '<form id="productForm" onsubmit="return false;">' +
+                        '<input type="hidden" id="productId" value="' + (p.id || '') + '">' +
+
+                        // Basic Info Section
+                        '<div class="mb-6">' +
+                            '<h3 class="text-sm font-medium text-gray-300 mb-3 uppercase tracking-wider">Basic Information</h3>' +
+                            
+                            '<div class="mb-4">' +
+                                '<label class="block text-sm text-gray-400 mb-1">Product Title <span class="text-red-500">*</span></label>' +
+                                '<input type="text" id="productTitle" value="' + escapeHtml(p.title || '') + '" ' +
+                                    'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" ' +
+                                    'placeholder="Enter product title" required maxlength="200">' +
+                            '</div>' +
+
+                            '<div class="mb-4">' +
+                                '<label class="block text-sm text-gray-400 mb-1">Description</label>' +
+                                '<textarea id="productDescription" rows="4" ' +
+                                    'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none transition-colors resize-none" ' +
+                                    'placeholder="Describe your product...">' + escapeHtml(p.description || '') + '</textarea>' +
+                            '</div>' +
+                        '</div>' +
+
+                        // Pricing Section
+                        '<div class="mb-6">' +
+                            '<h3 class="text-sm font-medium text-gray-300 mb-3 uppercase tracking-wider">Pricing</h3>' +
+                            
+                            '<div class="grid grid-cols-2 gap-4">' +
+                                '<div>' +
+                                    '<label class="block text-sm text-gray-400 mb-1">Price (KES) <span class="text-red-500">*</span></label>' +
+                                    '<input type="number" id="productPrice" value="' + (p.price || '') + '" min="0" step="0.01" ' +
+                                        'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" ' +
+                                        'placeholder="0.00" required>' +
+                                '</div>' +
+                                '<div>' +
+                                    '<label class="block text-sm text-gray-400 mb-1">Compare at Price</label>' +
+                                    '<input type="number" id="productComparePrice" value="" min="0" step="0.01" ' +
+                                        'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" ' +
+                                        'placeholder="0.00">' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+
+                        // Category & Inventory Section
+                        '<div class="mb-6">' +
+                            '<h3 class="text-sm font-medium text-gray-300 mb-3 uppercase tracking-wider">Category & Inventory</h3>' +
+                            
+                            '<div class="grid grid-cols-2 gap-4 mb-4">' +
+                                '<div>' +
+                                    '<label class="block text-sm text-gray-400 mb-1">Category <span class="text-red-500">*</span></label>' +
+                                    '<select id="productCategory" ' +
+                                        'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-accent focus:outline-none transition-colors">' +
+                                        '<option value="">Select category...</option>' +
+                                    '</select>' +
+                                '</div>' +
+                                '<div>' +
+                                    '<label class="block text-sm text-gray-400 mb-1">Status</label>' +
+                                    '<select id="productStatus" ' +
+                                        'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-accent focus:outline-none transition-colors">' +
+                                        '<option value="draft">Draft</option>' +
+                                        '<option value="active"' + ((p.status === 'active' || p.is_active) ? ' selected' : '') + '>Active</option>' +
+                                        '<option value="archived"' + (p.status === 'archived' ? ' selected' : '') + '>Archived</option>' +
+                                    '</select>' +
+                                '</div>' +
+                            '</div>' +
+
+                            '<div class="grid grid-cols-2 gap-4">' +
+                                '<div>' +
+                                    '<label class="block text-sm text-gray-400 mb-1">Stock Quantity</label>' +
+                                    '<input type="number" id="productStock" value="' + (p.stock_quantity || 0) + '" min="0" ' +
+                                        'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" ' +
+                                        'placeholder="0">' +
+                                '</div>' +
+                                '<div>' +
+                                    '<label class="block text-sm text-gray-400 mb-1">SKU</label>' +
+                                    '<input type="text" id="productSku" value="' + escapeHtml(p.sku || '') + '" maxlength="50" ' +
+                                        'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" ' +
+                                        'placeholder="Optional SKU">' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+
+                        // Images Section
+                        '<div class="mb-6">' +
+                            '<h3 class="text-sm font-medium text-gray-300 mb-3 uppercase tracking-wider">Product Images</h3>' +
+                            
+                            '<div id="productImagesPreview" class="mb-4">' +
+                                imagesHtml +
+                            '</div>' +
+
+                            '<div class="border-2 border-dashed border-white/20 rounded-lg p-4 text-center hover:border-accent/50 transition-colors cursor-pointer" id="imageDropZone">' +
+                                '<input type="file" id="productImageInput" accept="image/*" multiple class="hidden">' +
+                                '<i class="fa-solid fa-cloud-upload-alt text-2xl text-gray-500 mb-2"></i>' +
+                                '<p class="text-sm text-gray-400">Click or drag images here to upload</p>' +
+                                '<p class="text-xs text-gray-600 mt-1">PNG, JPG, GIF up to 5MB each</p>' +
+                            '</div>' +
+                        '</div>' +
+
+                        // Tags Section
+                        '<div class="mb-6">' +
+                            '<label class="block text-sm text-gray-400 mb-1">Tags</label>' +
+                            '<input type="text" id="productTags" value="' + escapeHtml(p.tags || '') + '" ' +
+                                'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" ' +
+                                'placeholder="tag1, tag2, tag3...">' +
+                            '<p class="text-xs text-gray-600 mt-1">Separate tags with commas</p>' +
+                        '</div>' +
+
+                        // Action Buttons
+                        '<div class="flex justify-end gap-3 pt-4 border-t border-white/10">' +
+                            '<button type="button" onclick="ProductManagerComplete.closeModal()" ' +
+                                'class="px-5 py-2.5 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 transition-colors">' +
+                                'Cancel' +
+                            '</button>' +
+                            '<button type="button" onclick="ProductManagerComplete.handleSaveProduct()" ' +
+                                'class="px-5 py-2.5 rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors font-medium">' +
+                                '<i class="fa-solid fa-save mr-2"></i>' + submitText +
+                            '</button>' +
+                        '</div>' +
+                    '</form>' +
+                '</div>' +
+            '</div>';
+        },
+
+        /**
+         * Build images preview HTML
+         * @param {Array} images - Array of image objects
+         * @returns {string} HTML string
+         */
+        buildImagesPreviewHtml: function (images) {
+            if (!images || images.length === 0) {
+                return '<p class="text-sm text-gray-500 text-center py-4">No images uploaded yet</p>';
+            }
+
+            var html = '<div class="grid grid-cols-4 gap-3">';
+            
+            for (var i = 0; i < images.length; i++) {
+                var img = images[i];
+                var isPrimary = img.is_primary || (i === 0 && images.length === 1);
+                var url = img.url || '';
+
+                html += '<div class="relative group">' +
+                    '<img src="' + url + '" alt="Product image" class="w-full h-24 object-cover rounded-lg border border-white/10">' +
+                    (isPrimary ? '<span class="absolute top-1 left-1 px-1.5 py-0.5 bg-accent text-[10px] text-white rounded">Primary</span>' : '') +
+                    '<div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">' +
+                        (!isPrimary ? '<button onclick="ProductManagerComplete.setPrimaryImage(\'' + img.id + '\')" class="p-1.5 bg-white/20 rounded hover:bg-accent text-white text-xs" title="Set as primary"><i class="fa-solid fa-star"></i></button>' : '') +
+                        '<button onclick="ProductManagerComplete.removeProductImage(\'' + img.id + '\')" class="p-1.5 bg-red-500/80 rounded hover:bg-red-500 text-white text-xs" title="Remove"><i class="fa-solid fa-trash"></i></button>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            html += '</div>';
+            return html;
+        },
+
+        /**
+         * Load categories into the category select dropdown
+         */
+        loadCategoriesIntoSelect: function () {
+            var select = safeGet('productCategory');
+            if (!select) return;
+
+            // Clear existing options except default
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+
+            // Add category options
+            for (var i = 0; i < this.categories.length; i++) {
+                var option = document.createElement('option');
+                option.value = this.categories[i].value;
+                option.textContent = this.categories[i].label;
+                select.appendChild(option);
+            }
+
+            // Set selected value if editing
+            if (_currentEditingProduct && _currentEditingProduct.category) {
+                select.value = _currentEditingProduct.category;
+            } else if (_currentEditingProduct && _currentEditingProduct.categories) {
+                select.value = _currentEditingProduct.categories.slug || _currentEditingProduct.categories.id;
+            }
+        },
+
+        /**
+         * Setup event listeners for product form
+         */
+        setupProductFormEvents: function () {
+            var self = this;
+
+            // Image drop zone click
+            var dropZone = safeGet('imageDropZone');
+            var imageInput = safeGet('productImageInput');
+
+            if (dropZone && imageInput) {
+                dropZone.addEventListener('click', function () {
+                    imageInput.click();
+                });
+
+                // Drag and drop
+                dropZone.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    dropZone.classList.add('border-accent', 'bg-accent/5');
+                });
+
+                dropZone.addEventListener('dragleave', function (e) {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-accent', 'bg-accent/5');
+                });
+
+                dropZone.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-accent', 'bg-accent/5');
+                    
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        self.handleImageUpload({ target: { files: e.dataTransfer.files } });
+                    }
+                });
+
+                // File input change
+                imageInput.addEventListener('change', function (e) {
+                    self.handleImageUpload(e);
+                });
+            }
+
+            // Close modal on overlay click
+            var overlay = safeGet('productModalOverlay');
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) {
+                        self.closeModal();
+                    }
+                });
+            }
+
+            // ESC key to close
+            document.addEventListener('keydown', function escHandler(e) {
+                if (e.key === 'Escape') {
+                    self.closeModal();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            });
+        },
+
+        /**
+         * Handle image upload
+         * @param {Event} event - File input change event
+         */
+        handleImageUpload: function (event) {
+            var files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            var self = this;
+            var validFiles = [];
+            var maxSize = 5 * 1024 * 1024; // 5MB
+            var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+            // Validate files
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                
+                if (allowedTypes.indexOf(file.type) === -1) {
+                    showToast(file.name + ' is not a valid image type', 'warning');
+                    continue;
+                }
+
+                if (file.size > maxSize) {
+                    showToast(file.name + ' exceeds 5MB limit', 'warning');
+                    continue;
+                }
+
+                validFiles.push(file);
+            }
+
+            if (validFiles.length === 0) return;
+
+            showToast('Uploading ' + validFiles.length + ' image(s)...', 'info');
+
+            // Process each file
+            var uploadPromises = [];
+            
+            for (var j = 0; j < validFiles.length; j++) {
+                (function (file) {
+                    var promise = self.uploadSingleImage(file);
+                    uploadPromises.push(promise);
+                })(validFiles[j]);
+            }
+
+            Promise.all(uploadPromises)
+                .then(function (results) {
+                    var successCount = 0;
+                    for (var k = 0; k < results.length; k++) {
+                        if (results[k].success) {
+                            _uploadedImages.push(results[k]);
+                            successCount++;
+                        }
+                    }
+
+                    if (successCount > 0) {
+                        self.updateImagesPreview();
+                        showToast(successCount + ' image(s) uploaded successfully', 'success');
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Image upload error:', err);
+                    showToast('Some images failed to upload', 'error');
+                });
+
+            // Reset input
+            event.target.value = '';
+        },
+
+        /**
+         * Upload a single image to Supabase storage
+         * @param {File} file - Image file to upload
+         * @returns {Promise} Resolves with image data object
+         */
+        uploadSingleImage: function (file) {
+            var user = window.currentUser;
+            var userId = user ? user.id : 'anonymous';
+            var fileName = 'products/' + userId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+
+            return sb.storage.from('product-images')
+                .upload(fileName, file, { cacheControl: '3600', upsert: false })
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    var publicUrl = sb.storage.from('product-images').getPublicUrl(fileName);
+
+                    return {
+                        success: true,
+                        id: generateTempId(),
+                        url: publicUrl.publicURL,
+                        path: fileName,
+                        is_primary: _uploadedImages.length === 0 // First image is primary
                     };
+                })
+                .catch(function (err) {
+                    console.error('Single image upload error:', err);
+                    return { success: false, error: err.message, file: file.name };
+                });
+        },
 
-                    for (var i = 0; i < logs.length; i++) {
-                        var log = logs[i];
-                        var iconClass = icons[log.action] || 'fa-circle text-gray-300';
-                        var label = log.action.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        /**
+         * Update the images preview section
+         */
+        updateImagesPreview: function () {
+            var container = safeGet('productImagesPreview');
+            if (!container) return;
 
-                        html += '<div class="flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 border-b border-white/5 last:border-0">';
-                        html += '<div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0"><i class="fa-solid ' + iconClass + ' text-[10px] sm:text-xs"></i></div>';
-                        html += '<div class="flex-1 min-w-0">';
-                        html += '<p class="text-xs sm:text-sm text-softWhite">' + escapeHtml(label) + '</p>';
-                        html += '<p class="text-[11px] sm:text-xs text-muted">' + timeAgo(log.created_at) + '</p>';
-                        html += '</div>';
-                        html += '</div>';
+            container.innerHTML = this.buildImagesPreviewHtml(_uploadedImages);
+        },
+
+        /**
+         * Remove a product image
+         * @param {string} imageId - Image ID to remove
+         */
+        removeProductImage: function (imageId) {
+            if (!imageId) return;
+
+            // Find and remove from array
+            for (var i = 0; i < _uploadedImages.length; i++) {
+                if (_uploadedImages[i].id === imageId) {
+                    _uploadedImages.splice(i, 1);
+                    break;
+                }
+            }
+
+            // If removing primary, set new primary
+            if (_uploadedImages.length > 0) {
+                _uploadedImages[0].is_primary = true;
+            }
+
+            this.updateImagesPreview();
+            showToast('Image removed', 'info');
+        },
+
+        /**
+         * Set an image as primary
+         * @param {string} imageId - Image ID to set as primary
+         */
+        setPrimaryImage: function (imageId) {
+            if (!imageId) return;
+
+            for (var i = 0; i < _uploadedImages.length; i++) {
+                _uploadedImages[i].is_primary = (_uploadedImages[i].id === imageId);
+            }
+
+            this.updateImagesPreview();
+            showToast('Primary image updated', 'success');
+        },
+
+        /**
+         * Validate product form before saving
+         * @returns {boolean} True if valid
+         */
+        validateProductForm: function () {
+            var title = safeGet('productTitle');
+            var price = safeGet('productPrice');
+            var category = safeGet('productCategory');
+
+            // Required fields check
+            if (!title || !title.value.trim()) {
+                showToast('Product title is required', 'error');
+                if (title) title.focus();
+                return false;
+            }
+
+            if (!price || !price.value || isNaN(Number(price.value)) || Number(price.value) < 0) {
+                showToast('Please enter a valid price', 'error');
+                if (price) price.focus();
+                return false;
+            }
+
+            if (!category || !category.value) {
+                showToast('Please select a category', 'error');
+                if (category) category.focus();
+                return false;
+            }
+
+            // Price range validation
+            var priceValue = Number(price.value);
+            if (priceValue > 999999999) {
+                showToast('Price seems too high. Please verify.', 'warning');
+            }
+
+            return true;
+        },
+
+        /**
+         * Handle product save (create or update)
+         */
+        handleSaveProduct: function () {
+            var self = this;
+
+            // Validate form
+            if (!this.validateProductForm()) return;
+
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                showToast('Please sign in to manage products', 'error');
+                return;
+            }
+
+            // Gather form data
+            var formData = {
+                title: safeGet('productTitle').value.trim(),
+                description: safeGet('productDescription').value.trim(),
+                price: Number(safeGet('productPrice').value),
+                compare_price: Number(safeGet('productComparePrice').value) || null,
+                category: safeGet('productCategory').value,
+                status: safeGet('productStatus').value,
+                stock_quantity: Number(safeGet('productStock').value) || 0,
+                sku: safeGet('productSku').value.trim(),
+                tags: safeGet('productTags').value.trim()
+            };
+
+            // Determine if creating or updating
+            var isEdit = !!_currentEditingProduct;
+
+            showToast(isEdit ? 'Updating product...' : 'Creating product...', 'info');
+
+            var operation;
+            if (isEdit) {
+                // Update existing product
+                var updateData = {
+                    title: formData.title,
+                    description: formData.description,
+                    price: formData.price,
+                    compare_price: formData.compare_price,
+                    category: formData.category,
+                    status: formData.status,
+                    stock_quantity: formData.stock_quantity,
+                    sku: formData.sku,
+                    tags: formData.tags,
+                    is_active: formData.status === 'active',
+                    published_at: formData.status === 'active' ? new Date().toISOString() : null,
+                    updated_at: new Date().toISOString()
+                };
+
+                operation = sb.from('products').update(updateData).eq('id', _currentEditingProduct.id);
+            } else {
+                // Create new product
+                var insertData = {
+                    seller_id: user.id,
+                    title: formData.title,
+                    description: formData.description,
+                    price: formData.price,
+                    compare_price: formData.compare_price,
+                    category: formData.category,
+                    status: formData.status,
+                    stock_quantity: formData.stock_quantity,
+                    sku: formData.sku,
+                    tags: formData.tags,
+                    is_active: formData.status === 'active',
+                    published_at: formData.status === 'active' ? new Date().toISOString() : null
+                };
+
+                operation = sb.from('products').insert(insertData).select();
+            }
+
+            operation
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    var productId = isEdit ? _currentEditingProduct.id : (result.data && result.data[0] ? result.data[0].id : null);
+
+                    if (!productId) throw new Error('Failed to get product ID');
+
+                    // Save product images
+                    return self.saveProductImages(productId);
+                })
+                .then(function () {
+                    self.closeModal();
+                    showToast(isEdit ? 'Product updated successfully!' : 'Product created successfully!', 'success');
+
+                    // Refresh product lists
+                    if (window.DashboardManager && typeof window.DashboardManager.loadDashboardProducts === 'function') {
+                        window.DashboardManager.loadDashboardProducts();
+                    }
+                    if (window.DashboardManager && typeof window.DashboardManager.loadDashboardStats === 'function') {
+                        window.DashboardManager.loadDashboardStats();
                     }
 
-                    feedEl.innerHTML = html;
+                    // Log activity
+                    if (typeof window.logActivity === 'function') {
+                        window.logActivity(isEdit ? 'update_product' : 'add_product', 'product', productId);
+                    }
                 })
                 .catch(function (err) {
-                    console.error('Activity feed error:', err);
+                    console.error('Save product error:', err);
+                    showToast('Failed to save product: ' + (err.message || 'Unknown error'), 'error');
                 });
         },
 
         /**
-         * Update a product's status.
-         * @param {string} productId - UUID of the product.
-         * @param {string} status - New status ('draft', 'active', 'archived', 'banned').
-         * FIXED: H-07: Validate product ID format
+         * Save product images to database
+         * @param {string} productId - Product ID
+         * @returns {Promise}
          */
-        updateProductStatus: function (productId, status) {
-            if (!productId || !status) return;
-            // FIXED: H-07: Validate ID format
+        saveProductImages: function (productId) {
+            if (_uploadedImages.length === 0) {
+                return Promise.resolve();
+            }
+
+            var imageRecords = [];
+            for (var i = 0; i < _uploadedImages.length; i++) {
+                var img = _uploadedImages[i];
+                // Only save newly uploaded images (temp IDs)
+                if (img.id && img.id.indexOf('temp_') === 0) {
+                    imageRecords.push({
+                        product_id: productId,
+                        url: img.url,
+                        path: img.path || null,
+                        is_primary: img.is_primary || false,
+                        sort_order: i
+                    });
+                }
+            }
+
+            if (imageRecords.length === 0) {
+                return Promise.resolve();
+            }
+
+            return sb.from('product_images').insert(imageRecords);
+        },
+
+        /**
+         * Handle delete product with confirmation
+         * @param {string} productId - Product ID to delete
+         */
+        handleDeleteProduct: function (productId) {
+            if (!productId) {
+                showToast('No product selected', 'error');
+                return;
+            }
+
             if (!isValidUuid(productId)) {
                 console.error('Invalid product ID format');
                 return;
             }
 
-            var updateData = { status: status };
-            if (status === 'active') {
-                updateData.is_active = true;
-                updateData.published_at = new Date().toISOString();
-            } else if (status === 'archived') {
-                updateData.is_active = false;
-            } else if (status === 'banned') {
-                updateData.is_active = false;
-            } else if (status === 'draft') {
-                updateData.is_active = false;
-                updateData.published_at = null;
-            }
+            var confirmMsg = 'Are you sure you want to delete this product?\n\nThis action cannot be undone.';
+            if (!confirm(confirmMsg)) return;
 
-            sb.from('products').update(updateData).eq('id', productId)
-                .then(function () {
-                    showToast('Product status updated to ' + status, 'success');
-                    logActivity('update_product', 'product', productId, { status: status });
-                    DashboardManager.loadDashboardProducts();
-                    DashboardManager.loadDashboardStats();
-                })
-                .catch(function (err) {
-                    console.error('Update product status error:', err);
-                    showToast('Failed to update product status', 'error');
-                });
-        },
-
-        /**
-         * Delete a product (only draft/archived products can be deleted by sellers).
-         * @param {string} productId - UUID of the product.
-         * FIXED: H-07: Validate product ID format
-         */
-        deleteProduct: function (productId) {
-            if (!productId) return;
-            // FIXED: H-07: Validate ID format
-            if (!isValidUuid(productId)) {
-                console.error('Invalid product ID format');
-                return;
-            }
-            if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) return;
+            showToast('Deleting product...', 'info');
 
             sb.from('products').delete().eq('id', productId)
                 .then(function (result) {
                     if (result.error) {
-                        showToast('Cannot delete this product. It may have active orders.', 'error');
-                        return;
+                        throw result.error;
                     }
-                    showToast('Product deleted', 'success');
-                    logActivity('delete_product', 'product', productId);
-                    DashboardManager.loadDashboardProducts();
-                    DashboardManager.loadDashboardStats();
+
+                    showToast('Product deleted successfully', 'success');
+
+                    // Refresh lists
+                    if (window.DashboardManager && typeof window.DashboardManager.loadDashboardProducts === 'function') {
+                        window.DashboardManager.loadDashboardProducts();
+                    }
+                    if (window.DashboardManager && typeof window.DashboardManager.loadDashboardStats === 'function') {
+                        window.DashboardManager.loadDashboardStats();
+                    }
+
+                    // Log activity
+                    if (typeof window.logActivity === 'function') {
+                        window.logActivity('delete_product', 'product', productId);
+                    }
                 })
                 .catch(function (err) {
                     console.error('Delete product error:', err);
@@ -1818,618 +1349,1873 @@
         },
 
         /**
-         * Update an order item's status (for sellers).
-         * @param {string} orderItemId - UUID of the order_items row.
-         * @param {string} status - New status.
-         * @param {string|null} trackingNumber - Optional tracking number.
-         * FIXED: H-07: Validate order item ID format
+         * Show modal with HTML content
+         * @param {string} htmlContent - Modal HTML
          */
-        updateOrderItemStatus: function (orderItemId, status, trackingNumber) {
-            if (!orderItemId || !status) return;
-            // FIXED: H-07: Validate ID format
-            if (!isValidUuid(orderItemId)) {
-                console.error('Invalid order item ID format');
-                return;
-            }
+        showModal: function (htmlContent) {
+            // Remove existing modal if any
+            this.closeModal();
 
-            var updateData = { status: status };
-            if (trackingNumber) {
-                updateData.tracking_number = trackingNumber;
-            }
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = htmlContent;
+            document.body.appendChild(wrapper.firstChild);
 
-            sb.from('order_items').update(updateData).eq('id', orderItemId)
-                .then(function () {
-                    showToast('Order status updated to ' + status, 'success');
-                    DashboardManager.loadDashboardOrders();
-                })
-                .catch(function (err) {
-                    console.error('Update order status error:', err);
-                    showToast('Failed to update order status', 'error');
-                });
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
         },
 
         /**
-         * Save user settings (profile update for dashboard settings tab).
-         * @param {Object} settings - Key-value pairs to update.
-         * FIXED: Medium: Input length validation added
+         * Close and remove modal
          */
-        saveSettings: function (settings) {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                showToast('Please sign in first', 'info');
-                return;
-            }
-            if (!settings || typeof settings !== 'object') return;
-
-            var updateData = {};
-            // FIXED: Medium: Add input length validation
-            if (settings.first_name !== undefined) updateData.first_name = String(settings.first_name).substring(0, 100);
-            if (settings.last_name !== undefined) updateData.last_name = String(settings.last_name).substring(0, 100);
-            if (settings.brand_name !== undefined) updateData.brand_name = String(settings.brand_name).substring(0, 200);
-            if (settings.phone !== undefined) updateData.phone = String(settings.phone).substring(0, 20);
-            if (settings.description !== undefined) updateData.description = String(settings.description).substring(0, 2000);
-            if (settings.address_line1 !== undefined) updateData.address_line1 = String(settings.address_line1).substring(0, 255);
-            if (settings.city !== undefined) updateData.city = String(settings.city).substring(0, 100);
-            if (settings.region !== undefined) updateData.region = String(settings.region).substring(0, 100);
-            if (settings.postal_code !== undefined) updateData.postal_code = String(settings.postal_code).substring(0, 20);
-
-            if (Object.keys(updateData).length === 0) {
-                showToast('No changes to save', 'info');
-                return;
+        closeModal: function () {
+            var modal = safeGet('productModalOverlay');
+            if (modal) {
+                modal.parentNode.removeChild(modal);
             }
 
-            sb.from('profiles').update(updateData).eq('id', currentUser.id)
-                .then(function () {
-                    showToast('Settings saved successfully!', 'success');
-                    // Update local currentUser if global update function exists
-                    if (typeof window.refreshCurrentUser === 'function') {
-                        window.refreshCurrentUser();
-                    }
-                })
-                .catch(function (err) {
-                    console.error('Save settings error:', err);
-                    showToast('Failed to save settings', 'error');
-                });
-        }
-    };
+            // Restore body scroll
+            document.body.style.overflow = '';
 
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // NOTIFICATION MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var NotificationManager = {
+            _currentEditingProduct = null;
+            _uploadedImages = [];
+        },
 
         /**
-         * Load notifications for the current user.
-         * @param {number} limit - Max notifications to load.
-         * @returns {Promise} Resolves with array of notifications.
+         * Load categories from database (or use defaults)
+         * @returns {Promise} Resolves with categories array
          */
-        loadNotifications: function (limit) {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                _notificationCache = [];
-                return Promise.resolve([]);
-            }
-
-            limit = limit || 20;
-
-            return sb.from('notifications')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false })
-                .limit(limit)
+        loadCategories: function () {
+            return sb.from('categories').select('*').order('name')
                 .then(function (result) {
-                    _notificationCache = result.data || [];
-                    _unreadNotificationCount = 0;
-                    for (var i = 0; i < _notificationCache.length; i++) {
-                        if (!_notificationCache[i].is_read) _unreadNotificationCount++;
+                    if (result.data && result.data.length > 0) {
+                        return result.data;
                     }
-                    NotificationManager.renderNotificationBadge();
-                    return _notificationCache;
+                    // Return default categories
+                    return ProductManagerComplete.categories.map(function (c) {
+                        return { slug: c.value, name: c.label };
+                    });
                 })
                 .catch(function (err) {
-                    console.error('Notifications load error:', err);
-                    _notificationCache = [];
-                    return [];
+                    console.error('Load categories error:', err);
+                    return ProductManagerComplete.categories.map(function (c) {
+                        return { slug: c.value, name: c.label };
+                    });
                 });
         },
 
         /**
-         * Mark a single notification as read.
-         * @param {string} notificationId - UUID of the notification.
-         * FIXED: H-07: Validate notification ID format
+         * Load seller's products for dashboard
+         * @returns {Promise} Resolves with products array
          */
-        markAsRead: function (notificationId) {
-            if (!notificationId) return;
-            // FIXED: H-07: Validate notification ID format before using in DB operations
-            if (!isValidUuid(notificationId)) {
-                console.error('Invalid notification ID format');
-                return;
-            }
-
-            sb.from('notifications').update({ is_read: true }).eq('id', notificationId)
-                .then(function () {
-                    for (var i = 0; i < _notificationCache.length; i++) {
-                        if (_notificationCache[i].id === notificationId) {
-                            _notificationCache[i].is_read = true;
-                            _unreadNotificationCount = Math.max(0, _unreadNotificationCount - 1);
-                            break;
-                        }
-                    }
-                    NotificationManager.renderNotificationBadge();
-                })
-                .catch(function (err) {
-                    console.error('Mark as read error:', err);
-                });
-        },
-
-        /**
-         * Mark all notifications as read for the current user.
-         */
-        markAllAsRead: function () {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-
-            sb.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id).eq('is_read', false)
-                .then(function (result) {
-                    _unreadNotificationCount = 0;
-                    for (var i = 0; i < _notificationCache.length; i++) {
-                        _notificationCache[i].is_read = true;
-                    }
-                    NotificationManager.renderNotificationBadge();
-                    showToast('All notifications marked as read', 'success');
-                })
-                .catch(function (err) {
-                    console.error('Mark all as read error:', err);
-                });
-        },
-
-        /**
-         * Get the unread notification count.
-         * @returns {number}
-         */
-        getUnreadCount: function () {
-            return _unreadNotificationCount;
-        },
-
-        /**
-         * Render/update the notification badge in the header.
-         */
-        renderNotificationBadge: function () {
-            var badges = document.querySelectorAll('.notification-badge');
-            for (var i = 0; i < badges.length; i++) {
-                if (_unreadNotificationCount > 0) {
-                    badges[i].textContent = _unreadNotificationCount > 99 ? '99+' : _unreadNotificationCount;
-                    badges[i].style.display = 'flex';
-                } else {
-                    badges[i].style.display = 'none';
-                }
-            }
-        },
-
-        /**
-         * Render notification list HTML.
-         * @returns {string} HTML string for the notification dropdown/panel.
-         * FIXED: C-01: User data escaped via escapeHtml()
-         * FIXED: H-07: Notification ID validated before use in onclick
-         */
-        renderNotificationList: function () {
-            if (_notificationCache.length === 0) {
-                return '<div class="p-6 text-center"><div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-bell-slash text-accent"></i></div><p class="text-subtle text-sm font-medium">No notifications</p><p class="text-muted text-xs mt-1">We\'ll notify you when something arrives</p></div>';
-            }
-
-            var typeIcons = {
-                'order_placed': 'fa-bag-shopping text-blue-500',
-                'order_confirmed': 'fa-circle-check text-green-500',
-                'order_shipped': 'fa-truck text-purple-500',
-                'order_delivered': 'fa-box-open text-emerald-500',
-                'order_cancelled': 'fa-circle-xmark text-red-500',
-                'payment_verified': 'fa-credit-card text-green-500',
-                'payment_failed': 'fa-credit-card text-red-500',
-                'new_review': 'fa-star text-amber-500',
-                'new_message': 'fa-envelope text-blue-400',
-                'seller_approved': 'fa-store text-green-500',
-                'seller_rejected': 'fa-store text-red-500',
-                'low_stock': 'fa-triangle-exclamation text-orange-500',
-                'refund_approved': 'fa-rotate-left text-green-500',
-                'refund_rejected': 'fa-rotate-left text-red-500',
-                'system': 'fa-gear text-gray-500',
-                'promo': 'fa-tag text-amber-500',
-                'new_follower': 'fa-user-plus text-pink-500'
-            };
-
-            var html = '';
-            for (var i = 0; i < _notificationCache.length; i++) {
-                var n = _notificationCache[i];
-                var icon = typeIcons[n.type] || 'fa-bell text-gray-400';
-                var unread = !n.is_read ? 'bg-amber-50' : '';
-
-                // FIXED: H-07: Validate notification ID before using in onclick
-                var safeNotifId = isValidUuid(n.id) ? n.id : '';
-
-                html += '<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer ' + unread + '" onclick="NotificationManager.markAsRead(\'' + safeNotifId + '\')">';
-                html += '<div class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fa-solid ' + icon + ' text-sm"></i></div>';
-                html += '<div class="flex-1 min-w-0">';
-                // FIXED: C-01: Escape user data
-                html += '<p class="text-sm font-medium text-gray-800 ' + (!n.is_read ? '' : 'font-normal text-gray-600') + '">' + escapeHtml(n.title || 'Notification') + '</p>';
-                html += '<p class="text-xs text-gray-400 mt-0.5 line-clamp-2">' + escapeHtml(n.message || '') + '</p>';
-                html += '<p class="text-xs text-gray-300 mt-1">' + timeAgo(n.created_at) + '</p>';
-                html += '</div>';
-                if (!n.is_read) {
-                    html += '<div class="w-2 h-2 rounded-full bg-amber-500 mt-2 flex-shrink-0"></div>';
-                }
-                html += '</div>';
-            }
-
-            return html;
-        }
-    };
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // CONTACT MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var ContactManager = {
-
-        /**
-         * Submit a contact/support form.
-         * Creates a support_ticket and initial ticket_message.
-         * @param {Object} data - { subject, category, priority, message }.
-         * @returns {Promise}
-         * FIXED: Medium: Input length validation
-         */
-        submitContactForm: function (data) {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                showToast('Please sign in to contact us', 'info');
+        loadSellerProducts: function () {
+            var user = window.currentUser;
+            if (!user || !user.id) {
                 return Promise.reject(new Error('Not authenticated'));
             }
 
-            if (!data || !data.subject || !data.message) {
-                showToast('Please fill in all required fields', 'error');
-                return Promise.reject(new Error('Missing fields'));
-            }
-
-            // FIXED: Medium: Input length validation
-            var safeSubject = String(data.subject).substring(0, 200);
-            var safeMessage = String(data.message).substring(0, 10000);
-            var safeCategory = String(data.category || 'general').substring(0, 50);
-            var safePriority = String(data.priority || 'normal').substring(0, 20);
-
-            var ticketData = {
-                user_id: currentUser.id,
-                subject: safeSubject || 'General Inquiry',
-                category: safeCategory,
-                priority: safePriority
-            };
-
-            return sb.from('support_tickets').insert(ticketData).select('id').single()
+            return sb.from('products')
+                .select('*, categories(name, slug), product_images(url, is_primary)')
+                .eq('seller_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(100)
                 .then(function (result) {
-                    var ticketId = result.data ? result.data.id : result.id;
-                    return sb.from('ticket_messages').insert({
-                        ticket_id: ticketId,
-                        sender_id: currentUser.id,
-                        content: safeMessage
-                    });
-                })
-                .then(function () {
-                    showToast('Your message has been sent! We will get back to you soon.', 'success');
-                    logActivity('contact_form_submit', 'support_ticket', null, { subject: safeSubject });
-                })
-                .catch(function (err) {
-                    console.error('Contact form error:', err);
-                    showToast('Failed to send message. Please try again.', 'error');
-                    throw err;
+                    return result.data || [];
                 });
         }
     };
 
 
     // ═════════════════════════════════════════════════════════════════════════════════
-    // NEWSLETTER MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var NewsletterManager = {
-
-        /**
-         * Subscribe an email to the newsletter.
-         * @param {string} email - Email address to subscribe.
-         * @returns {Promise}
-         * FIXED: Medium: Email length validation
-         */
-        subscribe: function (email) {
-            if (!email || !email.trim()) {
-                showToast('Please enter your email address', 'info');
-                return Promise.reject(new Error('No email'));
-            }
-
-            // FIXED: Medium: Email length validation (RFC 5321 limit is 320 chars)
-            var trimmedEmail = email.trim().substring(0, 320);
-
-            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(trimmedEmail)) {
-                showToast('Please enter a valid email address', 'error');
-                return Promise.reject(new Error('Invalid email'));
-            }
-
-            return sb.from('newsletter_subscribers').upsert({
-                email: trimmedEmail.toLowerCase(),
-                is_active: true,
-                subscribed_at: new Date().toISOString(),
-                unsubscribed_at: null,
-                source: 'footer'
-            }, { onConflict: 'email' })
-                .then(function () {
-                    showToast('Thank you for subscribing!', 'success');
-                })
-                .catch(function (err) {
-                    console.error('Newsletter subscribe error:', err);
-                    showToast('Failed to subscribe. Please try again.', 'error');
-                    throw err;
-                });
-        }
-    };
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // RECENTLY VIEWED MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var RecentlyViewedManager = {
-
-        /**
-         * Track a product view for the current user.
-         * @param {string} productId - UUID of the product.
-         * FIXED: H-07: Validate product ID format
-         */
-        trackView: function (productId) {
-            if (!productId) return;
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
-            // FIXED: H-07: Validate product ID format
-            if (!isValidUuid(productId)) {
-                console.error('Invalid product ID format for trackView');
-                return;
-            }
-
-            sb.from('recently_viewed').upsert({
-                user_id: currentUser.id,
-                product_id: productId,
-                viewed_at: new Date().toISOString()
-            }, { onConflict: 'user_id,product_id' })
-                .then(function () {
-                    // Also increment view count on the product
-                    sb.rpc('increment_view_count', { p_product_id: productId }).then(function () {}, function () {});
-                })
-                .catch(function (err) {
-                    console.error('Track view error:', err);
-                });
-
-            // Also log visitor view
-            logVisit('product', productId);
-        },
-
-        /**
-         * Load recently viewed products for the current user.
-         * @param {number} limit - Max items to return.
-         * @returns {Promise} Resolves with array of products.
-         */
-        loadRecentlyViewed: function (limit) {
-            if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
-                return Promise.resolve([]);
-            }
-
-            limit = limit || 10;
-
-            return sb.from('recently_viewed')
-                .select('product_id, viewed_at')
-                .eq('user_id', currentUser.id)
-                .order('viewed_at', { ascending: false })
-                .limit(limit)
-                .then(function (result) {
-                    var viewed = result.data || [];
-                    if (viewed.length === 0) return [];
-
-                    var productIds = [];
-                    for (var i = 0; i < viewed.length; i++) {
-                        productIds.push(viewed[i].product_id);
-                    }
-
-                    return sb.from('v_products_with_images')
-                        .select('*')
-                        .in('id', productIds)
-                        .then(function (prodResult) {
-                            return prodResult.data || [];
-                        });
-                })
-                .catch(function (err) {
-                    console.error('Recently viewed load error:', err);
-                    return [];
-                });
-        },
-
-        /**
-         * Render recently viewed products as HTML cards.
-         * @param {number} limit - Max items to render.
-         * @returns {string} HTML string.
-         */
-        renderRecentlyViewed: function (limit) {
-            // This is synchronous - use cached data or empty
-            // For async, call loadRecentlyViewed() first then render
-            return '';
-        }
-    };
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // IMAGE MANAGER
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    var ImageManager = {
-
-        /**
-         * Upload an image to Supabase Storage.
-         * @param {File} file - The file object from an input element.
-         * @param {string} bucket - Storage bucket name (e.g. 'product-images', 'avatars').
-         * @param {string} path - File path within the bucket (e.g. 'user-id/filename.jpg').
-         * @returns {Promise} Resolves with { path, publicUrl }.
-         */
-        uploadImage: function (file, bucket, path) {
-            if (!file || !bucket || !path) {
-                return Promise.reject(new Error('Missing upload parameters'));
-            }
-
-            // Validate file type
-            var allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-            if (allowedTypes.indexOf(file.type) === -1) {
-                showToast('Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.', 'error');
-                return Promise.reject(new Error('Invalid file type'));
-            }
-
-            // Validate file size (5MB max)
-            var maxSize = 5 * 1024 * 1024;
-            if (file.size > maxSize) {
-                showToast('File is too large. Maximum size is 5MB.', 'error');
-                return Promise.reject(new Error('File too large'));
-            }
-
-            return sb.storage.from(bucket).upload(path, file, {
-                cacheControl: '3600',
-                upsert: false
-            })
-                .then(function (result) {
-                    var publicUrl = ImageManager.getPublicUrl(bucket, result.path);
-                    return {
-                        path: result.path,
-                        publicUrl: publicUrl
-                    };
-                })
-                .catch(function (err) {
-                    console.error('Image upload error:', err);
-                    showToast('Failed to upload image', 'error');
-                    throw err;
-                });
-        },
-
-        /**
-         * Delete an image from Supabase Storage.
-         * @param {string} bucket - Storage bucket name.
-         * @param {string} path - Full file path within the bucket.
-         * @returns {Promise}
-         */
-        deleteImage: function (bucket, path) {
-            if (!bucket || !path) {
-                return Promise.reject(new Error('Missing delete parameters'));
-            }
-
-            return sb.storage.from(bucket).remove([path])
-                .then(function () {
-                    // Successfully deleted
-                })
-                .catch(function (err) {
-                    console.error('Image delete error:', err);
-                    showToast('Failed to delete image', 'error');
-                    throw err;
-                });
-        },
-
-        /**
-         * Get the public URL for a file in Supabase Storage.
-         * @param {string} bucket - Storage bucket name.
-         * @param {string} path - File path within the bucket.
-         * @returns {string} Full public URL.
-         */
-        getPublicUrl: function (bucket, path) {
-            if (!bucket || !path) return '';
-
-            try {
-                var result = sb.storage.from(bucket).getPublicUrl(path);
-                return result.data ? result.data.publicUrl : result.publicUrl;
-            } catch (e) {
-                console.error('Get public URL error:', e);
-                return '';
-            }
-        }
-    };
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // GLOBAL EXPORTS
-    // ═════════════════════════════════════════════════════════════════════════════════
-
-    window.ProductManager = ProductManager;
-    window.SearchManager = SearchManager;
-    window.CartManager = CartManager;
-    window.WishlistManager = WishlistManager;
-    window.CategoryManager = CategoryManager;
-    window.DashboardManager = DashboardManager;
-    window.NotificationManager = NotificationManager;
-    window.ContactManager = ContactManager;
-    window.NewsletterManager = NewsletterManager;
-    window.RecentlyViewedManager = RecentlyViewedManager;
-    window.ImageManager = ImageManager;
-
-    // Also expose helpers
-    window.formatPrice = formatPrice;
-    window.slugify = slugify;
-    window.starRating = starRating;
-    window.timeAgo = timeAgo;
-    window.truncate = truncate;
-
-    // FIXED: C-04: Expose _cartData properly via getter function (not direct access)
-    window.getCartData = function () {
-        return _cartData;
-    };
-    
-    // FIXED: Expose utility functions for external use if needed
-    window.escapeHtml = escapeHtml;
-    window.sanitizeSearchInput = sanitizeSearchInput;
-
-
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // INITIALIZATION
+    // SECTION: LIBRARY SYSTEM COMPLETION
     // ═════════════════════════════════════════════════════════════════════════════════
 
     /**
-     * Initialize the marketplace managers.
-     * Call this after auth session is established.
-     * FIXED: C-05: Cart operations now return promises for proper chaining
+     * Library Manager - File management system for sellers
+     * Handles uploads, organization, and reuse of digital assets
      */
-    window.initMarketplace = function () {
-        // Load public data (always)
-        CategoryManager.loadCategories().then(function () {
-            CategoryManager.renderCategoryCounts();
-        });
+    var LibraryManager = {
 
-        ProductManager.loadFeaturedProducts();
-        SearchManager.init();
+        // Allowed file types
+        allowedTypes: {
+            'image/jpeg': { icon: 'fa-image', label: 'JPEG', color: 'text-blue-400' },
+            'image/png': { icon: 'fa-image', label: 'PNG', color: 'text-green-400' },
+            'image/gif': { icon: 'fa-image', label: 'GIF', color: 'text-purple-400' },
+            'image/webp': { icon: 'fa-image', label: 'WebP', color: 'text-cyan-400' },
+            'application/pdf': { icon: 'fa-file-pdf', label: 'PDF', color: 'text-red-400' },
+            'application/zip': { icon: 'fa-file-zipper', label: 'ZIP', color: 'text-yellow-400' },
+            'application/x-rar-compressed': { icon: 'fa-file-zipper', label: 'RAR', color: 'text-orange-400' }
+        },
 
-        // Load user-specific data (if logged in)
-        if (typeof currentUser !== 'undefined' && currentUser && currentUser.id) {
-            // FIXED: C-05: Now returns promise but we don't need to await here
-            // The operations will complete asynchronously
-            CartManager.loadCart();
-            WishlistManager.loadWishlist();
-            NotificationManager.loadNotifications();
+        maxFileSize: 10 * 1024 * 1024, // 10MB
+
+        /**
+         * Initialize library section
+         */
+        init: function () {
+            console.log('[library] Library Manager initializing...');
+            this.loadLibraryItems();
+            this.setupLibraryEvents();
+        },
+
+        /**
+         * Setup library event listeners
+         */
+        setupLibraryEvents: function () {
+            var self = this;
+
+            // Upload button click
+            var uploadBtn = safeGet('libraryUploadBtn');
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', function () {
+                    self.showUploadModal();
+                });
+            }
+
+            // Library search
+            var searchInput = safeGet('librarySearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    self.filterLibraryItems(this.value);
+                });
+            }
+        },
+
+        /**
+         * Load library items from database/storage
+         */
+        loadLibraryItems: function () {
+            var self = this;
+            var container = safeGet('libraryContent') || safeGet('libraryGrid');
+
+            if (!container) {
+                console.warn('[library] Container element not found');
+                return;
+            }
+
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                this.renderLoginPrompt(container);
+                return;
+            }
+
+            // Show loading state
+            this.showLoadingState(container);
+
+            sb.from('library_items')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('uploaded_at', { ascending: false })
+                .limit(100)
+                .then(function (result) {
+                    var items = result.data || [];
+                    _libraryItemsCache = items;
+
+                    if (items.length === 0) {
+                        self.showEmptyState(container);
+                    } else {
+                        self.renderLibraryGrid(container, items);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('[library] Load error:', err);
+                    self.showErrorState(container, err.message);
+                });
+        },
+
+        /**
+         * Render library grid with items
+         * @param {HTMLElement} container - Container element
+         * @param {Array} items - Library items array
+         */
+        renderLibraryGrid: function (container, items) {
+            if (typeof container === 'string') {
+                container = safeGet(container);
+            }
+            if (!container) return;
+
+            if (!items || items.length === 0) {
+                this.showEmptyState(container);
+                return;
+            }
+
+            var html = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">';
+
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                var typeInfo = this.getFileTypeInfo(item.file_type || item.mime_type);
+                var isImage = (item.file_type || item.mime_type || '').indexOf('image/') === 0;
+
+                html += '<div class="library-item group bg-white/5 rounded-lg overflow-hidden border border-white/10 hover:border-accent/50 transition-all" data-item-id="' + item.id + '">';
+
+                // Preview area
+                if (isImage && item.url) {
+                    html += '<div class="aspect-square bg-black/30 relative overflow-hidden">' +
+                        '<img src="' + item.url + '" alt="' + escapeHtml(item.name || 'File') + '" class="w-full h-full object-cover">' +
+                        '<div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">' +
+                            '<button onclick="LibraryManager.previewItem(\'' + item.id + '\')" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 text-white" title="Preview"><i class="fa-solid fa-eye"></i></button>' +
+                            '<button onclick="LibraryManager.useInProduct(\'' + item.id + '\')" class="p-2 bg-accent/80 rounded-lg hover:bg-accent text-white" title="Use in Product"><i class="fa-solid fa-plus"></i></button>' +
+                            '<button onclick="LibraryManager.deleteLibraryItem(\'' + item.id + '\')" class="p-2 bg-red-500/80 rounded-lg hover:bg-red-500 text-white" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
+                        '</div>' +
+                    '</div>';
+                } else {
+                    html += '<div class="aspect-square bg-black/30 relative flex items-center justify-center">' +
+                        '<i class="fa-solid ' + (typeInfo.icon || 'fa-file') + ' text-4xl ' + (typeInfo.color || 'text-gray-400') + '"></i>' +
+                        '<div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">' +
+                            '<button onclick="LibraryManager.downloadItem(\'' + item.id + '\')" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 text-white" title="Download"><i class="fa-solid fa-download"></i></button>' +
+                            '<button onclick="LibraryManager.useInProduct(\'' + item.id + '\')" class="p-2 bg-accent/80 rounded-lg hover:bg-accent text-white" title="Use in Product"><i class="fa-solid fa-plus"></i></button>' +
+                            '<button onclick="LibraryManager.deleteLibraryItem(\'' + item.id + '\')" class="p-2 bg-red-500/80 rounded-lg hover:bg-red-500 text-white" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
+                        '</div>' +
+                    '</div>';
+                }
+
+                // Info area
+                html += '<div class="p-3">' +
+                    '<p class="text-sm text-white truncate" title="' + escapeHtml(item.name || 'Unnamed') + '">' + escapeHtml(item.name || 'Unnamed') + '</p>' +
+                    '<div class="flex justify-between items-center mt-1">' +
+                        '<span class="text-[11px] text-muted">' + formatFileSize(item.file_size) + '</span>' +
+                        '<span class="text-[11px] text-muted">' + timeAgo(item.uploaded_at || item.created_at) + '</span>' +
+                    '</div>' +
+                '</div>';
+
+                html += '</div>';
+            }
+
+            html += '</div>';
+
+            // Add upload button at end
+            html += '<div class="library-upload-trigger col-span-full sm:col-span-1 md:col-span-1 aspect-square max-w-[200px] mx-auto sm:mx-0 border-2 border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all" onclick="LibraryManager.showUploadModal()">' +
+                '<i class="fa-solid fa-plus text-2xl text-gray-500 mb-2"></i>' +
+                '<span class="text-sm text-gray-500">Upload File</span>' +
+            '</div>';
+
+            container.innerHTML = html;
+        },
+
+        /**
+         * Get file type info object
+         * @param {string} mimeType - MIME type string
+         * @returns {Object} Type info with icon, label, color
+         */
+        getFileTypeInfo: function (mimeType) {
+            return this.allowedTypes[mimeType] || { icon: 'fa-file', label: 'File', color: 'text-gray-400' };
+        },
+
+        /**
+         * Show empty state UI
+         * @param {HTMLElement} container - Container element
+         */
+        showEmptyState: function (container) {
+            if (typeof container === 'string') {
+                container = safeGet(container);
+            }
+            if (!container) return;
+
+            container.innerHTML =
+                '<div class="empty-state flex flex-col items-center justify-center py-12 px-4">' +
+                    '<div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-accent/10 flex items-center justify-center mb-4">' +
+                        '<i class="fa-solid fa-folder-open text-accent text-2xl sm:text-3xl"></i>' +
+                    '</div>' +
+                    '<h3 class="text-base sm:text-lg font-medium text-white mb-2">Your Library is Empty</h3>' +
+                    '<p class="text-sm text-muted text-center max-w-md mb-6">Upload images, documents, and other files to use in your products.</p>' +
+                    '<button onclick="LibraryManager.showUploadModal()" class="px-6 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors font-medium">' +
+                        '<i class="fa-solid fa-cloud-upload-alt mr-2"></i>Upload Your First File' +
+                    '</button>' +
+                '</div>';
+        },
+
+        /**
+         * Show loading spinner state
+         * @param {HTMLElement} container - Container element
+         */
+        showLoadingState: function (container) {
+            if (typeof container === 'string') {
+                container = safeGet(container);
+            }
+            if (!container) return;
+
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-12">' +
+                    '<div class="w-10 h-10 border-2 border-white/20 border-t-accent rounded-full animate-spin mb-4"></div>' +
+                    '<p class="text-sm text-muted">Loading your library...</p>' +
+                '</div>';
+        },
+
+        /**
+         * Show error state
+         * @param {HTMLElement} container - Container element
+         * @param {string} message - Error message
+         */
+        showErrorState: function (container, message) {
+            if (typeof container === 'string') {
+                container = safeGet(container);
+            }
+            if (!container) return;
+
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-12">' +
+                    '<div class="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">' +
+                        '<i class="fa-solid fa-exclamation-triangle text-red-400 text-2xl"></i>' +
+                    '</div>' +
+                    '<h3 class="text-base font-medium text-white mb-2">Something Went Wrong</h3>' +
+                    '<p class="text-sm text-muted text-center max-w-md mb-4">' + escapeHtml(message || 'Failed to load library') + '</p>' +
+                    '<button onclick="LibraryManager.loadLibraryItems()" class="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors">' +
+                        '<i class="fa-solid fa-refresh mr-2"></i>Try Again' +
+                    '</button>' +
+                '</div>';
+        },
+
+        /**
+         * Show login prompt for unauthenticated users
+         * @param {HTMLElement} container - Container element
+         */
+        renderLoginPrompt: function (container) {
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-12">' +
+                    '<div class="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">' +
+                        '<i class="fa-solid fa-lock text-accent text-2xl"></i>' +
+                    '</div>' +
+                    '<h3 class="text-base font-medium text-white mb-2">Sign In Required</h3>' +
+                    '<p class="text-sm text-muted text-center max-w-md mb-6">Please sign in to access your library and upload files.</p>' +
+                    '<button onclick="navigateTo(\'auth\'); openAuth(\'signin\');" class="px-6 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors font-medium">' +
+                        'Sign In to Continue' +
+                    '</button>' +
+                '</div>';
+        },
+
+        /**
+         * Show file upload modal
+         */
+        showUploadModal: function () {
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                showToast('Please sign in to upload files', 'info');
+                if (typeof window.openAuth === 'function') window.openAuth('signin');
+                return;
+            }
+
+            var modalHtml =
+                '<div class="modal-overlay" id="libraryModalOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;">' +
+                    '<div class="bg-[#111] rounded-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">' +
+                        '<div class="flex justify-between items-center mb-6">' +
+                            '<h2 class="text-lg font-semibold text-white">Upload to Library</h2>' +
+                            '<button onclick="LibraryManager.closeUploadModal()" class="text-gray-400 hover:text-white transition-colors">' +
+                                '<i class="fa-solid fa-times text-xl"></i>' +
+                            '</button>' +
+                        '</div>' +
+
+                        '<div class="border-2 border-dashed border-white/20 rounded-lg p-8 text-center hover:border-accent/50 transition-colors cursor-pointer mb-4" id="libraryDropZone">' +
+                            '<input type="file" id="libraryFileInput" multiple class="hidden" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.zip,.rar">' +
+                            '<i class="fa-solid fa-cloud-upload-alt text-3xl text-gray-500 mb-3"></i>' +
+                            '<p class="text-white mb-1">Drag & drop files here</p>' +
+                            '<p class="text-sm text-gray-500">or <span class="text-accent cursor-pointer underline">browse</span> to choose</p>' +
+                            '<p class="text-xs text-gray-600 mt-3">Images, PDFs, ZIP files up to 10MB</p>' +
+                        '</div>' +
+
+                        '<div id="libraryUploadProgress" class="hidden mb-4"></div>' +
+
+                        '<div class="flex justify-end gap-3">' +
+                            '<button onclick="LibraryManager.closeUploadModal()" class="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors">Cancel</button>' +
+                            '<button onclick="document.getElementById(\'libraryFileInput\').click()" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors">Select Files</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+            // Create and show modal
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = modalHtml;
+            document.body.appendChild(wrapper.firstChild);
+
+            document.body.style.overflow = 'hidden';
+
+            this.setupUploadModalEvents();
+        },
+
+        /**
+         * Setup upload modal event listeners
+         */
+        setupUploadModalEvents: function () {
+            var self = this;
+            var dropZone = safeGet('libraryDropZone');
+            var fileInput = safeGet('libraryFileInput');
+
+            if (dropZone && fileInput) {
+                dropZone.addEventListener('click', function () {
+                    fileInput.click();
+                });
+
+                dropZone.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    this.classList.add('border-accent', 'bg-accent/5');
+                });
+
+                dropZone.addEventListener('dragleave', function (e) {
+                    e.preventDefault();
+                    this.classList.remove('border-accent', 'bg-accent/5');
+                });
+
+                dropZone.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    this.classList.remove('border-accent', 'bg-accent/5');
+                    if (e.dataTransfer.files) {
+                        self.processFileUpload(e.dataTransfer.files);
+                    }
+                });
+
+                fileInput.addEventListener('change', function (e) {
+                    if (e.target.files) {
+                        self.processFileUpload(e.target.files);
+                    }
+                });
+            }
+
+            // Close on overlay click
+            var overlay = safeGet('libraryModalOverlay');
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) {
+                        self.closeUploadModal();
+                    }
+                });
+            }
+
+            // ESC key close
+            document.addEventListener('keydown', function escHandler(e) {
+                if (e.key === 'Escape') {
+                    self.closeUploadModal();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            });
+        },
+
+        /**
+         * Process file upload(s)
+         * @param {FileList} files - Files to upload
+         */
+        processFileUpload: function (files) {
+            var self = this;
+            var user = window.currentUser;
+            var validFiles = [];
+            var allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'zip', 'rar'];
+
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var ext = file.name.split('.').pop().toLowerCase();
+
+                // Check file size
+                if (file.size > this.maxFileSize) {
+                    showToast(file.name + ' exceeds 10MB limit', 'warning');
+                    continue;
+                }
+
+                // Check extension
+                if (allowedExtensions.indexOf(ext) === -1) {
+                    showToast(file.name + ' file type not supported', 'warning');
+                    continue;
+                }
+
+                validFiles.push(file);
+            }
+
+            if (validFiles.length === 0) return;
+
+            // Show progress
+            var progressContainer = safeGet('libraryUploadProgress');
+            if (progressContainer) {
+                progressContainer.classList.remove('hidden');
+                progressContainer.innerHTML = '<div class="space-y-2"></div>';
+            }
+
+            // Upload each file
+            var successCount = 0;
+            var processedCount = 0;
+
+            for (var j = 0; j < validFiles.length; j++) {
+                (function (file) {
+                    self.handleFileUpload(file)
+                        .then(function () {
+                            successCount++;
+                            processedCount++;
+                            
+                            if (processedCount === validFiles.length) {
+                                self.closeUploadModal();
+                                self.loadLibraryItems();
+                                showToast(successCount + ' of ' + validFiles.length + ' file(s) uploaded', successCount === validFiles.length ? 'success' : 'warning');
+                            }
+                        })
+                        .catch(function (err) {
+                            console.error('File upload error:', err);
+                            processedCount++;
+                            
+                            if (processedCount === validFiles.length) {
+                                if (progressContainer) progressContainer.classList.add('hidden');
+                                showToast('Some files failed to upload', 'error');
+                            }
+                        });
+                })(validFiles[j]);
+            }
+        },
+
+        /**
+         * Handle single file upload to Supabase
+         * @param {File} file - File to upload
+         * @returns {Promise}
+         */
+        handleFileUpload: function (file) {
+            var user = window.currentUser;
+            var userId = user ? user.id : 'anonymous';
+            var ext = file.name.split('.').pop().toLowerCase();
+            var fileName = 'library/' + userId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+            return sb.storage.from('library')
+                .upload(fileName, file, { cacheControl: '3600', upsert: false })
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    var publicUrl = sb.storage.from('library').getPublicUrl(fileName);
+
+                    // Insert record into library_items table
+                    return sb.from('library_items').insert({
+                        user_id: userId,
+                        name: file.name,
+                        url: publicUrl.publicURL,
+                        path: fileName,
+                        file_type: file.type,
+                        file_size: file.size,
+                        mime_type: file.type
+                    });
+                })
+                .then(function (result) {
+                    if (result.error) throw result.error;
+                    return result;
+                });
+        },
+
+        /**
+         * Close upload modal
+         */
+        closeUploadModal: function () {
+            var modal = safeGet('libraryModalOverlay');
+            if (modal) {
+                modal.parentNode.removeChild(modal);
+            }
+            document.body.style.overflow = '';
+        },
+
+        /**
+         * Delete a library item
+         * @param {string} itemId - Item ID to delete
+         */
+        deleteLibraryItem: function (itemId) {
+            if (!itemId) return;
+
+            if (!confirm('Are you sure you want to delete this file?')) return;
+
+            var self = this;
+
+            // First get item info to also delete from storage
+            sb.from('library_items').select('*').eq('id', itemId).single()
+                .then(function (result) {
+                    if (result.error || !result.data) throw result.error || new Error('Item not found');
+
+                    var item = result.data;
+
+                    // Delete from storage if path exists
+                    var storagePromise = item.path
+                        ? sb.storage.from('library').remove([item.path]).catch(function (err) {
+                            console.warn('Storage deletion warning:', err);
+                            return { error: null }; // Don't fail if storage delete fails
+                          })
+                        : Promise.resolve({ error: null });
+
+                    return storagePromise.then(function () {
+                        // Delete from database
+                        return sb.from('library_items').delete().eq('id', itemId);
+                    });
+                })
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    showToast('File deleted', 'success');
+                    self.loadLibraryItems(); // Refresh list
+                })
+                .catch(function (err) {
+                    console.error('Delete library item error:', err);
+                    showToast('Failed to delete file', 'error');
+                });
+        },
+
+        /**
+         * Rename a library item
+         * @param {string} itemId - Item ID
+         * @param {string} newName - New name
+         */
+        renameLibraryItem: function (itemId, newName) {
+            if (!itemId || !newName) return;
+
+            newName = newName.trim();
+            if (newName.length === 0) {
+                showToast('Name cannot be empty', 'error');
+                return;
+            }
+
+            var self = this;
+
+            sb.from('library_items').update({ name: newName }).eq('id', itemId)
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    showToast('File renamed', 'success');
+                    self.loadLibraryItems(); // Refresh
+                })
+                .catch(function (err) {
+                    console.error('Rename error:', err);
+                    showToast('Failed to rename file', 'error');
+                });
+        },
+
+        /**
+         * Get cached library items
+         * @returns {Array} Cached items array
+         */
+        getLibraryItems: function () {
+            return _libraryItemsCache;
+        },
+
+        /**
+         * Use a library item in a product (link it)
+         * @param {string} itemId - Library item ID
+         * @param {string|null} productId - Optional product ID
+         */
+        useInProduct: function (itemId, productId) {
+            var item = null;
+            for (var i = 0; i < _libraryItemsCache.length; i++) {
+                if (_libraryItemsCache[i].id === itemId) {
+                    item = _libraryItemsCache[i];
+                    break;
+                }
+            }
+
+            if (!item) {
+                showToast('Item not found', 'error');
+                return;
+            }
+
+            // If no product specified, open product form with this image
+            if (!productId) {
+                // Add to product form images if open
+                if (_uploadedImages) {
+                    _uploadedImages.push({
+                        id: generateTempId(),
+                        url: item.url,
+                        path: item.path,
+                        is_primary: _uploadedImages.length === 0
+                    });
+
+                    if (typeof ProductManagerComplete !== 'undefined') {
+                        ProductManagerComplete.updateImagesPreview();
+                    }
+                    showToast('Image added to product form', 'success');
+                } else {
+                    // Open add product modal with this image pre-selected
+                    if (typeof ProductManagerComplete !== 'undefined') {
+                        ProductManagerComplete.showAddProductModal();
+                        // Wait for modal then add image
+                        setTimeout(function () {
+                            _uploadedImages.push({
+                                id: generateTempId(),
+                                url: item.url,
+                                path: item.path,
+                                is_primary: true
+                            });
+                            ProductManagerComplete.updateImagesPreview();
+                        }, 200);
+                    }
+                }
+            } else {
+                // Link to specific product
+                sb.from('product_images').insert({
+                    product_id: productId,
+                    url: item.url,
+                    path: item.path,
+                    is_primary: false
+                }).then(function (result) {
+                    if (result.error) throw result.error;
+                    showToast('Image added to product', 'success');
+                }).catch(function (err) {
+                    console.error('Link to product error:', err);
+                    showToast('Failed to add image to product', 'error');
+                });
+            }
+        },
+
+        /**
+         * Preview a library item
+         * @param {string} itemId - Item ID
+         */
+        previewItem: function (itemId) {
+            var item = null;
+            for (var i = 0; i < _libraryItemsCache.length; i++) {
+                if (_libraryItemsCache[i].id === itemId) {
+                    item = _libraryItemsCache[i];
+                    break;
+                }
+            }
+
+            if (!item || !item.url) return;
+
+            // Create preview modal
+            var modalHtml =
+                '<div class="modal-overlay" id="previewModalOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;" onclick="LibraryManager.closePreviewModal()">' +
+                    '<div class="max-w-4xl max-h-[90vh] p-4" onclick="event.stopPropagation()">' +
+                        '<img src="' + item.url + '" alt="' + escapeHtml(item.name) + '" class="max-w-full max-h-[85vh] object-contain rounded-lg">' +
+                        '<p class="text-center text-white mt-4">' + escapeHtml(item.name) + '</p>' +
+                    '</div>' +
+                    '<button class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300" onclick="LibraryManager.closePreviewModal()">' +
+                        '<i class="fa-solid fa-times"></i>' +
+                    '</button>' +
+                '</div>';
+
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = modalHtml;
+            document.body.appendChild(wrapper.firstChild);
+            document.body.style.overflow = 'hidden';
+        },
+
+        /**
+         * Close preview modal
+         */
+        closePreviewModal: function () {
+            var modal = safeGet('previewModalOverlay');
+            if (modal) {
+                modal.parentNode.removeChild(modal);
+            }
+            document.body.style.overflow = '';
+        },
+
+        /**
+         * Download a library item
+         * @param {string} itemId - Item ID
+         */
+        downloadItem: function (itemId) {
+            var item = null;
+            for (var i = 0; i < _libraryItemsCache.length; i++) {
+                if (_libraryItemsCache[i].id === itemId) {
+                    item = _libraryItemsCache[i];
+                    break;
+                }
+            }
+
+            if (!item || !item.url) return;
+
+            // Create download link
+            var link = document.createElement('a');
+            link.href = item.url;
+            link.download = item.name || 'download';
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+
+        /**
+         * Filter library items by search term
+         * @param {string} searchTerm - Search query
+         */
+        filterLibraryItems: function (searchTerm) {
+            var container = safeGet('libraryContent') || safeGet('libraryGrid');
+            if (!container || !_libraryItemsCache.length) return;
+
+            searchTerm = (searchTerm || '').toLowerCase().trim();
+
+            if (!searchTerm) {
+                this.renderLibraryGrid(container, _libraryItemsCache);
+                return;
+            }
+
+            var filtered = [];
+            for (var i = 0; i < _libraryItemsCache.length; i++) {
+                var item = _libraryItemsCache[i];
+                if ((item.name || '').toLowerCase().indexOf(searchTerm) !== -1 ||
+                    (item.file_type || '').toLowerCase().indexOf(searchTerm) !== -1) {
+                    filtered.push(item);
+                }
+            }
+
+            this.renderLibraryGrid(container, filtered);
         }
-
-        // Log landing page visit
-        logVisit('home');
     };
 
-    // Auto-init if DOM is ready and currentUser exists
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(function () {
-            if (typeof currentUser !== 'undefined' && currentUser) {
-                window.initMarketplace();
+
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // SECTION: COLLECTION SYSTEM COMPLETION
+    // ═════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Collection Manager - Organize products into collections
+     * Full CRUD operations with many-to-many product relationships
+     */
+    var CollectionManager = {
+
+        // Current collection being viewed/edited
+        _currentCollection: null,
+
+        /**
+         * Initialize collection system
+         */
+        init: function () {
+            console.log('[collection] Collection Manager initializing...');
+            this.setupCollectionEvents();
+        },
+
+        /**
+         * Setup collection event listeners
+         */
+        setupCollectionEvents: function () {
+            var self = this;
+
+            // Create collection button
+            var createBtn = safeGet('createCollectionBtn');
+            if (createBtn) {
+                createBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    self.showCreateModal();
+                });
             }
-        }, 100);
-    } else {
-        document.addEventListener('DOMContentLoaded', function () {
-            setTimeout(function () {
-                if (typeof currentUser !== 'undefined' && currentUser) {
-                    window.initMarketplace();
+        },
+
+        /**
+         * Load collections for current seller
+         */
+        loadCollections: function () {
+            var self = this;
+            var container = safeGet('collectionsList') || safeGet('collectionsContent');
+
+            if (!container) return;
+
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                this.renderCollectionsLoginPrompt(container);
+                return;
+            }
+
+            this.showCollectionsLoading(container);
+
+            sb.from('collections')
+                .select('*, collection_products(product_id)')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .then(function (result) {
+                    var collections = result.data || [];
+                    _collectionsCache = collections;
+
+                    if (collections.length === 0) {
+                        self.showCollectionsEmpty(container);
+                    } else {
+                        self.renderCollectionsList(container, collections);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('[collection] Load error:', err);
+                    self.showCollectionsError(container, err.message);
+                });
+        },
+
+        /**
+         * Render collections list view
+         * @param {HTMLElement} container - Container element
+         * @param {Array} collections - Collections array
+         */
+        renderCollectionsList: function (container, collections) {
+            if (typeof container === 'string') {
+                container = safeGet(container);
+            }
+            if (!container) return;
+
+            var html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">';
+
+            for (var i = 0; i < collections.length; i++) {
+                var coll = collections[i];
+                var productCount = coll.collection_products ? coll.collection_products.length : 0;
+                var visibilityIcon = coll.is_public
+                    ? '<i class="fa-solid fa-globe text-green-400" title="Public"></i>'
+                    : '<i class="fa-solid fa-lock text-yellow-400" title="Private"></i>';
+
+                html += '<div class="collection-card bg-white/5 rounded-xl border border-white/10 overflow-hidden hover:border-accent/50 transition-all group">' +
+                    // Header with cover image or gradient
+                    '<div class="h-32 bg-gradient-to-br from-accent/20 to-purple-500/20 relative">' +
+                        '<div class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">' +
+                            '<button onclick="CollectionManager.showEditModal(\'' + coll.id + '\')" class="p-2 bg-black/50 rounded-lg hover:bg-white/20 text-white text-sm" title="Edit"><i class="fa-solid fa-pen"></i></button>' +
+                            '<button onclick="CollectionManager.deleteCollection(\'' + coll.id + '\')" class="p-2 bg-black/50 rounded-lg hover:bg-red-500 text-white text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
+                        '</div>' +
+                        '<div class="absolute bottom-3 left-3">' +
+                            visibilityIcon +
+                        '</div>' +
+                    '</div>' +
+
+                    // Content
+                    '<div class="p-4">' +
+                        '<h3 class="text-white font-medium mb-1 truncate" title="' + escapeHtml(coll.name || 'Untitled') + '">' + escapeHtml(coll.name || 'Untitled') + '</h3>' +
+                        '<p class="text-sm text-muted line-clamp-2 mb-3">' + escapeHtml(coll.description || 'No description') + '</p>' +
+                        '<div class="flex justify-between items-center">' +
+                            '<span class="text-xs text-muted"><i class="fa-solid fa-box mr-1"></i>' + productCount + ' product(s)</span>' +
+                            '<button onclick="CollectionManager.viewCollectionDetail(\'' + coll.id + '\')" class="text-xs text-accent hover:underline">View Details →</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            html += '</div>';
+
+            // Add create button card
+            html += '<div class="collection-create-card bg-white/5 rounded-xl border border-dashed border-white/20 flex flex-col items-center justify-center min-h-[250px] cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all" onclick="CollectionManager.showCreateModal()">' +
+                '<i class="fa-solid fa-plus text-3xl text-gray-500 mb-3"></i>' +
+                '<span class="text-sm text-gray-500">Create New Collection</span>' +
+            '</div>';
+
+            container.innerHTML = html;
+        },
+
+        /**
+         * Show create collection modal
+         */
+        showCreateModal: function () {
+            var user = window.currentUser;
+            if (!user || !user.id) {
+                showToast('Please sign in to create collections', 'info');
+                return;
+            }
+
+            this._currentCollection = null;
+
+            var modalHtml = this.buildCollectionFormModal(null);
+            this.showCollectionModal(modalHtml);
+        },
+
+        /**
+         * Show edit collection modal
+         * @param {string} collectionId - Collection ID to edit
+         */
+        showEditModal: function (collectionId) {
+            if (!collectionId) return;
+
+            var self = this;
+            showToast('Loading collection...', 'info');
+
+            sb.from('collections')
+                .select('*')
+                .eq('id', collectionId)
+                .single()
+                .then(function (result) {
+                    if (result.error || !result.data) {
+                        throw result.error || new Error('Collection not found');
+                    }
+
+                    self._currentCollection = result.data;
+
+                    var modalHtml = self.buildCollectionFormModal(result.data);
+                    self.showCollectionModal(modalHtml);
+                })
+                .catch(function (err) {
+                    console.error('Load collection error:', err);
+                    showToast('Failed to load collection', 'error');
+                });
+        },
+
+        /**
+         * Build collection form modal HTML
+         * @param {Object|null} collection - Collection data for edit, null for create
+         * @returns {string} Modal HTML
+         */
+        buildCollectionFormModal: function (collection) {
+            var isEdit = !!collection;
+            var title = isEdit ? 'Edit Collection' : 'Create New Collection';
+            var submitText = isEdit ? 'Update Collection' : 'Create Collection';
+            var c = collection || {};
+
+            return '<div class="modal-overlay" id="collectionModalOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;">' +
+                '<div class="bg-[#111] rounded-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">' +
+                    '<div class="flex justify-between items-center mb-6">' +
+                        '<h2 class="text-lg font-semibold text-white">' + title + '</h2>' +
+                        '<button onclick="CollectionManager.closeCollectionModal()" class="text-gray-400 hover:text-white transition-colors">' +
+                            '<i class="fa-solid fa-times text-xl"></i>' +
+                        '</button>' +
+                    '</div>' +
+
+                    '<form id="collectionForm" onsubmit="return false;">' +
+                        '<input type="hidden" id="collectionId" value="' + (c.id || '') + '">' +
+
+                        '<div class="mb-4">' +
+                            '<label class="block text-sm text-gray-400 mb-1">Collection Name <span class="text-red-500">*</span></label>' +
+                            '<input type="text" id="collectionName" value="' + escapeHtml(c.name || '') + '" ' +
+                                'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none" ' +
+                                'placeholder="Enter collection name" required maxlength="100">' +
+                        '</div>' +
+
+                        '<div class="mb-4">' +
+                            '<label class="block text-sm text-gray-400 mb-1">Description</label>' +
+                            '<textarea id="collectionDescription" rows="3" ' +
+                                'class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent focus:outline-none resize-none" ' +
+                                'placeholder="Describe this collection...">' + escapeHtml(c.description || '') + '</textarea>' +
+                        '</div>' +
+
+                        '<div class="mb-6">' +
+                            '<label class="flex items-center gap-3 cursor-pointer">' +
+                                '<input type="checkbox" id="collectionIsPublic" ' + (c.is_public ? 'checked' : '') + ' ' +
+                                    'class="w-5 h-5 rounded border-white/20 bg-white/5 text-accent focus:ring-accent focus:ring-offset-0">' +
+                                '<span class="text-sm text-gray-300">Make this collection publicly visible</span>' +
+                            '</label>' +
+                        '</div>' +
+
+                        '<div class="flex justify-end gap-3 pt-4 border-t border-white/10">' +
+                            '<button type="button" onclick="CollectionManager.closeCollectionModal()" ' +
+                                'class="px-5 py-2.5 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors">Cancel</button>' +
+                            '<button type="button" onclick="CollectionManager.handleSaveCollection()" ' +
+                                'class="px-5 py-2.5 rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors font-medium">' + submitText + '</button>' +
+                        '</div>' +
+                    '</form>' +
+                '</div>' +
+            '</div>';
+        },
+
+        /**
+         * Show collection modal
+         * @param {string} htmlContent - Modal HTML
+         */
+        showCollectionModal: function (htmlContent) {
+            this.closeCollectionModal();
+
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = htmlContent;
+            document.body.appendChild(wrapper.firstChild);
+
+            document.body.style.overflow = 'hidden';
+
+            // Close on overlay click
+            var overlay = safeGet('collectionModalOverlay');
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) {
+                        CollectionManager.closeCollectionModal();
+                    }
+                });
+            }
+
+            // ESC key close
+            document.addEventListener('keydown', function escHandler(e) {
+                if (e.key === 'Escape') {
+                    CollectionManager.closeCollectionModal();
+                    document.removeEventListener('keydown', escHandler);
                 }
-            }, 100);
-        });
+            });
+        },
+
+        /**
+         * Close collection modal
+         */
+        closeCollectionModal: function () {
+            var modal = safeGet('collectionModalOverlay');
+            if (modal) {
+                modal.parentNode.removeChild(modal);
+            }
+            document.body.style.overflow = '';
+            this._currentCollection = null;
+        },
+
+        /**
+         * Handle save collection (create or update)
+         */
+        handleSaveCollection: function () {
+            var self = this;
+            var user = window.currentUser;
+
+            if (!user || !user.id) {
+                showToast('Please sign in first', 'error');
+                return;
+            }
+
+            // Validate
+            var nameInput = safeGet('collectionName');
+            if (!nameInput || !nameInput.value.trim()) {
+                showToast('Collection name is required', 'error');
+                return;
+            }
+
+            var collectionData = {
+                user_id: user.id,
+                name: nameInput.value.trim(),
+                description: (safeGet('collectionDescription') || {}).value.trim(),
+                is_public: (safeGet('collectionIsPublic') || {}).checked || false
+            };
+
+            var isEdit = !!this._currentCollection;
+
+            showToast(isEdit ? 'Updating collection...' : 'Creating collection...', 'info');
+
+            var operation;
+            if (isEdit) {
+                operation = sb.from('collections')
+                    .update(collectionData)
+                    .eq('id', this._currentCollection.id);
+            } else {
+                operation = sb.from('collections')
+                    .insert(collectionData)
+                    .select();
+            }
+
+            operation
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    self.closeCollectionModal();
+                    showToast(isEdit ? 'Collection updated!' : 'Collection created!', 'success');
+
+                    // Refresh list
+                    self.loadCollections();
+
+                    // Log activity
+                    if (typeof window.logActivity === 'function') {
+                        var collId = isEdit ? self._currentCollection.id : (result.data && result.data[0] ? result.data[0].id : null);
+                        window.logActivity(isEdit ? 'update_collection' : 'create_collection', 'collection', collId);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Save collection error:', err);
+                    showToast('Failed to save collection: ' + (err.message || 'Unknown error'), 'error');
+                });
+        },
+
+        /**
+         * Delete a collection with confirmation
+         * @param {string} collectionId - Collection ID
+         */
+        deleteCollection: function (collectionId) {
+            if (!collectionId) return;
+
+            if (!confirm('Are you sure you want to delete this collection?\n\nThis will not delete the products inside it.')) return;
+
+            var self = this;
+
+            // First delete collection_products links, then the collection
+            sb.from('collection_products').delete().eq('collection_id', collectionId)
+                .then(function () {
+                    return sb.from('collections').delete().eq('id', collectionId);
+                })
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    showToast('Collection deleted', 'success');
+                    self.loadCollections();
+
+                    if (typeof window.logActivity === 'function') {
+                        window.logActivity('delete_collection', 'collection', collectionId);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Delete collection error:', err);
+                    showToast('Failed to delete collection', 'error');
+                });
+        },
+
+        /**
+         * View collection detail with products
+         * @param {string} collectionId - Collection ID
+         */
+        viewCollectionDetail: function (collectionId) {
+            var self = this;
+
+            // Load full collection data with products
+            Promise.all([
+                sb.from('collections').select('*').eq('id', collectionId).single(),
+                sb.from('collection_products')
+                    .select('*, products(*, product_images(url, is_primary))')
+                    .eq('collection_id', collectionId)
+                    .order('sort_order', { ascending: true })
+            ]).then(function (results) {
+                var collection = results[0].data;
+                var collectionProducts = results[1].data || [];
+
+                if (results[0].error || !collection) {
+                    throw results[0].error || new Error('Collection not found');
+                }
+
+                self._currentCollection = collection;
+                self.renderCollectionDetail(collection, collectionProducts);
+            }).catch(function (err) {
+                console.error('Load collection detail error:', err);
+                showToast('Failed to load collection detail', 'error');
+            });
+        },
+
+        /**
+         * Render collection detail view
+         * @param {Object} collection - Collection data
+         * @param {Array} products - Products in collection
+         */
+        renderCollectionDetail: function (collection, products) {
+            var container = safeGet('collectionsContent') || safeGet('collectionsList');
+            if (!container) return;
+
+            var productCount = products ? products.length : 0;
+
+            var html =
+                '<div class="mb-6">' +
+                    '<button onclick="CollectionManager.loadCollections()" class="text-sm text-accent hover:underline mb-4 inline-flex items-center gap-2">' +
+                        '<i class="fa-solid fa-arrow-left"></i> Back to Collections' +
+                    '</button>' +
+
+                    '<div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden">' +
+                        '<div class="h-40 bg-gradient-to-br from-accent/20 to-purple-500/20 flex items-center justify-center">' +
+                            '<h1 class="text-2xl sm:text-3xl font-bold text-white">' + escapeHtml(collection.name || 'Untitled') + '</h1>' +
+                        '</div>' +
+
+                        '<div class="p-6">' +
+                            '<div class="flex flex-wrap items-start justify-between gap-4 mb-6">' +
+                                '<div>' +
+                                    '<p class="text-muted mb-2">' + escapeHtml(collection.description || 'No description') + '</p>' +
+                                    '<div class="flex items-center gap-4 text-sm text-muted">' +
+                                        '<span><i class="fa-solid fa-box mr-1"></i>' + productCount + ' product(s)</span>' +
+                                        '<span><i class="fa-solid ' + (collection.is_public ? 'fa-globe text-green-400' : 'fa-lock text-yellow-400') + ' mr-1"></i>' +
+                                            (collection.is_public ? 'Public' : 'Private') +
+                                        '</span>' +
+                                        '<span><i class="fa-solid fa-clock mr-1"></i>Created ' + timeAgo(collection.created_at) + '</span>' +
+                                    '</div>' +
+                                '</div>' +
+
+                                '<div class="flex gap-2">' +
+                                    '<button onclick="CollectionManager.showEditModal(\'' + collection.id + '\')" class="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm">' +
+                                        '<i class="fa-solid fa-pen mr-1"></i>Edit' +
+                                    '</button>' +
+                                    '<button onclick="CollectionManager.showAddProductModal(\'' + collection.id + '\')" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors text-sm">' +
+                                        '<i class="fa-solid fa-plus mr-1"></i>Add Products' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>';
+
+            // Products grid
+            if (products && products.length > 0) {
+                html += this.renderCollectionProducts(products);
+            } else {
+                html +=
+                    '<div class="text-center py-12 border-2 border-dashed border-white/10 rounded-lg">' +
+                        '<i class="fa-solid fa-box-open text-4xl text-gray-600 mb-4"></i>' +
+                        '<p class="text-muted mb-4">No products in this collection yet</p>' +
+                        '<button onclick="CollectionManager.showAddProductModal(\'' + collection.id + '\')" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors text-sm">' +
+                            '<i class="fa-solid fa-plus mr-1"></i>Add Products' +
+                        '</button>' +
+                    '</div>';
+            }
+
+            html += '</div></div></div>';
+
+            container.innerHTML = html;
+        },
+
+        /**
+         * Render products grid within collection detail
+         * @param {Array} collectionProducts - Array of collection_product records with nested product data
+         * @returns {string} HTML string
+         */
+        renderCollectionProducts: function (collectionProducts) {
+            var html = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">';
+
+            for (var i = 0; i < collectionProducts.length; i++) {
+                var cp = collectionProducts[i];
+                var product = cp.products;
+                if (!product) continue;
+
+                var imageUrl = '';
+                if (product.product_images && product.product_images.length > 0) {
+                    // Find primary image
+                    for (var j = 0; j < product.product_images.length; j++) {
+                        if (product.product_images[j].is_primary) {
+                            imageUrl = product.product_images[j].url;
+                            break;
+                        }
+                    }
+                    if (!imageUrl && product.product_images.length > 0) {
+                        imageUrl = product.product_images[0].url;
+                    }
+                }
+
+                html += '<div class="group bg-white/5 rounded-lg overflow-hidden border border-white/10 hover:border-accent/50 transition-all">' +
+                    '<div class="aspect-square bg-black/30 relative">' +
+                        (imageUrl
+                            ? '<img src="' + imageUrl + '" alt="' + escapeHtml(product.title) + '" class="w-full h-full object-cover">'
+                            : '<div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-image text-2xl text-gray-600"></i></div>'
+                        ) +
+                        '<div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">' +
+                            '<button onclick="CollectionManager.removeProductFromCollection(\'' + cp.collection_id + '\', \'' + cp.product_id + '\')" ' +
+                                'class="p-1.5 bg-red-500/80 rounded text-white text-xs hover:bg-red-500" title="Remove from collection">' +
+                                '<i class="fa-solid fa-times"></i>' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="p-3">' +
+                        '<p class="text-sm text-white truncate" title="' + escapeHtml(product.title) + '">' + escapeHtml(product.title) + '</p>' +
+                        '<p class="text-accent text-sm font-medium mt-1">' + formatPrice(product.price) + '</p>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            html += '</div>';
+            return html;
+        },
+
+        /**
+         * Load products in a collection
+         * @param {string} collectionId - Collection ID
+         * @returns {Promise} Resolves with products array
+         */
+        loadCollectionProducts: function (collectionId) {
+            return sb.from('collection_products')
+                .select('*, products(*, product_images(url, is_primary))')
+                .eq('collection_id', collectionId)
+                .order('sort_order', { ascending: true })
+                .then(function (result) {
+                    return result.data || [];
+                });
+        },
+
+        /**
+         * Show modal to add products to collection
+         * @param {string} collectionId - Collection ID
+         */
+        showAddProductModal: function (collectionId) {
+            var self = this;
+            var user = window.currentUser;
+
+            if (!user || !user.id) {
+                showToast('Please sign in first', 'error');
+                return;
+            }
+
+            showToast('Loading your products...', 'info');
+
+            // Load seller's products
+            sb.from('products')
+                .select('*, product_images(url, is_primary)')
+                .eq('seller_id', user.id)
+                .eq('status', 'active')
+                .then(function (result) {
+                    var products = result.data || [];
+
+                    // Get already added product IDs
+                    return sb.from('collection_products')
+                        .select('product_id')
+                        .eq('collection_id', collectionId)
+                        .then(function (existingResult) {
+                            var existingIds = {};
+                            var existing = existingResult.data || [];
+                            for (var i = 0; i < existing.length; i++) {
+                                existingIds[existing[i].product_id] = true;
+                            }
+
+                            // Filter out already added products
+                            var availableProducts = [];
+                            for (var j = 0; j < products.length; j++) {
+                                if (!existingIds[products[j].id]) {
+                                    availableProducts.push(products[j]);
+                                }
+                            }
+
+                            self.renderAddProductModal(collectionId, availableProducts);
+                        });
+                })
+                .catch(function (err) {
+                    console.error('Load products error:', err);
+                    showToast('Failed to load products', 'error');
+                });
+        },
+
+        /**
+         * Render the add products modal
+         * @param {string} collectionId - Collection ID
+         * @param {Array} products - Available products
+         */
+        renderAddProductModal: function (collectionId, products) {
+            var html =
+                '<div class="modal-overlay" id="addProductModalOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;">' +
+                    '<div class="bg-[#111] rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">' +
+                        '<div class="flex justify-between items-center mb-6">' +
+                            '<h2 class="text-lg font-semibold text-white">Add Products to Collection</h2>' +
+                            '<button onclick="CollectionManager.closeAddProductModal()" class="text-gray-400 hover:text-white transition-colors">' +
+                                '<i class="fa-solid fa-times text-xl"></i>' +
+                            '</button>' +
+                        '</div>';
+
+            if (products.length === 0) {
+                html +=
+                    '<div class="text-center py-8">' +
+                        '<p class="text-muted">All your active products are already in this collection.</p>' +
+                    '</div>';
+            } else {
+                html +=
+                    '<div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6" id="addProductGrid">';
+
+                for (var i = 0; i < products.length; i++) {
+                    var p = products[i];
+                    var imgUrl = '';
+                    if (p.product_images && p.product_images.length > 0) {
+                        imgUrl = p.product_images[0].url || '';
+                    }
+
+                    html +=
+                        '<div class="add-product-item bg-white/5 rounded-lg border border-white/10 overflow-hidden cursor-pointer hover:border-accent transition-all" data-product-id="' + p.id + '" onclick="CollectionManager.toggleProductSelection(this)">' +
+                            '<div class="aspect-square bg-black/30 relative">' +
+                                (imgUrl
+                                    ? '<img src="' + imgUrl + '" alt="' + escapeHtml(p.title) + '" class="w-full h-full object-cover">'
+                                    : '<div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-image text-xl text-gray-600"></i></div>'
+                                ) +
+                                '<div class="absolute top-2 left-2 w-6 h-6 rounded border-2 border-white/40 flex items-center justify-center selection-checkbox">' +
+                                    '<i class="fa-solid fa-check text-white text-xs opacity-0"></i>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="p-2">' +
+                                '<p class="text-xs text-white truncate">' + escapeHtml(p.title) + '</p>' +
+                                '<p class="text-xs text-accent">' + formatPrice(p.price) + '</p>' +
+                            '</div>' +
+                        '</div>';
+                }
+
+                html += '</div>';
+
+                html +=
+                    '<div class="flex justify-end gap-3 pt-4 border-t border-white/10">' +
+                        '<button onclick="CollectionManager.closeAddProductModal()" class="px-5 py-2.5 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors">Cancel</button>' +
+                        '<button onclick="CollectionManager.addSelectedProducts(\'' + collectionId + '\')" class="px-5 py-2.5 rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors font-medium">' +
+                            '<i class="fa-solid fa-plus mr-2"></i>Add Selected' +
+                        '</button>' +
+                    '</div>';
+            }
+
+            html += '</div></div>';
+
+            // Show modal
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = html;
+            document.body.appendChild(wrapper.firstChild);
+            document.body.style.overflow = 'hidden';
+
+            // Setup close events
+            var overlay = safeGet('addProductModalOverlay');
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) {
+                        CollectionManager.closeAddProductModal();
+                    }
+                });
+            }
+        },
+
+        /**
+         * Toggle product selection in add modal
+         * @param {HTMLElement} el - Product item element
+         */
+        toggleProductSelection: function (el) {
+            el.classList.toggle('selected');
+            el.classList.toggle('border-accent');
+
+            var checkbox = el.querySelector('.selection-checkbox');
+            var icon = checkbox.querySelector('i');
+
+            if (el.classList.contains('selected')) {
+                checkbox.classList.add('bg-accent', 'border-accent');
+                checkbox.classList.remove('border-white/40');
+                icon.classList.remove('opacity-0');
+            } else {
+                checkbox.classList.remove('bg-accent', 'border-accent');
+                checkbox.classList.add('border-white/40');
+                icon.classList.add('opacity-0');
+            }
+        },
+
+        /**
+         * Add selected products to collection
+         * @param {string} collectionId - Collection ID
+         */
+        addSelectedProducts: function (collectionId) {
+            var self = this;
+            var selected = document.querySelectorAll('.add-product-item.selected');
+
+            if (selected.length === 0) {
+                showToast('Please select at least one product', 'info');
+                return;
+            }
+
+            var productIds = [];
+            for (var i = 0; i < selected.length; i++) {
+                productIds.push(selected[i].dataset.productId);
+            }
+
+            // Create collection_products records
+            var records = [];
+            for (var j = 0; j < productIds.length; j++) {
+                records.push({
+                    collection_id: collectionId,
+                    product_id: productIds[j],
+                    sort_order: j
+                });
+            }
+
+            showToast('Adding products...', 'info');
+
+            sb.from('collection_products').insert(records)
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    self.closeAddProductModal();
+                    showToast(selected.length + ' product(s) added to collection', 'success');
+                    self.viewCollectionDetail(collectionId); // Refresh detail view
+                })
+                .catch(function (err) {
+                    console.error('Add products error:', err);
+                    showToast('Failed to add some products', 'error');
+                });
+        },
+
+        /**
+         * Add a single product to collection
+         * @param {string} collectionId - Collection ID
+         * @param {string} productId - Product ID
+         */
+        addProductToCollection: function (collectionId, productId) {
+            var self = this;
+
+            // Check if already exists
+            sb.from('collection_products')
+                .select('id')
+                .eq('collection_id', collectionId)
+                .eq('product_id', productId)
+                .maybeSingle()
+                .then(function (result) {
+                    if (result.data) {
+                        showToast('Product already in collection', 'info');
+                        return;
+                    }
+
+                    return sb.from('collection_products').insert({
+                        collection_id: collectionId,
+                        product_id: productId,
+                        sort_order: Date.now()
+                    });
+                })
+                .then(function (result) {
+                    if (result && result.error) throw result.error;
+                    if (result && result.data) {
+                        showToast('Product added to collection', 'success');
+                        self.viewCollectionDetail(collectionId);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Add to collection error:', err);
+                    showToast('Failed to add product', 'error');
+                });
+        },
+
+        /**
+         * Remove a product from collection
+         * @param {string} collectionId - Collection ID
+         * @param {string} productId - Product ID
+         */
+        removeProductFromCollection: function (collectionId, productId) {
+            var self = this;
+
+            sb.from('collection_products')
+                .delete()
+                .eq('collection_id', collectionId)
+                .eq('product_id', productId)
+                .then(function (result) {
+                    if (result.error) throw result.error;
+
+                    showToast('Product removed from collection', 'success');
+                    self.viewCollectionDetail(collectionId); // Refresh
+                })
+                .catch(function (err) {
+                    console.error('Remove from collection error:', err);
+                    showToast('Failed to remove product', 'error');
+                });
+        },
+
+        /**
+         * Close add product modal
+         */
+        closeAddProductModal: function () {
+            var modal = safeGet('addProductModalOverlay');
+            if (modal) {
+                modal.parentNode.removeChild(modal);
+            }
+            document.body.style.overflow = '';
+        },
+
+        /**
+         * Show collections loading state
+         * @param {HTMLElement} container - Container element
+         */
+        showCollectionsLoading: function (container) {
+            if (typeof container === 'string') container = safeGet(container);
+            if (!container) return;
+
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-12">' +
+                    '<div class="w-10 h-10 border-2 border-white/20 border-t-accent rounded-full animate-spin mb-4"></div>' +
+                    '<p class="text-sm text-muted">Loading collections...</p>' +
+                '</div>';
+        },
+
+        /**
+         * Show collections empty state
+         * @param {HTMLElement} container - Container element
+         */
+        showCollectionsEmpty: function (container) {
+            if (typeof container === 'string') container = safeGet(container);
+            if (!container) return;
+
+            container.innerHTML =
+                '<div class="empty-state flex flex-col items-center justify-center py-12 px-4">' +
+                    '<div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-accent/10 flex items-center justify-center mb-4">' +
+                        '<i class="fa-solid fa-layer-group text-accent text-2xl sm:text-3xl"></i>' +
+                    '</div>' +
+                    '<h3 class="text-base sm:text-lg font-medium text-white mb-2">No Collections Yet</h3>' +
+                    '<p class="text-sm text-muted text-center max-w-md mb-6">Create collections to organize your products into curated groups.</p>' +
+                    '<button onclick="CollectionManager.showCreateModal()" class="px-6 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors font-medium">' +
+                        '<i class="fa-solid fa-plus mr-2"></i>Create Your First Collection' +
+                    '</button>' +
+                '</div>';
+        },
+
+        /**
+         * Show collections error state
+         * @param {HTMLElement} container - Container element
+         * @param {string} message - Error message
+         */
+        showCollectionsError: function (container, message) {
+            if (typeof container === 'string') container = safeGet(container);
+            if (!container) return;
+
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-12">' +
+                    '<div class="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">' +
+                        '<i class="fa-solid fa-exclamation-triangle text-red-400 text-2xl"></i>' +
+                    '</div>' +
+                    '<h3 class="text-base font-medium text-white mb-2">Something Went Wrong</h3>' +
+                    '<p class="text-sm text-muted text-center max-w-md mb-4">' + escapeHtml(message || 'Failed to load collections') + '</p>' +
+                    '<button onclick="CollectionManager.loadCollections()" class="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors">' +
+                        '<i class="fa-solid fa-refresh mr-2"></i>Try Again' +
+                    '</button>' +
+                '</div>';
+        },
+
+        /**
+         * Show login prompt for collections
+         * @param {HTMLElement} container - Container element
+         */
+        renderCollectionsLoginPrompt: function (container) {
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-12">' +
+                    '<div class="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">' +
+                        '<i class="fa-solid fa-lock text-accent text-2xl"></i>' +
+                    '</div>' +
+                    '<h3 class="text-base font-medium text-white mb-2">Sign In Required</h3>' +
+                    '<p class="text-sm text-muted text-center max-w-md mb-6">Please sign in to create and manage collections.</p>' +
+                    '<button onclick="navigateTo(\'auth\'); openAuth(\'signin\');" class="px-6 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors font-medium">' +
+                        'Sign In to Continue' +
+                    '</button>' +
+                '</div>';
+        }
+    };
+
+
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // SECTION: EVENT BINDING & INITIALIZATION
+    // ═════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Main initialization function
+     * Sets up all completions and binds events
+     */
+    function initializeCompletions() {
+        console.log('[completion] Initializing feature completions...');
+
+        // Initialize Product Manager enhancements
+        if (typeof ProductManagerComplete !== 'undefined') {
+            ProductManagerComplete.init();
+        }
+
+        // Initialize Collection Manager
+        if (typeof CollectionManager !== 'undefined') {
+            CollectionManager.init();
+        }
+
+        // Patch "Add Product" buttons globally
+        patchAddProductButtons();
+
+        // Patch "Coming Soon" features
+        patchComingSoonFeatures();
+
+        // Setup navigation observer for lazy loading
+        setupNavigationObserver();
+
+        console.log('[completion] All feature completions initialized');
     }
 
+    /**
+     * Replace "coming soon" toast handlers with real functionality
+     */
+    function patchAddProductButtons() {
+        // Find all elements with inline onclick showing "coming soon" toast for products
+        var allElements = document.querySelectorAll('[onclick]');
+        var pattern = /Product management will be available soon/i;
+
+        for (var i = 0; i < allElements.length; i++) {
+            var el = allElements[i];
+            var onclick = el.getAttribute('onclick') || '';
+            
+            if (pattern.test(onclick)) {
+                // Store original handler reference
+                el.dataset.originalOnclick = onclick;
+                
+                // Remove original handler
+                el.removeAttribute('onclick');
+                
+                // Add new handler
+                (function (element) {
+                    element.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (typeof ProductManagerComplete !== 'undefined') {
+                            ProductManagerComplete.showAddProductModal();
+                        } else {
+                            showToast('Product management is loading...', 'info');
+                        }
+                    });
+                })(el);
+
+                console.log('[completion] Patched Add Product button');
+            }
+        }
+    }
+
+    /**
+     * Patch other "coming soon" placeholders
+     */
+    function patchComingSoonFeatures() {
+        var allElements = document.querySelectorAll('[onclick]');
+        
+        // Analytics buttons
+        var analyticsPattern = /Analytics will be available soon/i;
+        for (var i = 0; i < allElements.length; i++) {
+            var el = allElements[i];
+            var onclick = el.getAttribute('onclick') || '';
+            
+            if (analyticsPattern.test(onclick)) {
+                (function (element) {
+                    element.removeAttribute('onclick');
+                    element.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (typeof DashboardCompletion !== 'undefined') {
+                            DashboardCompletion.viewBasicAnalytics();
+                        } else {
+                            showToast('Analytics loading...', 'info');
+                        }
+                    });
+                })(el);
+            }
+        }
+
+        // Checkout button
+        var checkoutPattern = /Checkout will be available/i;
+        for (var j = 0; j < allElements.length; j++) {
+            var checkoutEl = allElements[j];
+            var checkoutOnclick = checkoutEl.getAttribute('onclick') || '';
+            
+            if (checkoutPattern.test(checkoutOnclick)) {
+                (function (element) {
+                    element.removeAttribute('onclick');
+                    element.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Navigate to checkout if CheckoutManager exists
+                        if (typeof window.CheckoutManager !== 'undefined' && typeof window.CheckoutManager.initCheckout === 'function') {
+                            window.CheckoutManager.initCheckout();
+                        } else {
+                            navigateTo('checkout');
+                        }
+                    });
+                })(checkoutEl);
+            }
+        }
+    }
+
+    /**
+     * Setup observer for view navigation to trigger lazy loading
+     */
+    function setupNavigationObserver() {
+        // Watch for view changes to initialize sections as needed
+        var observer = new MutationObserver(function (mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                var mutation = mutations[i];
+                
+                // Check for view changes
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    var target = mutation.target;
+                    
+                    // Check if dashboard became visible
+                    if (target.id === 'view-dashboard' && target.classList.contains('active')) {
+                        if (typeof DashboardCompletion !== 'undefined') {
+                            DashboardCompletion.initDashboard();
+                        }
+                    }
+                    
+                    // Check if library became visible
+                    if (target.id === 'view-library' && target.classList.contains('active')) {
+                        if (typeof LibraryManager !== 'undefined') {
+                            LibraryManager.init();
+                        }
+                    }
+                    
+                    // Check if collections became visible
+                    if ((target.id === 'view-collection' || target.id === 'view-collections') && target.classList.contains('active')) {
+                        if (typeof CollectionManager !== 'undefined') {
+                            CollectionManager.loadCollections();
+                        }
+                    }
+                }
+            }
+        });
+
+        // Start observing when DOM is ready
+        if (document.body) {
+            observer.observe(document.body, {
+                attributes: true,
+                subtree: true,
+                attributeFilter: ['class']
+            });
+        }
+    }
+
+
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // SECTION: EXPOSE TO WINDOW & FINALIZE
+    // ═════════════════════════════════════════════════════════════════════════════════
+
+    // Expose managers to global scope
+    window.DashboardCompletion = DashboardCompletion;
+    window.ProductManagerComplete = ProductManagerComplete;
+    window.LibraryManager = LibraryManager;
+    window.CollectionManager = CollectionManager;
+
+    // Auto-initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeCompletions);
+    } else {
+        // Small delay to ensure other scripts loaded first
+        setTimeout(initializeCompletions, 100);
+    }
+
+    console.log('[completion] K.Subject-1 Marketplace Completion Module loaded v1.0.0');
 
 })();
