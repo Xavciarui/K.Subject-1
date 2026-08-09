@@ -900,11 +900,11 @@
         }
         
         .empty-state-action i {
-            /* No animation */
+            transition: none;
         }
         
         .empty-state-action:hover i {
-            /* No movement */
+            transform: none;
         }
         
         .empty-state-action:focus-visible {
@@ -2245,6 +2245,70 @@
         .faq-cat-pill:hover:not(.active) { background: rgba(255,255,255,0.04); }
         .eligibility-grid-card { transition: all 0.3s ease; }
         .eligibility-grid-card:hover { transform: translateY(-2px); border-color: rgba(232,166,48,0.15); }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION BUTTONS FIX - Ensure all nav buttons are clickable
+       Added: z-index layering, pointer-events enforcement
+       ═══════════════════════════════════════════════════════════════ */
+    
+    /* Force header and nav to be above overlays */
+    header {
+        position: relative !important;
+        z-index: 999 !important;
+    }
+    
+    /* Ensure all navigation links/buttons are clickable */
+    .nav-link,
+    header button,
+    nav button,
+    [onclick*="navigateTo"] {
+        position: relative !important;
+        z-index: 1000 !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: rgba(232, 166, 48, 0.2) !important;
+    }
+    
+    /* Fix for mobile navigation */
+    #mobileNav button,
+    #mobileNavTrigger button,
+    .dash-mobile-nav,
+    .auth-mobile-btn,
+    .user-mobile-btn {
+        position: relative !important;
+        z-index: 1001 !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+    }
+    
+    /* Ensure dropdowns don't block parent buttons when hidden */
+    #userMenuDropdown:not(.open),
+    #mobileNav:not(.open) {
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    
+    #userMenuDropdown.open,
+    #mobileNav.open {
+        visibility: visible !important;
+        pointer-events: auto !important;
+        z-index: 1002 !important;
+    }
+    
+    /* Fix any potential overlay interference */
+    .atmo-bg,
+    .noise::after,
+    #particlesCanvas {
+        /* Ensure background layers never block interactions */
+        pointer-events: none !important;
+    }
+    
+    /* Main content area should not block header */
+    #main-content {
+        position: relative !important;
+        z-index: 1 !important;
+    }
+
     </style>
 
     <script type="application/ld+json">
@@ -2594,7 +2658,7 @@
                                     <button onclick="navigateTo('collaborate');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5" type="button">
                                         <i class="fa-solid fa-handshake text-xs text-muted w-4" aria-hidden="true"></i> Collaborate
                                     </button>
-<button onclick="navigateTo('dashboard');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5 dash-mobile-nav" style="display:none;" type="button">
+                                    <button onclick="navigateTo('dashboard');toggleMobileNav();" class="w-full text-left px-5 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5 dash-mobile-nav" style="display:none;" type="button">
                                         <i class="fa-solid fa-gauge-high text-xs text-muted w-4" aria-hidden="true"></i> Dashboard
                                     </button>
                                 </div>
@@ -2736,28 +2800,28 @@
                                 <i class="fa-solid fa-microchip text-subtle text-sm" aria-hidden="true"></i>
                             </div>
                             <p class="text-sm font-semibold text-softWhite">Tech</p>
-                            <p class="text-xs text-muted mt-0.5">Coming soon</p>
+                            <p class="text-xs text-muted mt-0.5">Explore</p>
                         </button>
                         <button onclick="navigateTo('collection');setTimeout(()=>filterCollection('fashion'),100)" class="cat-link card-shine rounded-2xl border border-white/[0.05] bg-card p-5 text-left reveal" style="transition-delay:120ms" onmousemove="handleShine(event,this)">
                             <div class="cat-link-icon w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center transition-all duration-300 mb-3">
                                 <i class="fa-solid fa-shirt text-subtle text-sm" aria-hidden="true"></i>
                             </div>
                             <p class="text-sm font-semibold text-softWhite">Fashion</p>
-                            <p class="text-xs text-muted mt-0.5">Coming soon</p>
+                            <p class="text-xs text-muted mt-0.5">Explore</p>
                         </button>
                         <button onclick="navigateTo('collection');setTimeout(()=>filterCollection('beauty'),100)" class="cat-link card-shine rounded-2xl border border-white/[0.05] bg-card p-5 text-left reveal" style="transition-delay:180ms" onmousemove="handleShine(event,this)">
                             <div class="cat-link-icon w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center transition-all duration-300 mb-3">
                                 <i class="fa-solid fa-spa text-subtle text-sm" aria-hidden="true"></i>
                             </div>
                             <p class="text-sm font-semibold text-softWhite">Beauty</p>
-                            <p class="text-xs text-muted mt-0.5">Coming soon</p>
+                            <p class="text-xs text-muted mt-0.5">Explore</p>
                         </button>
                         <button onclick="navigateTo('collection');setTimeout(()=>filterCollection('outdoor'),100)" class="cat-link card-shine rounded-2xl border border-white/[0.05] bg-card p-5 text-left reveal" style="transition-delay:240ms" onmousemove="handleShine(event,this)">
                             <div class="cat-link-icon w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center transition-all duration-300 mb-3">
                                 <i class="fa-solid fa-tree text-subtle text-sm" aria-hidden="true"></i>
                             </div>
                             <p class="text-sm font-semibold text-softWhite">Outdoor</p>
-                            <p class="text-xs text-muted mt-0.5">Coming soon</p>
+                            <p class="text-xs text-muted mt-0.5">Explore</p>
                         </button>
                     </div>
                 </section>
@@ -5351,16 +5415,22 @@ function checkPasswordStrength(val) {
 
 // ─── Mobile Nav ───
 function toggleMobileNav() {
-    mobileNavOpen = !mobileNavOpen;
-    var nav = safeGet('mobileNav');
-    if (!nav) return;
-    if (mobileNavOpen) {
-        nav.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
-        nav.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
-    } else {
-        nav.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
-        nav.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+    var nav = document.getElementById('mobileNav');
+    if (nav) {
+        var isOpen = nav.classList.contains('open');
+        if (isOpen) {
+            nav.classList.remove('open');
+            nav.style.opacity = '0';
+            nav.style.pointerEvents = 'none';
+            nav.style.transform = 'translateY(8px)';
+        } else {
+            nav.classList.add('open');
+            nav.style.opacity = '1';
+            nav.style.pointerEvents = 'auto';
+            nav.style.transform = 'translateY(0)';
+        }
     }
+    mobileNavOpen = !mobileNavOpen;
 }
 
 // Close mobile nav when clicking outside
@@ -5390,18 +5460,22 @@ function toggleCart() {
 
 // ─── User Menu ───
 function toggleUserMenu() {
-    userMenuOpen = !userMenuOpen;
-    var dd = safeGet('userMenuDropdown');
-    if (!dd) return;
-    if (userMenuOpen) {
-        dd.style.opacity = '1';
-        dd.style.pointerEvents = 'all';
-        dd.style.transform = 'translateY(0)';
-    } else {
-        dd.style.opacity = '0';
-        dd.style.pointerEvents = 'none';
-        dd.style.transform = 'translateY(8px)';
+    var menu = document.getElementById('userMenuDropdown');
+    if (menu) {
+        var isOpen = menu.classList.contains('open');
+        if (isOpen) {
+            menu.classList.remove('open');
+            menu.style.opacity = '0';
+            menu.style.pointerEvents = 'none';
+            menu.style.transform = 'translateY(8px)';
+        } else {
+            menu.classList.add('open');
+            menu.style.opacity = '1';
+            menu.style.pointerEvents = 'auto';
+            menu.style.transform = 'translateY(0)';
+        }
     }
+    userMenuOpen = !userMenuOpen;
 }
 
 // ─── Dashboard Tabs ───
@@ -6057,6 +6131,241 @@ async function handleForgotPassword() {
 <script src="security.js"></script>
 
 <script src="dashboard-complete-fix.js"></script>
+
+<!-- ═════════════════════════════════════════════════════════════════════════════════
+     ULTIMATE BUTTONS FIX - Runs AFTER all other scripts
+     This ensures navigation works regardless of other script errors
+     ═════════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+    'use strict';
+    
+    console.log('[ultimate-buttons-fix] Starting initialization...');
+    
+    // Wait for EVERYTHING to load
+    function initWhenReady() {
+        console.log('[ultimate-buttons-fix] Page ready, applying fixes...');
+        
+        // Store ANY existing navigateTo function
+        var existingNavigateTo = (typeof window.navigateTo === 'function') ? window.navigateTo : null;
+        
+        if (existingNavigateTo) {
+            console.log('[ultimate-buttons-fix] Found existing navigateTo, wrapping it');
+        } else {
+            console.warn('[ultimate-buttons-fix] No navigateTo found, creating new one');
+        }
+        
+        // ULTIMATE navigateTo - completely self-contained
+        window.navigateTo = function ultimateNavigateTo(view, param) {
+            console.log('[ultimate-buttons-fix] === NAVIGATION TRIGGERED ===');
+            console.log('[ultimate-buttons-fix] Target view:', view);
+            
+            try {
+                // Try original first if it exists and might work
+                if (existingNavigateTo && typeof existingNavigateTo === 'function') {
+                    try {
+                        existingNavigateTo(view, param);
+                        console.log('[ultimate-buttons-fix] Original navigateTo executed successfully');
+                        return;
+                    } catch (origErr) {
+                        console.warn('[ultimate-buttons-fix] Original navigateTo failed:', origErr.message);
+                        // Fall through to our implementation
+                    }
+                }
+                
+                console.log('[ultimate-buttons-fix] Using built-in navigation logic...');
+                
+                // STEP 1: Hide all view sections
+                var sections = document.querySelectorAll('.view-section');
+                console.log('[ultimate-buttons-fix] Found', sections.length, 'view sections');
+                
+                for (var i = 0; i < sections.length; i++) {
+                    sections[i].classList.remove('active');
+                    // Force hide via style as backup
+                    sections[i].style.display = 'none';
+                }
+                
+                // STEP 2: Show target section
+                var targetId = 'view-' + view;
+                var target = document.getElementById(targetId);
+                
+                if (target) {
+                    console.log('[ultimate-buttons-fix] Showing section:', targetId);
+                    target.classList.add('active');
+                    // Force show via style as backup
+                    target.style.display = 'block';
+                } else {
+                    console.error('[ultimate-buttons-fix] SECTION NOT FOUND:', targetId);
+                    // List available sections for debugging
+                    var availableSections = [];
+                    for (var j = 0; j < sections.length; j++) {
+                        availableSections.push(sections[j].id);
+                    }
+                    console.log('[ultimate-buttons-fix] Available sections:', availableSections);
+                }
+                
+                // STEP 3: Update nav link active states
+                var navLinks = document.querySelectorAll('.nav-link');
+                for (var k = 0; k < navLinks.length; k++) {
+                    navLinks[k].classList.remove('active');
+                    if (navLinks[k].getAttribute('data-nav') === view) {
+                        navLinks[k].classList.add('active');
+                        console.log('[ultimate-buttons-fix] Activated nav link for:', view);
+                    }
+                }
+                
+                // STEP 4: Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                console.log('[ultimate-buttons-fix] Navigation complete!');
+                
+            } catch (err) {
+                console.error('[ultimate-buttons-fix] CRITICAL ERROR:', err);
+                
+                // EMERGENCY FALLBACK - direct DOM manipulation only
+                try {
+                    // Hide everything
+                    var allDivs = document.querySelectorAll('.view-section');
+                    for (var m = 0; m < allDivs.length; m++) {
+                        allDivs[m].style.display = 'none';
+                        allDivs[m].className = allDivs[m].className.replace(/\bactive\b/g, '');
+                    }
+                    
+                    // Show target
+                    var emergencyTarget = document.getElementById('view-' + view);
+                    if (emergencyTarget) {
+                        emergencyTarget.style.display = 'block';
+                    }
+                    
+                    window.scrollTo(0, 0);
+                    console.log('[ultimate-buttons-fix] Emergency fallback worked!');
+                } catch (e2) {
+                    console.error('[ultimate-buttons-fix] EMERGENCY FALLBACK FAILED:', e2);
+                    alert('Navigation error. Please refresh the page.');
+                }
+            }
+        };
+        
+        // Attach direct click handlers to ALL navigation buttons
+        function attachDirectHandlers() {
+            console.log('[ultimate-buttons-fix] Attaching direct click handlers...');
+            
+            // Find all elements with navigateTo in onclick
+            var buttons = document.querySelectorAll('[onclick*="navigateTo"]');
+            var count = 0;
+            
+            for (var i = 0; i < buttons.length; i++) {
+                var btn = buttons[i];
+                
+                // Extract view name from onclick attribute
+                var onclickVal = btn.getAttribute('onclick') || '';
+                var match = onclickVal.match(/navigateTo\(['"]([^'"]+)['"]\)/);
+                
+                if (match) {
+                    var viewName = match[1];
+                    count++;
+                    
+                    // CRITICAL: Set styles to ensure clickability
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.cursor = 'pointer';
+                    btn.style.position = 'relative';
+                    btn.style.zIndex = '9999';
+                    btn.style.visibility = 'visible';
+                    btn.style.display = '';
+                    
+                    // Remove any disabled state
+                    btn.removeAttribute('disabled');
+                    btn.removeAttribute('aria-disabled');
+                    
+                    // Attach DIRECT click handler using capture phase
+                    (function(button, targetView) {
+                        // Use capture phase to ensure we get the click first
+                        button.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            console.log('[ultimate-buttons-fix] Button CLICKED ->', targetView);
+                            window.navigateTo(targetView);
+                            return false;
+                        }, true); // CAPTURE PHASE
+                        
+                        // Also add bubbling phase handler as backup
+                        button.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            console.log('[ultimate-buttons-fix] Backup handler ->', targetView);
+                        });
+                        
+                    })(btn, viewName);
+                }
+            }
+            
+            console.log('[ultimate-buttons-fix] Attached handlers to', count, 'buttons');
+            return count;
+        }
+        
+        // Initial attachment
+        var initialCount = attachDirectHandlers();
+        
+        // Re-attach after delays (for dynamic content)
+        setTimeout(attachDirectHandlers, 100);
+        setTimeout(attachDirectHandlers, 500);
+        setTimeout(attachDirectHandlers, 1000);
+        setTimeout(attachDirectHandlers, 2000);
+        
+        // Also re-attach on DOM changes
+        var observer = new MutationObserver(function() {
+            attachDirectHandlers();
+        });
+        
+        if (document.body) {
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['onclick', 'class', 'style']
+            });
+        }
+        
+        // Global click debugger
+        document.addEventListener('click', function(e) {
+            var target = e.target;
+            var closestBtn = target.closest('[onclick*="navigateTo"]');
+            if (closestBtn) {
+                console.log('[ultimate-buttons-fix] Click detected on nav button:', closestBtn);
+                console.log('[ultimate-buttons-fix] Button onclick:', closestBtn.getAttribute('onclick'));
+                console.log('[ultimate-buttons-fix] pointerEvents:', getComputedStyle(closestBtn).pointerEvents);
+                console.log('[ultimate-buttons-fix] zIndex:', getComputedStyle(closestBtn).zIndex);
+                console.log('[ultimate-buttons-fix] display:', getComputedStyle(closestBtn).display);
+                console.log('[ultimate-buttons-fix] visibility:', getComputedStyle(closestBtn).visibility);
+            }
+        }, true);
+        
+        console.log('[ultimate-buttons-fix] Initialization COMPLETE!');
+        console.log('[ultimate-buttons-fix] Buttons should now be working.');
+    }
+    
+    // Use multiple strategies to ensure we run at the right time
+    
+    // Strategy 1: If DOM already loaded
+    if (document.readyState === 'complete') {
+        initWhenReady();
+    } 
+    // Strategy 2: Wait for DOMContentLoaded
+    else if (document.readyState === 'interactive' || document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initWhenReady, 100);
+        });
+    }
+    
+    // Strategy 3: Also wait for window.load (after all resources)
+    window.addEventListener('load', function() {
+        setTimeout(initWhenReady, 200);
+    });
+    
+    // Strategy 4: Final fallback - run after a delay regardless
+    setTimeout(initWhenReady, 3000);
+    
+})();
+</script>
 
 </body>
 </html>
