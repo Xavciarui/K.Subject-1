@@ -11,6 +11,19 @@
 
 (function() {
     'use strict';
+    // ═════════════════════════════════════════════════════════════════════
+    // DEGRADATION GUARD v2.0
+    // Gracefully handle missing Supabase client without crashing
+    // ═════════════════════════════════════════════════════════════════════
+    
+    if (!window.sb && typeof window !== 'undefined') {
+        console.warn('[marketplace] ⚠️ Supabase client (window.sb) not found.');
+        console.warn('[marketplace] Running in DEGRADED MODE - database features disabled.');
+        console.warn('[marketplace] UI features will work, but data operations will fail silently.');
+        console.warn('[marketplace] Check that index.html properly initializes Supabase before loading this script.');
+        window._marketplaceDegradedMode = true;
+    }
+    
 
     // =========================================================================
     // UTILITY & HELPER FUNCTIONS
@@ -1335,7 +1348,7 @@
             console.log('[ProductManager] Duplicating product:', id);
             
             return self.getProductById(id)
-                .function(originalProduct) {
+                .then(function(originalProduct) {
                     // Create copy without ID and timestamps
                     var copyData = {
                         title: originalProduct.title + ' (Copy)',

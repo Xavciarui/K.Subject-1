@@ -4426,6 +4426,9 @@ function initSupabase() {
         }
 
         sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // FIXED v2.0: Expose Supabase client globally for all dependent scripts
+        window.sb = sb;
         return true;
     } catch (err) {
         sb = null;
@@ -5753,14 +5756,25 @@ document.addEventListener('DOMContentLoaded', async function () {
         return;
     }
 
+    
+    // FIXED v2.0: Expose critical globals for marketplace.js, integration.js, dashboard-complete-fix.js
+    // These must be available before any dependent script loads
+    if (typeof window === 'object') {
+        window.sb = sb;
+        window.currentUser = currentUser;
+    }
+    
     // ── Restore session from Supabase (source of truth) ──
     try {
-        var { data, error } = await sb.auth.getSession();
+        var _sessionResult = await sb.auth.getSession();
+        var data = _sessionResult.data;
+        var error = _sessionResult.error;
         if (!error && data.session) {
             var user    = data.session.user;
             var profile = await getProfile(user.id);
 
             currentUser = buildCurrentUser(user, profile);
+            window.currentUser = currentUser;
             sessionValid = true;
             saveSession();
             updateAuthUI();
@@ -5816,6 +5830,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             var user    = session.user;
             var profile = await getProfile(user.id);
             currentUser = buildCurrentUser(user, profile);
+            window.currentUser = currentUser;
             sessionValid = true;
             saveSession();
             updateAuthUI();
@@ -5829,6 +5844,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             var user    = session.user;
             var profile = await getProfile(user.id);
             currentUser = buildCurrentUser(user, profile);
+            window.currentUser = currentUser;
             sessionValid = true;
             saveSession();
             updateAuthUI();
@@ -5851,6 +5867,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (profile) {
                 var oldStatus = currentUser ? currentUser.status : null;
                 currentUser = buildCurrentUser(user, profile);
+            window.currentUser = currentUser;
                 sessionValid = true;
                 saveSession();
 

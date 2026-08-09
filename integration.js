@@ -13,7 +13,18 @@
     if (!window.ProductManager || !window.SearchManager || !window.CartManager ||
         !window.WishlistManager || !window.NotificationManager || !window.ContactManager ||
         !window.NewsletterManager || !window.DashboardManager) {
-        console.warn('[integration] Marketplace managers not found. Integration layer skipped.');
+        console.warn('[integration] ⚠️ Marketplace managers not found. Integration layer skipped.');
+    console.warn('[integration] Debug info:');
+    console.warn('[integration]   - ProductManager:', typeof window.ProductManager);
+    console.warn('[integration]   - SearchManager:', typeof window.SearchManager);
+    console.warn('[integration]   - CartManager:', typeof window.CartManager);
+    console.warn('[integration]   - WishlistManager:', typeof window.WishlistManager);
+    console.warn('[integration]   - NotificationManager:', typeof window.NotificationManager);
+    console.warn('[integration]   - ContactManager:', typeof window.ContactManager);
+    console.warn('[integration]   - NewsletterManager:', typeof window.NewsletterManager);
+    console.warn('[integration]   - DashboardManager:', typeof window.DashboardManager);
+    console.warn('[integration]   - window.sb:', typeof window.sb);
+    console.warn('[integration]   - window.currentUser:', typeof window.currentUser);
         return;
     }
 
