@@ -173,48 +173,46 @@
     };
 
     /**
-     * Navigate to a specific section/view in the application
-     * @param {string} view - View name or section identifier
+     * Helper: Check status and show dashboard or error message
+     * @private
      */
-    window.navigateTo = function(view) {
-        log('[navigateTo] Navigating to:', view);
+    function _checkAndShowDashboard(view, userStatus) {
+        if (userStatus === 'approved') {
+            return _navigateToDashboard(view);
+        } else if (userStatus === 'pending') {
+            if (typeof showToast === 'function') showToast('Your account is still pending approval.', 'info');
+            if (typeof showStatusMessage === 'function') showStatusMessage('pending');
+        } else if (userStatus === 'rejected') {
+            if (typeof showToast === 'function') showToast('Your account has been rejected.', 'error');
+            if (typeof showStatusMessage === 'function') showStatusMessage('rejected');
+        } else {
+            if (typeof showToast === 'function') showToast('Unable to verify your account status. Please contact support.', 'error');
+            if (typeof showStatusMessage === 'function') showStatusMessage('pending');
+        }
+        return;
+    }
 
-        // Preserve dashboard/auth guards from legacy inline navigateTo
-        try {
-            // FIXED: Check both window.currentUser AND localStorage session
-            // This prevents false "sign in" prompts when user is logged in but currentUser hasn't been set yet
-            var hasSession = window.currentUser || (typeof getSession === 'function' && getSession());
-            
-            if (view === 'dashboard' && !hasSession) {
-                if (typeof openAuth === 'function') openAuth('signin');
-                if (typeof showToast === 'function') showToast('Please sign in to access the dashboard.', 'info');
-                return;
-            }
-
-            if (view === 'dashboard' && (typeof sessionValid !== 'undefined') && !sessionValid && !window.currentUser) {
-                if (typeof openAuth === 'function') openAuth('signin');
-                if (typeof showToast === 'function') showToast('Your session has expired. Please sign in again.', 'info');
-                return;
-            }
-
-            if (view === 'dashboard') {
-                var userStatus = (window.currentUser && window.currentUser.status) || 'unknown';
-                if (userStatus !== 'approved') {
-                    if (userStatus === 'pending') {
-                        if (typeof showToast === 'function') showToast('Your account is still pending approval.', 'info');
-                        if (typeof showStatusMessage === 'function') showStatusMessage('pending');
-                    } else if (userStatus === 'rejected') {
-                        if (typeof showToast === 'function') showToast('Your account has been rejected.', 'error');
-                        if (typeof showStatusMessage === 'function') showStatusMessage('rejected');
-                    } else {
-                        if (typeof showToast === 'function') showToast('Unable to verify your account status. Please contact support.', 'error');
-                        if (typeof showStatusMessage === 'function') showStatusMessage('pending');
-                    }
-                    return;
-                }
-            }
-        } catch (e) { warn('[navigateTo] guard error', e); }
+    /**
+     * Helper: Actually navigate to dashboard view
+     * @private
+     */
+    function _navigateToDashboard(view) {
+        // Show dashboard nav button
+        var dashNavBtn = document.getElementById('dashNavBtn');
+        if (dashNavBtn) dashNavBtn.style.display = '';
         
+        var dashMenuLink = document.getElementById('dashMenuLink');
+        if (dashMenuLink) dashMenuLink.style.display = '';
+        
+        // Continue with normal view switching
+        _switchView(view);
+    }
+
+    /**
+     * Helper: Switch to a view (the actual DOM manipulation)
+     * @private
+     */
+    function _switchView(view) {
         // Hide all views/sections first - prefer data-view pattern
         var views = document.querySelectorAll('[data-view]');
         if (views && views.length > 0) {
@@ -234,7 +232,6 @@
             var fallbackSections = document.querySelectorAll('.view-section');
             for (var si = 0; si < fallbackSections.length; si++) {
                 fallbackSections[si].classList.remove('active');
-                // also attempt to hide via style if classes not used
                 try { fallbackSections[si].style.display = 'none'; } catch (e) {}
             }
 
@@ -271,6 +268,86 @@
         
         // Scroll to top so navigation bar is visible after page switch
         window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    /**
+     * Navigate to a specific section/view in the application
+     * @param {string} view - View name or section identifier
+     */
+    window.navigateTo = function(view) {
+        log('[navigateTo] Navigating to:', view);
+
+        // Preserve dashboard/auth guards from legacy inline navigateTo
+        try {
+            // FIXED: Check both window.currentUser AND localStorage session
+            // This prevents false "sign in" prompts when user is logged in but currentUser hasn't been set yet
+            var hasSession = window.currentUser || (typeof getSession === 'function' && getSession());
+            
+            if (view === 'dashboard' && !hasSession) {
+                if (typeof openAuth === 'function') openAuth('signin');
+                if (typeof showToast === 'function') showToast('Please sign in to access the dashboard.', 'info');
+                return;
+            }
+
+            if (view === 'dashboard' && (typeof sessionValid !== 'undefined') && !sessionValid && !window.currentUser) {
+                if (typeof openAuth === 'function') openAuth('signin');
+                if (typeof showToast === 'function') showToast('Your session has expired. Please sign in again.', 'info');
+                return;
+            }
+
+            if (view === 'dashboard') {
+                var userStatus = (window.currentUser && window.currentUser.status) || 'unknown';
+                
+                // FIX: Force fresh profile fetch to get latest status from Supabase
+                // This handles case where admin approved user but browser has cached old 'pending' status
+                if (window.currentUser && window.currentUser.id && window.sb && userStatus !== 'approved') {
+                    log('[navigateTo] Status is "' + userStatus + '" - fetching fresh profile from Supabase...');
+                    (function() {
+                        var userId = window.currentUser.id;
+                        window.sb.from('profiles').select('*').eq('id', userId).maybeSingle()
+                            .then(function(res) {
+                                if (!res.error && res.data && res.data.status === 'approved') {
+                                    log('[navigateTo] Fresh profile shows APPROVED - updating UI');
+                                    window.currentUser.status = 'approved';
+                                    window.currentUser.role = res.data.role || window.currentUser.role;
+                                    window.currentUser.brand = res.data.brand_name || window.currentUser.brand;
+                                    if (typeof saveSession === 'function') saveSession();
+                                    if (typeof updateAuthUI === 'function') updateAuthUI();
+                                    if (typeof updateDashboardUI === 'function') updateDashboardUI();
+                                    if (typeof hideStatusMessage === 'function') hideStatusMessage();
+                                    if (typeof showToast === 'function') showToast('Your account has been approved! Access granted.', 'success');
+                                    
+                                    // Now navigate to dashboard with updated status
+                                    _navigateToDashboard(view);
+                                } else if (!res.error && res.data) {
+                                    // Still not approved
+                                    var newStatus = res.data.status || 'pending';
+                                    if (newStatus === 'pending') {
+                                        if (typeof showToast === 'function') showToast('Your account is still pending approval.', 'info');
+                                        if (typeof showStatusMessage === 'function') showStatusMessage('pending');
+                                    } else if (newStatus === 'rejected') {
+                                        if (typeof showToast === 'function') showToast('Your account has been rejected.', 'error');
+                                        if (typeof showStatusMessage === 'function') showStatusMessage('rejected');
+                                    }
+                                } else {
+                                    // Profile fetch failed - use cached status
+                                    _checkAndShowDashboard(view, userStatus);
+                                }
+                            })
+                            .catch(function(err) {
+                                warn('[navigateTo] Profile fetch error:', err);
+                                _checkAndShowDashboard(view, userStatus);
+                            });
+                    })();
+                    return; // Wait for async profile fetch before navigating
+                }
+                
+                return _checkAndShowDashboard(view, userStatus);
+            }
+        } catch (e) { warn('[navigateTo] guard error', e); }
+        
+        // Perform actual view switching
+        _switchView(view);
     };
 
     /**
