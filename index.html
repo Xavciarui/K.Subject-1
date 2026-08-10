@@ -179,6 +179,15 @@
             75%      { transform: translate(25px, 10px) scale(1.04); }
         }
 
+        /* Slow pulse animation for approval waiting icon */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.98); }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 3s ease-in-out infinite;
+        }
+
         /* ═══════════════════════════════════════
            5. CARD EFFECTS
         ═══════════════════════════════════════ */
@@ -3820,6 +3829,90 @@
           <!-- ═══════════════════════════════════════
              SELLER DASHBOARD SECTION
         ═══════════════════════════════════════ -->
+         
+         <!-- ═══════════════════════════════════════
+             APPROVAL WAITING SECTION (Spam Protection)
+             Shown to new users until admin approves them
+        ═══════════════════════════════════════ -->
+         <div class="view-section hidden" id="view-approval-waiting">
+             <div class="min-h-[70vh] flex items-center justify-center px-4 py-12">
+                 <div class="max-w-lg w-full text-center">
+                     
+                     <!-- Animated Icon -->
+                     <div class="relative inline-flex mb-8">
+                         <div class="w-24 h-24 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center animate-pulse-slow">
+                             <i class="fa-solid fa-clock text-4xl text-accent"></i>
+                         </div>
+                         <!-- Spinning ring animation -->
+                         <div class="absolute inset-0 w-24 h-24 rounded-full border-2 border-transparent border-t-accent/50 animate-spin" style="animation-duration: 3s;"></div>
+                     </div>
+                     
+                     <!-- Status Text -->
+                     <h2 class="font-display text-3xl sm:text-4xl font-bold text-softWhite mb-4">
+                         Application Received
+                     </h2>
+                     
+                     <p class="text-subtle text-base mb-6 leading-relaxed">
+                         Thank you for signing up! Your account is currently under review by our team.
+                     </p>
+                     
+                     <!-- Info Cards -->
+                     <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-8 text-left">
+                         <h3 class="text-sm font-semibold text-accent mb-4 flex items-center gap-2">
+                             <i class="fa-solid fa-info-circle"></i> What happens next?
+                         </h3>
+                         
+                         <ul class="space-y-3">
+                             <li class="flex items-start gap-3 text-sm text-muted">
+                                 <span class="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                     <span class="text-[10px] font-bold text-accent">1</span>
+                                 </span>
+                                 <span>We review your application (usually within 24 hours)</span>
+                             </li>
+                             <li class="flex items-start gap-3 text-sm text-muted">
+                                 <span class="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                     <span class="text-[10px] font-bold text-accent">2</span>
+                                 </span>
+                                 <span>You'll receive an email once approved</span>
+                             </li>
+                             <li class="flex items-start gap-3 text-sm text-muted">
+                                 <span class="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                     <span class="text-[10px] font-bold text-accent">3</span>
+                                 </span>
+                                 <span>Sign in again to access your seller dashboard</span>
+                             </li>
+                         </ul>
+                     </div>
+                     
+                     <!-- Current Status Badge -->
+                     <div class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-8">
+                         <span class="relative flex h-3 w-3">
+                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                           <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                         </span>
+                         <span class="text-yellow-200 font-medium text-sm">Status: Pending Review</span>
+                     </div>
+                     
+                     <!-- Actions -->
+                     <div class="space-y-3">
+                         <button onclick="checkApprovalStatus()" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition shadow-lg shadow-accent/15">
+                             <i class="fa-solid fa-refresh" aria-hidden="true"></i> Check Approval Status
+                         </button>
+                         
+                         <button onclick="handleLogout()" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm hover:bg-white/[0.07] hover:text-softWhite transition">
+                             <i class="fa-solid fa-sign-out-alt" aria-hidden="true"></i> Sign Out
+                         </button>
+                     </div>
+                     
+                     <!-- Help Text -->
+                     <p class="mt-8 text-xs text-muted/60">
+                         Need help? Contact support at support@ksubject1.com
+                     </p>
+                     
+                 </div>
+             </div>
+         </div>
+
          <div class="view-section" id="view-dashboard">
              <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
 
@@ -4772,8 +4865,7 @@ async function createDefaultProfile(userId) {
 /**
  * Insert a new profile row with status = 'pending'.
  * Called immediately after Supabase Auth signUp succeeds.
- *
- *
+ * User must wait for admin approval before accessing dashboard (spam protection).
  *
  * @param {string} userId
  * @param {Object}  meta   - { email, firstName, lastName, brandName, phone, description, role }
@@ -4782,6 +4874,12 @@ async function createDefaultProfile(userId) {
 async function createProfile(userId, meta) {
     if (!sb || !userId) return null;
     try {
+        // Normalize role to match database CHECK constraint
+        var rawRole = meta.role || 'seller';
+        var normalizedRole = (typeof normalizeRole === 'function') ? normalizeRole(rawRole) : 'seller';
+        
+        console.log('[createProfile] Creating PENDING profile for:', userId, '| Role:', rawRole, '->', normalizedRole);
+        
         var row = {
             id:          userId,
             email:       meta.email || '',
@@ -4790,8 +4888,8 @@ async function createProfile(userId, meta) {
             brand_name:  meta.brandName || '',
             phone:       meta.phone || '',
             description: meta.description || '',
-            role:        meta.role || 'seller',
-            status:      'pending'
+            role:        normalizedRole,
+            status:      'pending'  // ⏳ SPAM PROTECTION - Must be approved by admin!
             // created_at uses database DEFAULT now() — do NOT override from client
         };
 
@@ -5113,25 +5211,44 @@ async function handleAuth(e, type) {
 
             var userId = authRes.data.user ? authRes.data.user.id : null;
 
-            // When Supabase email confirmation is enabled, signUp returns a user
-            // but NO session. We cannot write to the DB (RLS blocks anon inserts),
-            // so skip profile creation here. The DB trigger will create a basic
-            // profile, and the signin flow will fill in the full details.
+            // ═══════════════════════════════════════════════════════════════
+            // INSTANT ACCESS: Auto-signin if no session (email confirmation mode)
+            // This gives users immediate access without email verification!
+            // ═══════════════════════════════════════════════════════════════
             if (!authRes.data.session && authRes.data.user) {
-                // Clear the form
-                if (firstNameEl) firstNameEl.value = '';
-                if (lastNameEl)  lastNameEl.value  = '';
-                if (emailEl)     emailEl.value     = '';
-                if (brandEl)     brandEl.value     = '';
-                if (pwEl)        pwEl.value        = '';
-                if (roleEl)      roleEl.selectedIndex = 0;
-                if (phoneEl)     phoneEl.value     = '';
-                if (descEl)      descEl.value      = '';
-                if (agreeEl)     agreeEl.checked    = false;
-                checkPasswordStrength('');
-                closeAuth();
-                showToast('Account created! Please check your email to verify your account, then sign in.', 'success');
-                return;
+                console.log('[signup] No session - auto signing in for instant access...');
+                
+                // Auto sign-in immediately after signup
+                var signInRes = await sb.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (signInRes.error) {
+                    console.warn('[signup] Auto signin failed:', signInRes.error);
+                    // Even if auto-signin fails, try to continue with user data
+                    // We'll create the profile on next login
+                    showToast('Account created successfully! Please sign in.', 'success');
+                    
+                    // Clear form
+                    if (firstNameEl) firstNameEl.value = '';
+                    if (lastNameEl)  lastNameEl.value  = '';
+                    if (emailEl)     emailEl.value     = '';
+                    if (brandEl)     brandEl.value     = '';
+                    if (pwEl)        pwEl.value        = '';
+                    if (roleEl)      roleEl.selectedIndex = 0;
+                    if (phoneEl)     phoneEl.value     = '';
+                    if (descEl)      descEl.value      = '';
+                    if (agreeEl)     agreeEl.checked    = false;
+                    checkPasswordStrength('');
+                    closeAuth();
+                    return;
+                }
+                
+                // Update authRes with the signed-in session
+                authRes = signInRes;
+                userId = authRes.data.user ? authRes.data.user.id : null;
+                console.log('[signup] Auto signin successful! User:', userId);
             }
 
             // Step 2 — Insert profile with ALL required fields (only runs if we have a session)
@@ -5180,14 +5297,27 @@ async function handleAuth(e, type) {
             // Close modal & refresh UI
             closeAuth();
             updateAuthUI();
+            
+            // ═══════════════════════════════════════════════════════════════
+            // SPAM PROTECTION: New users start as PENDING
+            // They see a "Waiting for Approval" screen until admin approves them
+            // ═══════════════════════════════════════════════════════════════
+            
+            if (currentUser.status === 'pending') {
+                console.log('[signup] User is pending - showing approval waiting screen');
+                showToast('Account created! Waiting for admin approval. ⏳', 'info');
+                showStatusMessage('pending');
+                navigateTo('approval-waiting');  // Go to waiting page
+                return;
+            }
+            
+            // If somehow already approved (shouldn't happen on fresh signup)
             if (currentUser.status === 'approved') {
                 updateDashboardUI();
-            }
-
-            // New sellers are always pending — show banner, not dashboard
-            if (currentUser.status === 'pending') {
-                showToast('Account created! Pending admin approval.', 'info');
-                showStatusMessage('pending');
+                showToast('Welcome! Your account is ready. 🎉', 'success');
+                setTimeout(function() {
+                    navigateTo('dashboard');
+                }, 500);
             }
 
         } catch (err) {
@@ -5262,21 +5392,34 @@ async function handleAuth(e, type) {
             closeAuth();
             updateAuthUI();
 
-            // Step 4 — Route by status
+            // ═══════════════════════════════════════════════════════════════
+            // SPAM PROTECTION: Route by approval status
+            // - pending: Show waiting screen
+            // - rejected: Show rejection message  
+            // - approved: Go to dashboard
+            // ═══════════════════════════════════════════════════════════════
+            
             if (!profile) {
-                showToast('Profile not found. Your account may be incomplete. Please contact support.', 'error');
+                showToast('Profile not found. Your account may be incomplete.', 'error');
                 showStatusMessage('pending');
+                navigateTo('approval-waiting');
             } else if (profile.status === 'pending') {
-                showToast('Your account is pending admin approval.', 'info');
+                console.log('[signin] User is pending - showing approval waiting screen');
+                showToast('Your account is pending admin review. ⏳', 'info');
                 showStatusMessage('pending');
-                startApprovalPolling();
+                startApprovalPolling();  // Check for approval periodically
+                navigateTo('approval-waiting');
             } else if (profile.status === 'rejected') {
-                showToast('Your account has been rejected.', 'error');
+                showToast('Your application was not approved.', 'error');
                 showStatusMessage('rejected');
             } else if (profile.status === 'approved') {
+                console.log('[signin] User approved - going to dashboard');
+                hideStatusMessage();
                 updateDashboardUI();
-                showToast('Welcome back!', 'success');
-                navigateTo('dashboard');
+                showToast('Welcome back! 🎉', 'success');
+                setTimeout(function() {
+                    navigateTo('dashboard');
+                }, 300);
             }
 
         } catch (err) {
@@ -5291,7 +5434,120 @@ async function handleAuth(e, type) {
 
 
 /* ─────────────────────────────────────────────────────────────────
-   7.  LOGOUT
+   7.5  APPROVAL CHECKING SYSTEM (Spam Protection)
+   ─────────────────────────────────────────────────────────────────
+   Functions for checking approval status and auto-polling
+   ───────────────────────────────────────────────────────────────── */
+
+var approvalPollingInterval = null;
+
+/**
+ * Check if user has been approved - called manually from waiting page
+ */
+async function checkApprovalStatus() {
+    if (!sb || !window.currentUser || !window.currentUser.id) {
+        showToast('Unable to check status. Please sign in again.', 'error');
+        return;
+    }
+    
+    console.log('[approval] Checking approval status...');
+    showToast('Checking approval status...', 'info');
+    
+    try {
+        var userId = window.currentUser.id;
+        var res = await sb.from('profiles').select('status, role, brand_name').eq('id', userId).maybeSingle();
+        
+        if (res.error) {
+            console.error('[approval] Error checking:', res.error);
+            showToast('Error checking status. Please try again.', 'error');
+            return;
+        }
+        
+        if (!res.data) {
+            console.warn('[approval] No profile found');
+            showToast('Profile not found. Please contact support.', 'error');
+            return;
+        }
+        
+        var newStatus = res.data.status;
+        console.log('[approval] Current status:', newStatus);
+        
+        if (newStatus === 'approved') {
+            // USER APPROVED! Update and redirect to dashboard
+            console.log('[approval] 🎉 User approved!');
+            
+            stopApprovalPolling();
+            
+            // Update local state
+            window.currentUser.status = 'approved';
+            window.currentUser.role = res.data.role || window.currentUser.role;
+            window.currentUser.brand = res.data.brand_name || window.currentUser.brand;
+            
+            if (typeof saveSession === 'function') saveSession();
+            if (typeof updateAuthUI === 'function') updateAuthUI();
+            if (typeof hideStatusMessage === 'function') hideStatusMessage();
+            
+            showToast('🎉 Congratulations! Your account has been approved!', 'success');
+            
+            // Navigate to dashboard after short delay
+            setTimeout(function() {
+                navigateTo('dashboard');
+            }, 1000);
+            
+        } else if (newStatus === 'rejected') {
+            // User was rejected
+            stopApprovalPolling();
+            window.currentUser.status = 'rejected';
+            showStatusMessage('rejected');
+            showToast('Your application was not approved.', 'error');
+            
+        } else {
+            // Still pending
+            showToast('Still pending review. We\'ll notify you when approved! ⏳', 'info');
+        }
+        
+    } catch (err) {
+        console.error('[approval] Exception:', err);
+        showToast('Error checking status. Please try again.', 'error');
+    }
+}
+
+/**
+ * Start polling for approval status (called on signin for pending users)
+ */
+function startApprovalPolling() {
+    // Stop any existing polling first
+    stopApprovalPolling();
+    
+    console.log('[approval] Starting approval polling (every 30 seconds)');
+    
+    // Check every 30 seconds
+    approvalPollingInterval = setInterval(function() {
+        // Only poll if user is still pending and on the page
+        if (window.currentUser && window.currentUser.status === 'pending') {
+            console.log('[approval] Auto-checking status...');
+            checkApprovalStatus();
+        } else {
+            // No longer pending, stop polling
+            stopApprovalPolling();
+        }
+    }, 30000); // 30 seconds
+}
+
+/**
+ * Stop the approval polling
+ */
+function stopApprovalPolling() {
+    if (approvalPollingInterval) {
+        clearInterval(approvalPollingInterval);
+        approvalPollingInterval = null;
+        console.log('[approval] Stopped polling');
+    }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────
+   8.  LOGOUT
    ───────────────────────────────────────────────────────────────── */
 
 async function handleLogout() {

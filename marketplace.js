@@ -325,8 +325,12 @@
         if (userStatus === 'approved') {
             return _navigateToDashboard(view);
         } else if (userStatus === 'pending') {
-            if (typeof showToast === 'function') showToast('Your account is still pending approval.', 'info');
+            // SPAM PROTECTION: Show waiting page for pending users
+            if (typeof showToast === 'function') showToast('Your account is pending approval. ⏳', 'info');
             if (typeof showStatusMessage === 'function') showStatusMessage('pending');
+            if (typeof startApprovalPolling === 'function') startApprovalPolling();
+            // Navigate to approval waiting page
+            _switchView('approval-waiting');
         } else if (userStatus === 'rejected') {
             if (typeof showToast === 'function') showToast('Your account has been rejected.', 'error');
             if (typeof showStatusMessage === 'function') showStatusMessage('rejected');
