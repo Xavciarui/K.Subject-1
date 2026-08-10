@@ -282,12 +282,34 @@
     var _origUpdateAuthUI = window.updateAuthUI || function () {};
     window.updateAuthUI = function () {
         // Run original
-        _origUpdateAuthUI();
+        try {
+            _origUpdateAuthUI();
+        } catch (e) {
+            warn('Error in original updateAuthUI:', e);
+        }
+        
         // Load user-specific data
         if (typeof currentUser !== 'undefined' && currentUser && currentUser.id) {
-            CartManager.loadCart();
-            WishlistManager.loadWishlist();
-            NotificationManager.renderNotificationBadge();
+            // Safely call CartManager.loadCart
+            if (typeof CartManager !== 'undefined' && typeof CartManager.loadCart === 'function') {
+                CartManager.loadCart().catch(function(err) {
+                    warn('CartManager.loadCart error:', err);
+                });
+            }
+            
+            // Safely call WishlistManager.loadWishlist
+            if (typeof WishlistManager !== 'undefined' && typeof WishlistManager.loadWishlist === 'function') {
+                WishlistManager.loadWishlist().catch(function(err) {
+                    warn('WishlistManager.loadWishlist error:', err);
+                });
+            }
+            
+            // Safely call NotificationManager.renderNotificationBadge
+            if (typeof NotificationManager !== 'undefined' && typeof NotificationManager.renderNotificationBadge === 'function') {
+                NotificationManager.renderNotificationBadge().catch(function(err) {
+                    warn('NotificationManager.renderNotificationBadge error:', err);
+                });
+            }
         } else {
             // Clear badges
             var countBadge = sg('cartCount');

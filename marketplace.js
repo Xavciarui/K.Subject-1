@@ -689,12 +689,23 @@
                 container.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
             }
             
-            return window.sb
+            // Try full query first, fallback to simple query if schema doesn't support joins
+            var ordersQuery = window.sb
                 .from('orders')
                 .select('*, order_items(*), buyer:profiles!orders_buyer_id_fkey(first_name, last_name, avatar_url)')
                 .eq('seller_id', window.currentUser.id)
                 .order('created_at', { ascending: false })
-                .limit(limit)
+                .limit(limit);
+            
+            // Fallback simple query for schemas without relationships defined
+            var fallbackQuery = window.sb
+                .from('orders')
+                .select('*')
+                .eq('seller_id', window.currentUser.id)
+                .order('created_at', { ascending: false })
+                .limit(limit);
+            
+            return ordersQuery
                 .then(function(result) {
                     var orders = result.data || [];
                     
@@ -710,11 +721,31 @@
                     return orders;
                 })
                 .catch(function(error) {
-                    error('[DashboardManager] Error loading orders:', error);
-                    if (container) {
-                        container.innerHTML = self._renderErrorState('Failed to load orders');
-                    }
-                    return [];
+                    warn('[DashboardManager] Full orders query failed, trying simpler query:', error.message);
+                    
+                    // Try fallback query
+                    return fallbackQuery
+                        .then(function(result) {
+                            var orders = result.data || [];
+                            
+                            if (container) {
+                                if (orders.length === 0) {
+                                    container.innerHTML = self._renderEmptyState('orders', 'No orders yet.');
+                                } else {
+                                    container.innerHTML = self._renderOrderList(orders);
+                                }
+                            }
+                            
+                            log('[DashboardManager] Loaded', orders.length, 'orders (fallback)');
+                            return orders;
+                        })
+                        .catch(function(fallbackError) {
+                            error('[DashboardManager] Error loading orders:', fallbackError);
+                            if (container) {
+                                container.innerHTML = self._renderErrorState('Failed to load orders');
+                            }
+                            return [];
+                        });
                 });
         },
 
@@ -803,22 +834,45 @@
             container.innerHTML = '<div class="flex items-center justify-center py-4"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>';
             
             // Get recent products and orders for activity
-            return Promise.all([
-                window.sb
-                    .from('products')
-                    .select('*')
-                    .eq('seller_id', window.currentUser.id)
-                    .order('updated_at', { ascending: false })
-                    .limit(5),
-                window.sb
-                    .from('orders')
-                    .select('*')
-                    .eq('seller_id', window.currentUser.id)
-                    .order('updated_at', { ascending: false })
-                    .limit(5)
-            ]).then(function(results) {
-                var products = results[0].data || [];
-                var orders = results[1].data || [];
+            // Use Promise.allSettled-like approach to handle partial failures
+            return window.sb
+                .from('products')
+                .select('*')
+                .eq('seller_id', window.currentUser.id)
+                .order('updated_at', { ascending: false })
+                .limit(5)
+                .then(function(productResult) {
+                    var products = productResult.data || [];
+                    
+                    // Try to get orders, but don't fail if orders table has issues
+                    return window.sb
+                        .from('orders')
+                        .select('*')
+                        .eq('seller_id', window.currentUser.id)
+                        .order('updated_at', { ascending: false })
+                        .limit(5)
+                        .then(function(orderResult) {
+                            return {
+                                products: products,
+                                orders: orderResult.data || []
+                            };
+                        })
+                        .catch(function(orderError) {
+                            // Orders failed (possibly 400 error due to schema), continue with just products
+                            warn('[DashboardManager] Orders query failed for activity:', orderError.message);
+                            return {
+                                products: products,
+                                orders: []
+                            };
+                        });
+                })
+                .catch(function(productError) {
+                    error('[DashboardManager] Error loading products for activity:', productError);
+                    return { products: [], orders: [] };
+                })
+                .then(function(data) {
+                    var products = data.products;
+                    var orders = data.orders;
                 
                 var activities = [];
                 
@@ -2198,7 +2252,7 @@
          */
         mergeWithServerCart: function(serverCart) {
             var localCart = self._getCart();
-            var merged = [...localCart];
+            var merged = localCart.slice();
             
             if (serverCart && serverCart.length > 0) {
                 for (var i = 0; i < serverCart.length; i++) {
@@ -2223,6 +2277,32 @@
             self._saveCart();
             
             return self.getCart();
+        },
+
+        /**
+         * Load cart and update UI badge - called on auth state change
+         * @returns {Promise<Object>} Cart data
+         */
+        loadCart: function() {
+            log('[CartManager] Loading cart...');
+            return self.getCart().then(function(cart) {
+                // Update cart badge in UI
+                var countBadge = document.getElementById('cartCount');
+                if (countBadge) {
+                    countBadge.textContent = cart.itemCount + ' item' + (cart.itemCount !== 1 ? 's' : '');
+                }
+                
+                // Update any other cart count displays
+                var cartBadges = document.querySelectorAll('.cart-badge, [data-cart-count]');
+                for (var i = 0; i < cartBadges.length; i++) {
+                    cartBadges[i].textContent = cart.itemCount;
+                }
+                
+                return cart;
+            }).catch(function(err) {
+                error('[CartManager] Error loading cart:', err);
+                return { items: [], itemCount: 0, subtotal: 0 };
+            });
         }
     };
 
@@ -2449,6 +2529,45 @@
          */
         getCount: function() {
             return self._getWishlist().length;
+        },
+
+        /**
+         * Load wishlist and update UI - called on auth state change
+         * @returns {Promise<Object>} Wishlist data
+         */
+        loadWishlist: function() {
+            log('[WishlistManager] Loading wishlist...');
+            return self.getWishlist().then(function(wishlist) {
+                // Update wishlist badges in UI
+                var wishBadges = document.querySelectorAll('.wishlist-badge, [data-wishlist-count]');
+                for (var i = 0; i < wishBadges.length; i++) {
+                    wishBadges[i].textContent = wishlist.items ? wishlist.items.length : wishlist.length;
+                }
+                
+                // Update wishlist button states
+                if (wishlist.items && wishlist.items.length > 0) {
+                    var wishIds = wishlist.items.map(function(item) {
+                        return typeof item === 'string' ? item : item.productId;
+                    });
+                    var wishButtons = document.querySelectorAll('[data-wishlist-btn]');
+                    for (var j = 0; j < wishButtons.length; j++) {
+                        var btn = wishButtons[j];
+                        var productId = btn.getAttribute('data-product-id') || btn.getAttribute('data-wishlist-btn');
+                        if (wishIds.indexOf(productId) !== -1) {
+                            btn.classList.add('in-wishlist');
+                            btn.setAttribute('aria-pressed', 'true');
+                        } else {
+                            btn.classList.remove('in-wishlist');
+                            btn.setAttribute('aria-pressed', 'false');
+                        }
+                    }
+                }
+                
+                return wishlist;
+            }).catch(function(err) {
+                error('[WishlistManager] Error loading wishlist:', err);
+                return { items: [] };
+            });
         }
     };
 
@@ -2783,6 +2902,56 @@
                         };
                     }
                 }, 100);
+            });
+        },
+
+        /**
+         * Render notification badge in header/nav - called on auth state change
+         * Updates unread count display
+         */
+        renderNotificationBadge: function() {
+            log('[NotificationManager] Rendering notification badge...');
+            
+            if (!window.currentUser || !window.currentUser.id) {
+                // Hide badges when not logged in
+                var notifBadges = document.querySelectorAll('.notification-badge, [data-notification-count]');
+                for (var i = 0; i < notifBadges.length; i++) {
+                    notifBadges[i].style.display = 'none';
+                    notifBadges[i].textContent = '0';
+                }
+                return Promise.resolve(0);
+            }
+            
+            return self.getUnreadCount().then(function(count) {
+                var notifBadges = document.querySelectorAll('.notification-badge, [data-notification-count]');
+                
+                for (var j = 0; j < notifBadges.length; j++) {
+                    var badge = notifBadges[j];
+                    badge.textContent = count.toString();
+                    
+                    if (count > 0) {
+                        badge.style.display = '';
+                        badge.classList.add('has-unread');
+                    } else {
+                        badge.style.display = 'none';
+                        badge.classList.remove('has-unread');
+                    }
+                }
+                
+                // Also update bell icon indicator
+                var bellIcons = document.querySelectorAll('.notification-bell, [data-notification-bell]');
+                for (var k = 0; k < bellIcons.length; k++) {
+                    if (count > 0) {
+                        bellIcons[k].classList.add('has-notifications');
+                    } else {
+                        bellIcons[k].classList.remove('has-notifications');
+                    }
+                }
+                
+                return count;
+            }).catch(function(err) {
+                error('[NotificationManager] Error rendering badge:', err);
+                return 0;
             });
         }
     };
