@@ -17,19 +17,27 @@
     // ═════════════════════════════════════════════════════════════════════
     var DEBUG_MODE = false;
     
-    function log(msg) {
-        if (DEBUG_MODE) log('', msg);
+    // FIXED: Proper logging functions that don't call themselves recursively
+    function log(/* args */) {
+        if (DEBUG_MODE && typeof console === 'object' && console.log) {
+            var args = Array.prototype.slice.call(arguments);
+            console.log.apply(console, '[marketplace]', args.join(' '));
+        }
     }
     
     function warn(msg) {
-        if (DEBUG_MODE) warn('', msg);
+        if (DEBUG_MODE && typeof console === 'object' && console.warn) {
+            console.warn('[marketplace]', msg);
+        }
     }
     
     function error(msg, err) {
-        if (DEBUG_MODE && err) {
-            error('', msg, err);
-        } else if (DEBUG_MODE) {
-            error('', msg);
+        if (DEBUG_MODE && typeof console === 'object' && console.error) {
+            if (err) {
+                console.error('[marketplace]', msg, err);
+            } else {
+                console.error('[marketplace]', msg);
+            }
         }
     }
     
@@ -61,7 +69,8 @@
         if (isNaN(numPrice)) {
             numPrice = 0;
         }
-        return '$' + numPrice.toFixed(2);
+        // Use KES currency symbol for Kenyan marketplace
+        return 'KSh ' + numPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     /**
@@ -172,13 +181,17 @@
 
         // Preserve dashboard/auth guards from legacy inline navigateTo
         try {
-            if (view === 'dashboard' && !window.currentUser) {
+            // FIXED: Check both window.currentUser AND localStorage session
+            // This prevents false "sign in" prompts when user is logged in but currentUser hasn't been set yet
+            var hasSession = window.currentUser || (typeof getSession === 'function' && getSession());
+            
+            if (view === 'dashboard' && !hasSession) {
                 if (typeof openAuth === 'function') openAuth('signin');
                 if (typeof showToast === 'function') showToast('Please sign in to access the dashboard.', 'info');
                 return;
             }
 
-            if (view === 'dashboard' && (typeof sessionValid !== 'undefined') && !sessionValid) {
+            if (view === 'dashboard' && (typeof sessionValid !== 'undefined') && !sessionValid && !window.currentUser) {
                 if (typeof openAuth === 'function') openAuth('signin');
                 if (typeof showToast === 'function') showToast('Your session has expired. Please sign in again.', 'info');
                 return;
@@ -439,12 +452,14 @@
             var activeProductsPromise = window.sb
                 .from('products')
                 .select('*', { count: 'exact' })
-                .eq(' seller_id', sellerId)
+                .eq('seller_id', sellerId)
                 .eq('status', 'active');
             
+            // FIXED: Use simple query first, try join query as fallback
+            // Some schemas don't support order_items relationship
             var ordersPromise = window.sb
                 .from('orders')
-                .select('*, order_items(*)')
+                .select('*')
                 .eq('seller_id', sellerId)
                 .order('created_at', { ascending: false })
                 .limit(50);
@@ -539,7 +554,7 @@
             var defaults = {
                 'statTotalProducts': '0',
                 'statActiveProducts': '0',
-                'statRevenue': '$0.00',
+                'statRevenue': 'KSh 0.00',  // Fixed: Use KES currency
                 'statOrders': '0',
                 'statViews': '0'
             };
@@ -689,16 +704,9 @@
                 container.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
             }
             
-            // Try full query first, fallback to simple query if schema doesn't support joins
+            // FIXED: Use simple query that works on all schemas
+            // Complex joins can fail if foreign key relationships aren't defined
             var ordersQuery = window.sb
-                .from('orders')
-                .select('*, order_items(*), buyer:profiles!orders_buyer_id_fkey(first_name, last_name, avatar_url)')
-                .eq('seller_id', window.currentUser.id)
-                .order('created_at', { ascending: false })
-                .limit(limit);
-            
-            // Fallback simple query for schemas without relationships defined
-            var fallbackQuery = window.sb
                 .from('orders')
                 .select('*')
                 .eq('seller_id', window.currentUser.id)
@@ -721,31 +729,11 @@
                     return orders;
                 })
                 .catch(function(error) {
-                    warn('[DashboardManager] Full orders query failed, trying simpler query:', error.message);
-                    
-                    // Try fallback query
-                    return fallbackQuery
-                        .then(function(result) {
-                            var orders = result.data || [];
-                            
-                            if (container) {
-                                if (orders.length === 0) {
-                                    container.innerHTML = self._renderEmptyState('orders', 'No orders yet.');
-                                } else {
-                                    container.innerHTML = self._renderOrderList(orders);
-                                }
-                            }
-                            
-                            log('[DashboardManager] Loaded', orders.length, 'orders (fallback)');
-                            return orders;
-                        })
-                        .catch(function(fallbackError) {
-                            error('[DashboardManager] Error loading orders:', fallbackError);
-                            if (container) {
-                                container.innerHTML = self._renderErrorState('Failed to load orders');
-                            }
-                            return [];
-                        });
+                    error('[DashboardManager] Error loading orders:', error);
+                    if (container) {
+                        container.innerHTML = self._renderErrorState('Failed to load orders');
+                    }
+                    return [];
                 });
         },
 

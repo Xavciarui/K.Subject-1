@@ -12,8 +12,12 @@
     // ─── DEBUG MODE - Set to true only during development ─────────────────
     var DEBUG_MODE = false;
     
-    function log(msg) {
-        if (DEBUG_MODE) log('', msg);
+    // FIXED: Proper logging functions that don't call themselves recursively
+    function log(/* args */) {
+        if (DEBUG_MODE && typeof console === 'object' && console.log) {
+            var args = Array.prototype.slice.call(arguments);
+            console.log.apply(console, '[integration]', args.join(' '));
+        }
     }
     
     function warn(msg) {
@@ -36,7 +40,7 @@
         return;
     }
 
-    var fp = window.formatPrice || function (v) { return 'K' + (v || 0).toLocaleString(); };
+    var fp = window.formatPrice || function (v) { return 'KSh ' + (v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
     var sr = window.starRating  || function (r) { return ''; };
     var ta = window.timeAgo    || function (d) { return d || ''; };
     var sg = window.safeGet || function (id) { return document.getElementById(id); };
@@ -1343,25 +1347,33 @@
                 }
             }
 
-            // Build order
+            // Build order - FIXED to match K.Subject-1 Supabase schema v3.0
             var orderData = {
-                customer_id: currentUser.id,
-                shipping_address_id: selectedAddress.id,
-                shipping_name: selectedAddress.first_name + ' ' + selectedAddress.last_name,
-                shipping_phone: selectedAddress.phone,
-                shipping_address: selectedAddress.address_line1 + (selectedAddress.address_line2 ? ', ' + selectedAddress.address_line2 : ''),
-                shipping_city: selectedAddress.city,
-                shipping_region: selectedAddress.region,
-                shipping_postal: selectedAddress.postal_code || null,
-                shipping_country: selectedAddress.country || 'Myanmar',
+                buyer_id: currentUser.id,
+                seller_id: items[0].seller_id || currentUser.id, // First item's seller (or self for single-seller)
+                
+                // Shipping info (inline, as per schema)
+                shipping_name: selectedAddress ? (selectedAddress.first_name + ' ' + selectedAddress.last_name) : '',
+                shipping_phone: selectedAddress ? selectedAddress.phone : '',
+                shipping_address: selectedAddress ? (selectedAddress.address_line1 + (selectedAddress.address_line2 ? ', ' + selectedAddress.address_line2 : '')) : '',
+                shipping_city: selectedAddress ? selectedAddress.city : '',
+                shipping_postal_code: selectedAddress ? selectedAddress.postal_code : null,
+                shipping_country: 'Kenya',
+                
+                // Delivery
                 delivery_method_id: _checkoutDeliveryId,
-                delivery_name: deliveryName,
-                subtotal: subtotal,
-                delivery_cost: _checkoutDeliveryCost,
+                delivery_method_name: deliveryName,
+                
+                // Financials - Using KES currency for Kenya marketplace
+                subtotal: Math.round(subtotal * 100) / 100,
+                shipping_cost: _checkoutDeliveryCost,
+                tax_amount: 0, // Tax calculated server-side if needed
                 discount_amount: discount,
-                total_amount: total,
-                currency: 'MMK',
-                notes: _checkoutNotes || null,
+                total: Math.round(total * 100) / 100,
+                currency: 'KES',
+                
+                // Notes and status
+                buyer_notes: _checkoutNotes || null,
                 status: 'pending'
             };
 
@@ -1388,7 +1400,7 @@
                         var orderId = orderResult.data ? orderResult.data.id : orderResult.id;
                         var orderNumber = orderResult.data ? orderResult.data.order_number : orderResult.order_number;
 
-                        // Create order items
+                        // Create order items - FIXED to match schema v3.0
                         var itemPromises = [];
                         for (var j = 0; j < items.length; j++) {
                             var ci = items[j];
@@ -1398,29 +1410,37 @@
                                     order_id: orderId,
                                     product_id: ci.product_id,
                                     variant_id: ci.variant_id || null,
-                                    seller_id: ci.seller_id || currentUser.id,
-                                    store_id: ci.store_id || null,
-                                    product_name: ci.product_name || 'Product',
+                                    
+                                    // Item details at time of purchase
+                                    product_title: ci.product_name || 'Product',
                                     product_image: ci.product_image || null,
                                     variant_name: ci.variant_name || null,
-                                    quantity: ci.quantity || 1,
+                                    sku: ci.sku || null,
+                                    
+                                    // Pricing
                                     unit_price: Number(ci.unit_price) || 0,
-                                    subtotal: itemSubtotal,
+                                    quantity: ci.quantity || 1,
+                                    total_price: Math.round(itemSubtotal * 100) / 100,
+                                    
                                     status: 'pending'
                                 })
                             );
                         }
 
                         return Promise.all(itemPromises).then(function () {
-                            // Create payment record
+                            // Create payment record - FIXED to match schema v3.0
                             return sb.from('payments').insert({
                                 order_id: orderId,
-                                payment_method_id: _checkoutPaymentId,
-                                amount: total,
-                                currency: 'MMK',
+                                amount: Math.round(total * 100) / 100,
+                                currency: 'KES',
                                 status: 'pending',
-                                proof_url: proofUrl,
-                                transaction_ref: _checkoutTransactionRef || null
+                                
+                                // Payment method info
+                                provider: _checkoutPaymentMethods.find(function(p) { return p.id === _checkoutPaymentId; })?.name || 'unknown',
+                                provider_transaction_id: _checkoutTransactionRef || null,
+                                
+                                // M-Pesa specific (if applicable)
+                                mpesa_phone: selectedAddress ? selectedAddress.phone : null
                             });
                         }).then(function () {
                             return { orderId: orderId, orderNumber: orderNumber };
