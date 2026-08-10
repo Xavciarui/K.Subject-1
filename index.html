@@ -4568,6 +4568,37 @@ function clearSession() {
      role, status, created_at
    ───────────────────────────────────────────────────────────────── */
 
+// ═════════════════════════════════════════════════════════════════════
+// PROFILE SYSTEM - Valid roles matching database CHECK constraint
+// Updated to include: buyer, seller, admin, designer, vendor, artist
+// ═════════════════════════════════════════════════════════════════════
+var VALID_PROFILE_ROLES = ['buyer', 'seller', 'admin', 'designer', 'vendor', 'artist'];
+
+/**
+ * Normalize a role value to ensure it matches allowed values
+ * @param {string} role - The role to normalize
+ * @returns {string} A valid role (defaults to 'seller')
+ */
+function normalizeRole(role) {
+    if (!role) return 'seller';
+    var normalized = String(role).toLowerCase().trim();
+    // Check if role is in our valid list
+    if (VALID_PROFILE_ROLES.indexOf(normalized) !== -1) {
+        return normalized;
+    }
+    // Map common variations
+    var roleMap = {
+        'designer': 'designer',
+        'artist': 'artist',
+        'vendor': 'vendor',
+        'creator': 'seller',
+        'merchant': 'seller',
+        'shop': 'seller',
+        'store': 'seller'
+    };
+    return roleMap[normalized] || 'seller';
+}
+
 /**
  * Fetch the profile row for a given auth user id.
  * @returns {Promise<Object|null>}
@@ -4661,12 +4692,18 @@ async function createDefaultProfile(userId) {
         var meta = user.user_metadata || {};
         var rawMeta = user.raw_user_meta_data || {};
         
+        // Get role from metadata and NORMALIZE it to match CHECK constraint
+        var rawRole = meta.role || rawMeta.role || 'seller';
+        var normalizedRole = normalizeRole(rawRole);
+        
+        console.log('[createDefaultProfile] Role normalization:', rawRole, '->', normalizedRole);
+        
         var profileData = {
             id: userId,
             email: email,
             first_name: meta.first_name || rawMeta.first_name || emailPrefix,
             last_name: meta.last_name || rawMeta.last_name || '',
-            role: 'seller',
+            role: normalizedRole,  // Use normalized role (handles designer, artist, etc.)
             status: 'approved',  // Auto-approve so dashboard works immediately
             brand_name: meta.brandName || rawMeta.brand_name || (emailPrefix + "'s Shop"),
             phone: meta.phone || rawMeta.phone || '',
@@ -4701,7 +4738,7 @@ async function createDefaultProfile(userId) {
                     id: userId,
                     email: email,
                     status: 'approved',
-                    role: 'seller',
+                    role: normalizedRole,
                     brand_name: profileData.brand_name
                 };
             }
@@ -4712,7 +4749,7 @@ async function createDefaultProfile(userId) {
                 id: userId,
                 email: email,
                 status: 'approved',
-                role: 'seller',
+                role: normalizedRole,
                 brand_name: profileData.brand_name
             };
         }

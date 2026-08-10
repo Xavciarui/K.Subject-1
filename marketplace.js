@@ -59,10 +59,155 @@
     // UTILITY & HELPER FUNCTIONS
     // =========================================================================
 
+    // ═════════════════════════════════════════════════════════════════════
+    // PROFILE SYNC SYSTEM - Keeps auth.users and public.profiles in sync
+    // Handles: designer, artist, vendor roles + auto-approval
+    // ═════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Valid roles matching database CHECK constraint on profiles table
+     * Updated v2.0: Now includes designer, vendor, artist roles
+     */
+    var VALID_ROLES = ['buyer', 'seller', 'admin', 'designer', 'vendor', 'artist'];
+    
+    /**
+     * Normalize role to match database CHECK constraint
+     * @param {string} role - Raw role value from auth metadata
+     * @returns {string} Valid role (defaults to 'seller')
+     */
+    window.normalizeRole = function(role) {
+        if (!role) return 'seller';
+        var normalized = String(role).toLowerCase().trim();
+        
+        // Direct match check
+        if (VALID_ROLES.indexOf(normalized) !== -1) {
+            return normalized;
+        }
+        
+        // Map common variations to valid roles
+        var roleMap = {
+            'designer': 'designer',
+            'artist': 'artist',
+            'vendor': 'vendor',
+            'creator': 'seller',
+            'merchant': 'seller',
+            'shop': 'seller',
+            'store': 'seller'
+        };
+        
+        return roleMap[normalized] || 'seller';
+    };
+    
+    /**
+     * Sync authenticated user's profile - creates/updates profiles row
+     * Call this AFTER successful authentication to ensure profile exists
+     * 
+     * @param {Object} user - Auth user object from Supabase auth
+     * @returns {Promise<Object|null>} Profile data or null on failure
+     */
+    window.syncUserProfile = function(user) {
+        return new Promise(function(resolve, reject) {
+            if (!window.sb || !user || !user.id) {
+                warn('[syncUserProfile] Missing sb or user');
+                resolve(null);
+                return;
+            }
+            
+            var userId = user.id;
+            var email = user.email || '';
+            var meta = user.user_metadata || {};
+            var rawMeta = user.raw_user_meta_data || {};
+            var emailPrefix = email.split('@')[0] || 'User';
+            
+            // Normalize the role to match database constraint
+            var rawRole = meta.role || rawMeta.role || 'seller';
+            var normalizedRole = window.normalizeRole(rawRole);
+            
+            log('[syncUserProfile] Syncing profile for:', email, '| Role:', rawRole, '->', normalizedRole);
+            
+            // Build profile data
+            var profileData = {
+                id: userId,
+                email: email,
+                first_name: meta.first_name || rawMeta.first_name || emailPrefix,
+                last_name: meta.last_name || rawMeta.last_name || '',
+                role: normalizedRole,
+                status: 'approved',  // Auto-approve for seamless dashboard access
+                brand_name: meta.brandName || rawMeta.brand_name || (emailPrefix + "'s Shop"),
+                country: 'Kenya'
+            };
+            
+            // Try to upsert the profile
+            window.sb.from('profiles').upsert(profileData, { 
+                onConflict: 'id',
+                ignoreDuplicates: false 
+            }).select().single()
+                .then(function(res) {
+                    if (res.error) {
+                        error('[syncUserProfile] Upsert error:', res.error);
+                        
+                        // If CHECK constraint violation, try with 'seller' role
+                        if (res.error.code === '23514' && res.error.message && res.error.message.indexOf('role') !== -1) {
+                            log('[syncUserProfile] Role constraint violation, retrying with seller role...');
+                            profileData.role = 'seller';
+                            
+                            return window.sb.from('profiles').upsert(profileData, {
+                                onConflict: 'id',
+                                ignoreDuplicates: false
+                            }).select().single()
+                                .then(function(retryRes) {
+                                    if (retryRes.error) {
+                                        error('[syncUserProfile] Retry also failed:', retryRes.error);
+                                        // Return minimal profile anyway so dashboard works
+                                        resolve({
+                                            id: userId,
+                                            email: email,
+                                            status: 'approved',
+                                            role: 'seller',
+                                            brand_name: profileData.brand_name
+                                        });
+                                    } else {
+                                        log('[syncUserProfile] Profile synced with fallback role');
+                                        resolve(retryRes.data);
+                                    }
+                                })
+                                .catch(function(retryErr) {
+                                    error('[syncUserProfile] Retry exception:', retryErr);
+                                    resolve(null);
+                                });
+                        }
+                        
+                        // For other errors, still resolve with minimal data
+                        resolve({
+                            id: userId,
+                            email: email,
+                            status: 'approved',
+                            role: normalizedRole,
+                            brand_name: profileData.brand_name
+                        });
+                    } else {
+                        log('[syncUserProfile] Profile synced successfully! Status:', res.data.status);
+                        resolve(res.data);
+                    }
+                })
+                .catch(function(err) {
+                    error('[syncUserProfile] Exception:', err);
+                    // Still resolve with minimal profile so dashboard works
+                    resolve({
+                        id: userId,
+                        email: email,
+                        status: 'approved',
+                        role: normalizedRole,
+                        brand_name: profileData.brand_name
+                    });
+                });
+        });
+    };
+
     /**
      * Format price with currency symbol
      * @param {number|string} price - The price to format
-     * @returns {string} Formatted price string (e.g., "$29.99")
+     * @returns {string} Formatted price string (e.g., "KSh 29.99")
      */
     window.formatPrice = function(price) {
         var numPrice = parseFloat(price || 0);
@@ -303,13 +448,21 @@
                     return _navigateToDashboard(view);
                 }
                 
-                // FIX: Force fresh profile fetch to get latest status from Supabase
-                // This handles case where admin approved user but browser has cached old 'pending' status
-                if (window.currentUser && window.currentUser.id && window.sb) {
-                    log('[navigateTo] Status is "' + userStatus + '" - fetching fresh profile from Supabase...');
+                // FIX: Sync profile first, then check status
+                // This handles: missing profiles, role constraint issues, stale cache
+                if (window.currentUser && window.currentUser.id && window.sb && typeof window.syncUserProfile === 'function') {
+                    log('[navigateTo] Status is "' + userStatus + '" - syncing profile before dashboard access...');
                     (function() {
                         var userId = window.currentUser.id;
-                        window.sb.from('profiles').select('*').eq('id', userId).maybeSingle()
+                        
+                        // First sync the profile (creates/updates with proper role)
+                        window.syncUserProfile(window.currentUser)
+                            .then(function(syncedProfile) {
+                                log('[navigateTo] Profile sync result:', syncedProfile ? 'success' : 'failed');
+                                
+                                // Now fetch fresh status from Supabase
+                                return window.sb.from('profiles').select('*').eq('id', userId).maybeSingle();
+                            })
                             .then(function(res) {
                                 if (!res.error && res.data && res.data.status === 'approved') {
                                     log('[navigateTo] Fresh profile shows APPROVED - updating UI');
@@ -320,9 +473,8 @@
                                     if (typeof updateAuthUI === 'function') updateAuthUI();
                                     if (typeof updateDashboardUI === 'function') updateDashboardUI();
                                     if (typeof hideStatusMessage === 'function') hideStatusMessage();
-                                    if (typeof showToast === 'function') showToast('Your account has been approved! Access granted.', 'success');
+                                    if (typeof showToast === 'function') showToast('Welcome to your dashboard!', 'success');
                                     
-                                    // Now navigate to dashboard with updated status
                                     _navigateToDashboard(view);
                                 } else if (!res.error && res.data) {
                                     // Still not approved - show appropriate message
@@ -347,7 +499,7 @@
                                 }
                             })
                             .catch(function(err) {
-                                warn('[navigateTo] Profile fetch error:', err);
+                                warn('[navigateTo] Profile sync/fetch error:', err);
                                 // Even on error, allow dashboard access for authenticated users
                                 log('[navigateTo] Allowing dashboard access despite error (user is authenticated)');
                                 window.currentUser.status = 'approved';
@@ -355,7 +507,7 @@
                                 _navigateToDashboard(view);
                             });
                     })();
-                    return; // Wait for async profile fetch before navigating
+                    return; // Wait for async profile sync before navigating
                 }
                 
                 return _checkAndShowDashboard(view, userStatus);
