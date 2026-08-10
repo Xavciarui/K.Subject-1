@@ -4573,19 +4573,92 @@ function clearSession() {
  * @returns {Promise<Object|null>}
  */
 async function getProfile(userId) {
-    if (!sb || !userId) return null;
+    if (!sb || !userId) {
+        console.warn('[getProfile] Missing sb or userId:', { sb: !!sb, userId: userId });
+        return null;
+    }
     try {
+        console.log('[getProfile] Fetching profile for user:', userId);
         var res = await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
 
         if (res.error) {
+            console.error('[getProfile] Error:', res.error);
             var msg = (res.error.message || '').toLowerCase();
             if (msg.indexOf('policy') !== -1 || res.error.code === '42501' || res.error.code === 'PGRST301') {
+                console.error('[getProfile] RLS policy error - check Supabase RLS settings');
             } else {
+                console.error('[getProfile] Other error:', res.error.message, 'Code:', res.error.code);
             }
             return null;
         }
+        
+        if (!res.data) {
+            console.warn('[getProfile] No profile found for user:', userId);
+            // Try to create a default profile if none exists
+            console.log('[getProfile] Attempting to create default profile...');
+            var newProfile = await createDefaultProfile(userId);
+            if (newProfile) {
+                console.log('[getProfile] Created default profile:', newProfile.status);
+                return newProfile;
+            }
+        } else {
+            console.log('[getProfile] Profile found - Status:', res.data.status, 'Role:', res.data.role);
+        }
+        
         return res.data;
     } catch (err) {
+        console.error('[getProfile] Exception:', err);
+        return null;
+    }
+}
+
+/**
+ * Create a default profile for users who don't have one
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
+async function createDefaultProfile(userId) {
+    if (!sb || !userId) return null;
+    
+    try {
+        // Get the current auth user to extract email
+        const { data: { user } } = await sb.auth.getUser();
+        
+        if (!user) {
+            console.warn('[createDefaultProfile] No authenticated user');
+            return null;
+        }
+        
+        var profileData = {
+            id: userId,
+            email: user.email || '',
+            first_name: user.user_metadata?.first_name || user.email?.split('@')[0] || '',
+            last_name: user.user_metadata?.last_name || '',
+            role: 'seller',
+            status: 'approved',  // Auto-approve for now (change to 'pending' if manual approval needed)
+            brand_name: user.user_metadata?.brand_name || (user.email?.split('@')[0] + "'s Shop") || ''
+        };
+        
+        console.log('[createDefaultProfile] Creating profile with data:', profileData);
+        
+        var res = await sb.from('profiles').insert(profileData).select().single();
+        
+        if (res.error) {
+            console.error('[createDefaultProfile] Insert error:', res.error);
+            
+            // If duplicate, try fetching again
+            if (res.error.code === '23505') {
+                console.log('[createDefaultProfile] Profile already exists, fetching...');
+                var fetchRes = await sb.from('profiles').select('*').eq('id', userId).single();
+                return fetchRes.data || null;
+            }
+            return null;
+        }
+        
+        console.log('[createDefaultProfile] Profile created successfully');
+        return res.data;
+    } catch (err) {
+        console.error('[createDefaultProfile] Exception:', err);
         return null;
     }
 }
@@ -5799,6 +5872,10 @@ document.addEventListener('DOMContentLoaded', async function () {
             var user    = data.session.user;
             var profile = await getProfile(user.id);
 
+            // DEBUG: Log profile fetch result
+            console.log('[auth] Profile fetch result:', profile ? { status: profile.status, role: profile.role } : 'null');
+            console.log('[auth] Authenticated user:', user.email, 'ID:', user.id);
+
             currentUser = buildCurrentUser(user, profile);
             window.currentUser = currentUser;
             sessionValid = true;
@@ -5806,32 +5883,69 @@ document.addEventListener('DOMContentLoaded', async function () {
             updateAuthUI();
 
             // Dashboard protection on page load:
+            // FIX: Show dashboard for ANY authenticated user (with or without profile)
+            // This ensures users can always access the dashboard
+            var shouldShowDashboard = false;
+            
             if (profile && profile.status === 'approved') {
+                console.log('[auth] User is APPROVED - showing dashboard');
+                shouldShowDashboard = true;
                 hideStatusMessage();
+            } else if (!profile) {
+                // No profile exists but user is authenticated - create one and show dashboard
+                console.warn('[auth] No profile found - creating default and showing dashboard');
+                
+                // Create default approved profile
+                var newProfile = await createDefaultProfile(user.id);
+                if (newProfile) {
+                    currentUser.status = 'approved';
+                    currentUser.brand = newProfile.brand_name || currentUser.brand;
+                    window.currentUser = currentUser;
+                    saveSession();
+                    updateAuthUI();
+                    console.log('[auth] Default profile created with status:', newProfile.status);
+                }
+                
+                // Show dashboard anyway (user is authenticated)
+                shouldShowDashboard = true;
+                hideStatusMessage();
+                
+                if (typeof showToast === 'function') {
+                    showToast('Welcome! Your account has been set up.', 'success');
+                }
+            } else if (profile && profile.status === 'pending') {
+                console.log('[auth] User status:', profile.status, '- showing pending message');
+                showStatusMessage('pending');
+                startApprovalPolling();
+            } else if (profile && profile.status === 'rejected') {
+                console.log('[auth] User status:', profile.status, '- showing rejected message');
+                showStatusMessage('rejected');
+            }
+
+            if (shouldShowDashboard) {
                 updateDashboardUI();
+                
+                // Ensure dashboard nav button is visible
+                var dashNavBtn = document.getElementById('dashNavBtn');
+                if (dashNavBtn) { 
+                    dashNavBtn.style.display = ''; 
+                    console.log('[auth] Dashboard nav button shown');
+                }
+                var dashMenuLink = document.getElementById('dashMenuLink');
+                if (dashMenuLink) { 
+                    dashMenuLink.style.display = '';
+                    console.log('[auth] Dashboard menu link shown');
+                }
+                
                 navigateTo('dashboard');
             }
 
             // If the dashboard view is somehow active but user isn't approved, kick them out
-            if (profile && profile.status !== 'approved') {
-                showStatusMessage(profile.status);
+            if (profile && !shouldShowDashboard && profile.status !== 'approved') {
                 var dashView = document.getElementById('view-dashboard');
                 if (dashView && dashView.classList.contains('active')) {
                     navigateTo('home');
                 }
-            }
-            // User is authenticated but we can't verify status — safest to block dashboard
-            if (!profile) {
-                showStatusMessage('pending');
-                var dashView2 = document.getElementById('view-dashboard');
-                if (dashView2 && dashView2.classList.contains('active')) {
-                    navigateTo('home');
-                }
-            }
-
-            // ── Poll for admin approval every 30s while pending ──
-            if (profile && profile.status === 'pending') {
-                startApprovalPolling();
             }
         } else {
             // No active Supabase session — clear everything

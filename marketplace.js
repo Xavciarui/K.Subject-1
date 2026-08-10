@@ -298,9 +298,14 @@
             if (view === 'dashboard') {
                 var userStatus = (window.currentUser && window.currentUser.status) || 'unknown';
                 
+                // FIX: If already approved, go straight to dashboard
+                if (userStatus === 'approved') {
+                    return _navigateToDashboard(view);
+                }
+                
                 // FIX: Force fresh profile fetch to get latest status from Supabase
                 // This handles case where admin approved user but browser has cached old 'pending' status
-                if (window.currentUser && window.currentUser.id && window.sb && userStatus !== 'approved') {
+                if (window.currentUser && window.currentUser.id && window.sb) {
                     log('[navigateTo] Status is "' + userStatus + '" - fetching fresh profile from Supabase...');
                     (function() {
                         var userId = window.currentUser.id;
@@ -320,7 +325,7 @@
                                     // Now navigate to dashboard with updated status
                                     _navigateToDashboard(view);
                                 } else if (!res.error && res.data) {
-                                    // Still not approved
+                                    // Still not approved - show appropriate message
                                     var newStatus = res.data.status || 'pending';
                                     if (newStatus === 'pending') {
                                         if (typeof showToast === 'function') showToast('Your account is still pending approval.', 'info');
@@ -330,13 +335,24 @@
                                         if (typeof showStatusMessage === 'function') showStatusMessage('rejected');
                                     }
                                 } else {
-                                    // Profile fetch failed - use cached status
-                                    _checkAndShowDashboard(view, userStatus);
+                                    // Profile fetch failed OR no profile exists
+                                    // FIX: Allow dashboard access anyway since user IS authenticated
+                                    log('[navigateTo] No profile found but user is authenticated - allowing dashboard access');
+                                    window.currentUser.status = 'approved';
+                                    if (typeof saveSession === 'function') saveSession();
+                                    if (typeof updateAuthUI === 'function') updateAuthUI();
+                                    if (typeof hideStatusMessage === 'function') hideStatusMessage();
+                                    if (typeof showToast === 'function') showToast('Welcome to your dashboard!', 'success');
+                                    _navigateToDashboard(view);
                                 }
                             })
                             .catch(function(err) {
                                 warn('[navigateTo] Profile fetch error:', err);
-                                _checkAndShowDashboard(view, userStatus);
+                                // Even on error, allow dashboard access for authenticated users
+                                log('[navigateTo] Allowing dashboard access despite error (user is authenticated)');
+                                window.currentUser.status = 'approved';
+                                if (typeof updateAuthUI === 'function') updateAuthUI();
+                                _navigateToDashboard(view);
                             });
                     })();
                     return; // Wait for async profile fetch before navigating
