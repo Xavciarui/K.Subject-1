@@ -1214,8 +1214,7 @@
             var isEdit = !!product;
             var title = isEdit ? 'Edit Product' : 'Add New Product';
             
-            return 
-                '<div class="df-overlay" id="productModal">' +
+            return '<div class="df-overlay" id="productModal">' +
                     '<div class="df-box" style="max-width:600px" onclick="event.stopPropagation()">' +
                         '<div class="df-head">' +
                             '<h3>' + (isEdit ? '✏️ ' : '✨ ') + escapeHtml(title) + '</h3>' +

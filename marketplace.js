@@ -11,16 +11,38 @@
 
 (function() {
     'use strict';
+    
+    // ═════════════════════════════════════════════════════════════════════
+    // DEBUG MODE - Set to true only during development
+    // ═════════════════════════════════════════════════════════════════════
+    var DEBUG_MODE = false;
+    
+    function log(msg) {
+        if (DEBUG_MODE) log('', msg);
+    }
+    
+    function warn(msg) {
+        if (DEBUG_MODE) warn('', msg);
+    }
+    
+    function error(msg, err) {
+        if (DEBUG_MODE && err) {
+            error('', msg, err);
+        } else if (DEBUG_MODE) {
+            error('', msg);
+        }
+    }
+    
     // ═════════════════════════════════════════════════════════════════════
     // DEGRADATION GUARD v2.0
     // Gracefully handle missing Supabase client without crashing
     // ═════════════════════════════════════════════════════════════════════
     
-    if (!window.sb && typeof window !== 'undefined') {
-        console.warn('[marketplace] ⚠️ Supabase client (window.sb) not found.');
-        console.warn('[marketplace] Running in DEGRADED MODE - database features disabled.');
-        console.warn('[marketplace] UI features will work, but data operations will fail silently.');
-        console.warn('[marketplace] Check that index.html properly initializes Supabase before loading this script.');
+    var sbReady = !!window.sb;
+    var pageStillLoading = typeof document !== 'undefined' && document.readyState !== 'complete' && document.readyState !== 'interactive';
+
+    if (!sbReady && !pageStillLoading) {
+        warn('Running in DEGRADED MODE - database features disabled.');
         window._marketplaceDegradedMode = true;
     }
     
@@ -115,7 +137,7 @@
         try {
             return document.getElementById(id);
         } catch (e) {
-            console.warn('[safeGet] Error getting element:', id, e);
+            warn('Error getting element: ' + id);
             return null;
         }
     };
@@ -146,44 +168,96 @@
      * @param {string} view - View name or section identifier
      */
     window.navigateTo = function(view) {
-        console.log('[navigateTo] Navigating to:', view);
+        log('[navigateTo] Navigating to:', view);
+
+        // Preserve dashboard/auth guards from legacy inline navigateTo
+        try {
+            if (view === 'dashboard' && !window.currentUser) {
+                if (typeof openAuth === 'function') openAuth('signin');
+                if (typeof showToast === 'function') showToast('Please sign in to access the dashboard.', 'info');
+                return;
+            }
+
+            if (view === 'dashboard' && (typeof sessionValid !== 'undefined') && !sessionValid) {
+                if (typeof openAuth === 'function') openAuth('signin');
+                if (typeof showToast === 'function') showToast('Your session has expired. Please sign in again.', 'info');
+                return;
+            }
+
+            if (view === 'dashboard') {
+                var userStatus = (window.currentUser && window.currentUser.status) || 'unknown';
+                if (userStatus !== 'approved') {
+                    if (userStatus === 'pending') {
+                        if (typeof showToast === 'function') showToast('Your account is still pending approval.', 'info');
+                        if (typeof showStatusMessage === 'function') showStatusMessage('pending');
+                    } else if (userStatus === 'rejected') {
+                        if (typeof showToast === 'function') showToast('Your account has been rejected.', 'error');
+                        if (typeof showStatusMessage === 'function') showStatusMessage('rejected');
+                    } else {
+                        if (typeof showToast === 'function') showToast('Unable to verify your account status. Please contact support.', 'error');
+                        if (typeof showStatusMessage === 'function') showStatusMessage('pending');
+                    }
+                    return;
+                }
+            }
+        } catch (e) { warn('[navigateTo] guard error', e); }
         
-        // Hide all views/sections first
+        // Hide all views/sections first - prefer data-view pattern
         var views = document.querySelectorAll('[data-view]');
-        for (var i = 0; i < views.length; i++) {
-            views[i].classList.add('hidden');
-            views[i].classList.remove('active');
-        }
-        
-        // Show target view
-        var targetView = document.querySelector('[data-view="' + view + '"]');
-        if (targetView) {
-            targetView.classList.remove('hidden');
-            targetView.classList.add('active');
-            
-            // Scroll to top of view
-            targetView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (views && views.length > 0) {
+            for (var i = 0; i < views.length; i++) {
+                views[i].classList.add('hidden');
+                views[i].classList.remove('active');
+            }
+
+            // Show target view using data-view
+            var targetView = document.querySelector('[data-view="' + view + '"]');
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                targetView.classList.add('active');
+            }
         } else {
-            // Fallback: try to find by ID
-            var byId = safeGet(view);
-            if (byId) {
-                byId.classList.remove('hidden');
-                byId.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Fallback for pages using #view-<name> and .view-section
+            var fallbackSections = document.querySelectorAll('.view-section');
+            for (var si = 0; si < fallbackSections.length; si++) {
+                fallbackSections[si].classList.remove('active');
+                // also attempt to hide via style if classes not used
+                try { fallbackSections[si].style.display = 'none'; } catch (e) {}
+            }
+
+            var fallbackTarget = document.getElementById('view-' + view);
+            if (fallbackTarget) {
+                fallbackTarget.classList.add('active');
+                try { fallbackTarget.style.display = 'block'; } catch (e) {}
+                fallbackTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
         
-        // Update navigation active state
+        // Update navigation active state - support both data-navigate and .nav-link[data-nav]
         var navItems = document.querySelectorAll('[data-navigate]');
-        for (var j = 0; j < navItems.length; j++) {
-            navItems[j].classList.remove('active', 'bg-primary', 'text-primary-foreground');
-            if (navItems[j].getAttribute('data-navigate') === view) {
-                navItems[j].classList.add('active', 'bg-primary', 'text-primary-foreground');
+        if (navItems && navItems.length > 0) {
+            for (var j = 0; j < navItems.length; j++) {
+                navItems[j].classList.remove('active', 'bg-primary', 'text-primary-foreground');
+                if (navItems[j].getAttribute('data-navigate') === view) {
+                    navItems[j].classList.add('active', 'bg-primary', 'text-primary-foreground');
+                }
+            }
+        } else {
+            var legacyNav = document.querySelectorAll('.nav-link');
+            for (var nj = 0; nj < legacyNav.length; nj++) {
+                legacyNav[nj].classList.remove('active');
+                if (legacyNav[nj].getAttribute('data-nav') === view) {
+                    legacyNav[nj].classList.add('active');
+                }
             }
         }
         
         // Trigger custom event for other listeners
         var event = new CustomEvent('viewChange', { detail: { view: view } });
         document.dispatchEvent(event);
+        
+        // Scroll to top so navigation bar is visible after page switch
+        window.scrollTo({ top: 0, behavior: 'instant' });
     };
 
     /**
@@ -279,7 +353,7 @@
             modalContent.style.opacity = '1';
         });
         
-        console.log('[showModal] Modal displayed');
+        log('[showModal] Modal displayed');
     };
 
     /**
@@ -290,7 +364,7 @@
         if (existingModal) {
             existingModal.remove();
             document.body.style.overflow = '';
-            console.log('[closeModal] Modal closed');
+            log('[closeModal] Modal closed');
         }
     };
 
@@ -343,11 +417,11 @@
         loadDashboardStats: function() {
             var self = this;
             
-            console.log('[DashboardManager] Loading dashboard stats...');
+            log('[DashboardManager] Loading dashboard stats...');
             
             // Check if user is authenticated
             if (!window.currentUser || !window.currentUser.id) {
-                console.warn('[DashboardManager] No authenticated user');
+                warn('[DashboardManager] No authenticated user');
                 self._showEmptyStats();
                 return Promise.resolve(null);
             }
@@ -416,11 +490,11 @@
                     self._cachedStats = stats;
                     self._updateStatElements(stats);
                     
-                    console.log('[DashboardManager] Stats loaded:', stats);
+                    log('[DashboardManager] Stats loaded:', stats);
                     return stats;
                 })
                 .catch(function(error) {
-                    console.error('[DashboardManager] Error loading stats:', error);
+                    error('[DashboardManager] Error loading stats:', error);
                     NotificationManager.showToast('Failed to load dashboard statistics', 'error');
                     return null;
                 })
@@ -489,10 +563,10 @@
             var self = this;
             limit = limit || 6;
             
-            console.log('[DashboardManager] Loading dashboard products...');
+            log('[DashboardManager] Loading dashboard products...');
             
             if (!window.currentUser || !window.currentUser.id) {
-                console.warn('[DashboardManager] No authenticated user');
+                warn('[DashboardManager] No authenticated user');
                 return Promise.resolve([]);
             }
             
@@ -518,11 +592,11 @@
                         }
                     }
                     
-                    console.log('[DashboardManager] Loaded', products.length, 'products');
+                    log('[DashboardManager] Loaded', products.length, 'products');
                     return products;
                 })
                 .catch(function(error) {
-                    console.error('[DashboardManager] Error loading products:', error);
+                    error('[DashboardManager] Error loading products:', error);
                     if (container) {
                         container.innerHTML = self._renderErrorState('Failed to load products');
                     }
@@ -603,10 +677,10 @@
             var self = this;
             limit = limit || 5;
             
-            console.log('[DashboardManager] Loading dashboard orders...');
+            log('[DashboardManager] Loading dashboard orders...');
             
             if (!window.currentUser || !window.currentUser.id) {
-                console.warn('[DashboardManager] No authenticated user');
+                warn('[DashboardManager] No authenticated user');
                 return Promise.resolve([]);
             }
             
@@ -632,11 +706,11 @@
                         }
                     }
                     
-                    console.log('[DashboardManager] Loaded', orders.length, 'orders');
+                    log('[DashboardManager] Loaded', orders.length, 'orders');
                     return orders;
                 })
                 .catch(function(error) {
-                    console.error('[DashboardManager] Error loading orders:', error);
+                    error('[DashboardManager] Error loading orders:', error);
                     if (container) {
                         container.innerHTML = self._renderErrorState('Failed to load orders');
                     }
@@ -714,10 +788,10 @@
         loadRecentActivity: function() {
             var self = this;
             
-            console.log('[DashboardManager] Loading recent activity...');
+            log('[DashboardManager] Loading recent activity...');
             
             if (!window.currentUser || !window.currentUser.id) {
-                console.warn('[DashboardManager] No authenticated user');
+                warn('[DashboardManager] No authenticated user');
                 return Promise.resolve([]);
             }
             
@@ -784,10 +858,10 @@
                     container.innerHTML = self._renderActivityFeed(activities);
                 }
                 
-                console.log('[DashboardManager] Loaded', activities.length, 'activities');
+                log('[DashboardManager] Loaded', activities.length, 'activities');
                 return activities;
             }).catch(function(error) {
-                console.error('[DashboardManager] Error loading activity:', error);
+                error('[DashboardManager] Error loading activity:', error);
                 container.innerHTML = self._renderErrorState('Failed to load activity');
                 return [];
             });
@@ -874,7 +948,7 @@
                 skeletons[j].classList.remove('hidden');
             }
             
-            console.log('[DashboardManager] Loading state shown');
+            log('[DashboardManager] Loading state shown');
         },
 
         /**
@@ -889,7 +963,7 @@
                 skeletons[i].classList.add('hidden');
             }
             
-            console.log('[DashboardManager] Loading state hidden');
+            log('[DashboardManager] Loading state hidden');
         },
 
         /**
@@ -899,7 +973,7 @@
          */
         loadFullDashboard: function() {
             var self = this;
-            console.log('[DashboardManager] Loading full dashboard...');
+            log('[DashboardManager] Loading full dashboard...');
             
             return Promise.all([
                 self.loadDashboardStats(),
@@ -907,7 +981,7 @@
                 self.loadDashboardOrders(),
                 self.loadRecentActivity()
             ]).then(function() {
-                console.log('[DashboardManager] Full dashboard loaded');
+                log('[DashboardManager] Full dashboard loaded');
                 NotificationManager.showToast('Dashboard updated', 'success');
             });
         },
@@ -922,12 +996,12 @@
     };
 
     // Reference for private methods
-    var self = DashboardManager;
-
+    var dashboardSelf = DashboardManager;
 
     // =========================================================================
     // B. PRODUCT MANAGER
     // =========================================================================
+    var self = null;
 
     /**
      * ProductManager - Handles all product CRUD operations
@@ -939,6 +1013,129 @@
         _cacheTTL: 30000,
 
         /**
+         * Render a single product card for collection, library, or search views
+         * @param {Object} product - Product object from Supabase
+         * @returns {string} HTML string for the product card
+         */
+        renderProductCard: function(product) {
+            if (!product) return '';
+            var safeId = product.id ? String(product.id).replace(/'/g, "\\'") : '';
+            var imageUrl = '';
+            if (product.product_images && product.product_images.length > 0) {
+                imageUrl = product.product_images[0].url || product.product_images[0].public_url || '';
+            }
+            var title = escapeHtml(product.title || product.name || 'Untitled');
+            var description = escapeHtml((product.description || product.summary || '').substr(0, 90));
+            var price = formatPrice(product.price || product.discount_price || product.effective_price || 0);
+            var category = escapeHtml(product.category || product.category_name || '');
+
+            var html = '<div class="group rounded-3xl border border-white/10 bg-surface/80 overflow-hidden transition hover:-translate-y-1 hover:shadow-2xl">';
+            html += '<a href="#" onclick="event.preventDefault(); navigateTo(\'product\', \'" + safeId + "\');" class="block">';
+            html += '<div class="aspect-[4/3] bg-gray-950 text-slate-500 flex items-center justify-center overflow-hidden">';
+            if (imageUrl) {
+                html += '<img src="' + escapeHtml(imageUrl) + '" alt="' + title + '" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">';
+            } else {
+                html += '<div class="flex h-full w-full items-center justify-center text-3xl text-muted"><i class="fa-solid fa-box-open"></i></div>';
+            }
+            html += '</div>';
+            html += '<div class="p-4">';
+            if (category) {
+                html += '<p class="text-[11px] uppercase tracking-[0.22em] text-accent mb-2">' + category + '</p>';
+            }
+            html += '<h3 class="text-base font-semibold text-white truncate">' + title + '</h3>';
+            if (description) {
+                html += '<p class="mt-2 text-sm text-muted leading-6 line-clamp-3">' + description + '</p>';
+            }
+            html += '<div class="mt-4 flex items-center justify-between">';
+            html += '<span class="text-lg font-semibold text-white">' + price + '</span>';
+            html += '<span class="text-xs uppercase tracking-[0.2em] text-muted">View</span>';
+            html += '</div>';
+            html += '</div>';
+            html += '</a>';
+            html += '</div>';
+            return html;
+        },
+
+        /**
+         * Render a product grid into a target container
+         * @param {Array} products - Array of product objects
+         * @param {HTMLElement} container - Target DOM container
+         */
+        _renderProductGrid: function(products, container) {
+            if (!container) return;
+            if (!products || products.length === 0) {
+                container.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-20"><div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mb-5"><i class="fa-solid fa-box-open text-2xl text-muted/50" aria-hidden="true"></i></div><p class="font-medium text-subtle text-lg">No items yet</p><p class="text-sm text-muted mt-2 max-w-sm">The collection is being curated. Check back soon for handpicked products across all categories.</p></div>';
+                return;
+            }
+
+            var html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">';
+            for (var i = 0; i < products.length; i++) {
+                html += this.renderProductCard(products[i]);
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        },
+
+        /**
+         * Render collection content and optionally filter by category
+         * @param {string|null} category - Category slug or null for all
+         * @returns {Promise<Array>} Loaded products
+         */
+        renderCollection: function(category) {
+            var self = this;
+            var container = safeGet('collectionContent');
+            if (!container) return Promise.resolve([]);
+            container.innerHTML = '<div class="flex items-center justify-center py-20"><i class="fa-solid fa-spinner fa-spin text-2xl text-accent"></i></div>';
+
+            if (!window.sb) {
+                container.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-20"><div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mb-5"><i class="fa-solid fa-box-open text-2xl text-muted/50" aria-hidden="true"></i></div><p class="font-medium text-subtle text-lg">No collection data available</p><p class="text-sm text-muted mt-2 max-w-sm">Please sign in or refresh the page to load the collection.</p></div>';
+                return Promise.resolve([]);
+            }
+
+            var query = window.sb.from('products').select('*, product_images(*)').eq('is_active', true).order('created_at', { ascending: false });
+            if (category) {
+                query = query.eq('category', category);
+            }
+
+            return query.then(function(result) {
+                var products = result.data || [];
+                self._renderProductGrid(products, container);
+                return products;
+            }).catch(function(error) {
+                error('[ProductManager] Error loading collection:', error);
+                container.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-20"><div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mb-5"><i class="fa-solid fa-triangle-exclamation text-2xl text-muted/50" aria-hidden="true"></i></div><p class="font-medium text-subtle text-lg">Unable to load collection</p><p class="text-sm text-muted mt-2 max-w-sm">There was a problem fetching products from the server. Please try again later.</p></div>';
+                return [];
+            });
+        },
+
+        /**
+         * Render library content
+         * @returns {Promise<Array>} Loaded library products
+         */
+        renderLibrary: function() {
+            var self = this;
+            var container = safeGet('libraryContent');
+            if (!container) return Promise.resolve([]);
+            container.innerHTML = '<div class="flex items-center justify-center py-20"><i class="fa-solid fa-spinner fa-spin text-2xl text-accent"></i></div>';
+
+            if (!window.sb) {
+                container.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-20"><div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mb-5"><i class="fa-solid fa-book text-2xl text-muted/50" aria-hidden="true"></i></div><p class="font-medium text-subtle text-lg">No library data available</p><p class="text-sm text-muted mt-2 max-w-sm">Please sign in or refresh the page to load the library.</p></div>';
+                return Promise.resolve([]);
+            }
+
+            return window.sb.from('products').select('*, product_images(*)').eq('is_active', true).eq('category', 'library').order('created_at', { ascending: false })
+                .then(function(result) {
+                    var products = result.data || [];
+                    self._renderProductGrid(products, container);
+                    return products;
+                }).catch(function(error) {
+                    error('[ProductManager] Error loading library:', error);
+                    container.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-20"><div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mb-5"><i class="fa-solid fa-triangle-exclamation text-2xl text-muted/50" aria-hidden="true"></i></div><p class="font-medium text-subtle text-lg">Unable to load library</p><p class="text-sm text-muted mt-2 max-w-sm">There was a problem fetching library products from the server. Please try again later.</p></div>';
+                    return [];
+                });
+        },
+
+        /**
          * Get all products for current seller
          * @param {Object} options - Query options (limit, offset, status, category)
          * @returns {Promise<Array>} Array of product objects
@@ -946,10 +1143,10 @@
         getSellerProducts: function(options) {
             options = options || {};
             
-            console.log('[ProductManager] Getting seller products...');
+            log('[ProductManager] Getting seller products...');
             
             if (!window.currentUser || !window.currentUser.id) {
-                console.warn('[ProductManager] No authenticated user');
+                warn('[ProductManager] No authenticated user');
                 return Promise.reject(new Error('Not authenticated'));
             }
             
@@ -983,10 +1180,10 @@
                     };
                 }
                 
-                console.log('[ProductManager] Retrieved', products.length, 'products');
+                log('[ProductManager] Retrieved', products.length, 'products');
                 return products;
             }).catch(function(error) {
-                console.error('[ProductManager] Error getting products:', error);
+                error('[ProductManager] Error getting products:', error);
                 NotificationManager.showToast('Failed to load products', 'error');
                 throw error;
             });
@@ -1000,13 +1197,13 @@
          * @returns {Promise<Object>} Product object
          */
         getProductById: function(id, forceRefresh) {
-            console.log('[ProductManager] Getting product:', id);
+            log('[ProductManager] Getting product:', id);
             
             // Check cache first
             if (!forceRefresh && self._cache[id]) {
                 var cached = self._cache[id];
                 if (Date.now() - cached.timestamp < self._cacheTTL) {
-                    console.log('[ProductManager] Returning cached product');
+                    log('[ProductManager] Returning cached product');
                     return Promise.resolve(cached.data);
                 }
             }
@@ -1027,11 +1224,11 @@
                         timestamp: Date.now()
                     };
                     
-                    console.log('[ProductManager] Product loaded:', result.data.title);
+                    log('[ProductManager] Product loaded:', result.data.title);
                     return result.data;
                 })
                 .catch(function(error) {
-                    console.error('[ProductManager] Error getting product:', error);
+                    error('[ProductManager] Error getting product:', error);
                     throw error;
                 });
         },
@@ -1042,7 +1239,7 @@
          * @returns {Promise<Object>} Created product
          */
         createProduct: function(data) {
-            console.log('[ProductManager] Creating product...');
+            log('[ProductManager] Creating product...');
             
             if (!window.currentUser || !window.currentUser.id) {
                 return Promise.reject(new Error('Not authenticated'));
@@ -1074,7 +1271,7 @@
                 .select()
                 .single()
                 .then(function(result) {
-                    console.log('[ProductManager] Product created:', result.data.id);
+                    log('[ProductManager] Product created:', result.data.id);
                     NotificationManager.showToast('Product created successfully!', 'success');
                     
                     // Clear cache
@@ -1083,7 +1280,7 @@
                     return result.data;
                 })
                 .catch(function(error) {
-                    console.error('[ProductManager] Error creating product:', error);
+                    error('[ProductManager] Error creating product:', error);
                     NotificationManager.showToast('Failed to create product: ' + (error.message || 'Unknown error'), 'error');
                     throw error;
                 });
@@ -1096,7 +1293,7 @@
          * @returns {Promise<Object>} Updated product
          */
         updateProduct: function(id, data) {
-            console.log('[ProductManager] Updating product:', id);
+            log('[ProductManager] Updating product:', id);
             
             if (!window.currentUser || !window.currentUser.id) {
                 return Promise.reject(new Error('Not authenticated'));
@@ -1130,7 +1327,7 @@
                 .select()
                 .single()
                 .then(function(result) {
-                    console.log('[ProductManager] Product updated:', id);
+                    log('[ProductManager] Product updated:', id);
                     NotificationManager.showToast('Product updated successfully!', 'success');
                     
                     // Update cache
@@ -1142,7 +1339,7 @@
                     return result.data;
                 })
                 .catch(function(error) {
-                    console.error('[ProductManager] Error updating product:', error);
+                    error('[ProductManager] Error updating product:', error);
                     NotificationManager.showToast('Failed to update product', 'error');
                     throw error;
                 });
@@ -1155,7 +1352,7 @@
          * @returns {Promise<boolean>} Success status
          */
         deleteProduct: function(id) {
-            console.log('[ProductManager] Deleting product:', id);
+            log('[ProductManager] Deleting product:', id);
             
             if (!window.currentUser || !window.currentUser.id) {
                 return Promise.reject(new Error('Not authenticated'));
@@ -1167,7 +1364,7 @@
                 .eq('id', id)
                 .eq('seller_id', window.currentUser.id) // Security: ensure ownership
                 .then(function(result) {
-                    console.log('[ProductManager] Product deleted:', id);
+                    log('[ProductManager] Product deleted:', id);
                     NotificationManager.showToast('Product deleted', 'success');
                     
                     // Remove from cache
@@ -1176,7 +1373,7 @@
                     return true;
                 })
                 .catch(function(error) {
-                    console.error('[ProductManager] Error deleting product:', error);
+                    error('[ProductManager] Error deleting product:', error);
                     NotificationManager.showToast('Failed to delete product', 'error');
                     throw error;
                 });
@@ -1189,7 +1386,7 @@
          * @returns {Promise<Object>} Updated product
          */
         changeStatus: function(id, status) {
-            console.log('[ProductManager] Changing product status:', id, '->', status);
+            log('[ProductManager] Changing product status:', id, '->', status);
             
             var validStatuses = ['draft', 'active', 'archived', 'sold_out'];
             if (validStatuses.indexOf(status) === -1) {
@@ -1207,7 +1404,7 @@
          * @returns {Promise<Object>} Uploaded image record
          */
         uploadImage: function(productId, file, isPrimary) {
-            console.log('[ProductManager] Uploading image for product:', productId);
+            log('[ProductManager] Uploading image for product:', productId);
             
             if (!file) {
                 return Promise.reject(new Error('No file provided'));
@@ -1251,12 +1448,12 @@
                         .single();
                 })
                 .then(function(result) {
-                    console.log('[ProductManager] Image uploaded successfully');
+                    log('[ProductManager] Image uploaded successfully');
                     NotificationManager.showToast('Image uploaded!', 'success');
                     return result.data;
                 })
                 .catch(function(error) {
-                    console.error('[ProductManager] Error uploading image:', error);
+                    error('[ProductManager] Error uploading image:', error);
                     NotificationManager.showToast('Failed to upload image', 'error');
                     throw error;
                 });
@@ -1269,7 +1466,7 @@
          * @returns {Promise<boolean>} Success status
          */
         setPrimaryImage: function(productId, imageId) {
-            console.log('[ProductManager] Setting primary image:', imageId);
+            log('[ProductManager] Setting primary image:', imageId);
             
             // First, unset current primary
             return window.sb
@@ -1286,11 +1483,11 @@
                         .eq('product_id', productId);
                 })
                 .then(function() {
-                    console.log('[ProductManager] Primary image set');
+                    log('[ProductManager] Primary image set');
                     return true;
                 })
                 .catch(function(error) {
-                    console.error('[ProductManager] Error setting primary image:', error);
+                    error('[ProductManager] Error setting primary image:', error);
                     throw error;
                 });
         },
@@ -1302,7 +1499,7 @@
          * @returns {Promise<boolean>} Success status
          */
         deleteImage: function(imageId, path) {
-            console.log('[ProductManager] Deleting image:', imageId);
+            log('[ProductManager] Deleting image:', imageId);
             
             var promises = [];
             
@@ -1321,19 +1518,19 @@
                         .from('product-images')
                         .remove([path])
                         .catch(function(err) {
-                            console.warn('[ProductManager] Storage deletion failed:', err);
+                            warn('[ProductManager] Storage deletion failed:', err);
                         })
                 );
             }
             
             return Promise.all(promises)
                 .then(function() {
-                    console.log('[ProductManager] Image deleted');
+                    log('[ProductManager] Image deleted');
                     NotificationManager.showToast('Image deleted', 'success');
                     return true;
                 })
                 .catch(function(error) {
-                    console.error('[ProductManager] Error deleting image:', error);
+                    error('[ProductManager] Error deleting image:', error);
                     throw error;
                 });
         },
@@ -1345,7 +1542,7 @@
          */
         duplicateProduct: function(id) {
             var self = this;
-            console.log('[ProductManager] Duplicating product:', id);
+            log('[ProductManager] Duplicating product:', id);
             
             return self.getProductById(id)
                 .then(function(originalProduct) {
@@ -1370,7 +1567,7 @@
          */
         clearCache: function() {
             self._cache = {};
-            console.log('[ProductManager] Cache cleared');
+            log('[ProductManager] Cache cleared');
         }
     };
 
@@ -1401,7 +1598,7 @@
             options = options || {};
             self._currentQuery = query;
             
-            console.log('[SearchManager] Searching products:', query);
+            log('[SearchManager] Searching products:', query);
             
             if (!query || query.trim().length === 0) {
                 return self.getSellerProducts(options);
@@ -1445,11 +1642,11 @@
                         });
                     }
                     
-                    console.log('[SearchManager] Found', products.length, 'results');
+                    log('[SearchManager] Found', products.length, 'results');
                     return products;
                 })
                 .catch(function(error) {
-                    console.error('[SearchManager] Search error:', error);
+                    error('[SearchManager] Search error:', error);
                     NotificationManager.showToast('Search failed', 'error');
                     return [];
                 });
@@ -1472,7 +1669,7 @@
             if (!products || !filters) return products || [];
             
             self._currentFilters = filters;
-            console.log('[SearchManager] Filtering products:', filters);
+            log('[SearchManager] Filtering products:', filters);
             
             var filtered = products.filter(function(product) {
                 // Category filter
@@ -1524,7 +1721,7 @@
                 return true;
             });
             
-            console.log('[SearchManager] Filtered to', filtered.length, 'products');
+            log('[SearchManager] Filtered to', filtered.length, 'products');
             return filtered;
         },
 
@@ -1538,7 +1735,7 @@
             if (!products) return [];
             
             self._currentSort = sortBy || 'newest';
-            console.log('[SearchManager] Sorting by:', self._currentSort);
+            log('[SearchManager] Sorting by:', self._currentSort);
             
             var sorted = products.slice(); // Create copy to avoid mutating original
             
@@ -1633,7 +1830,7 @@
             self._currentQuery = '';
             self._currentFilters = {};
             self._currentSort = 'newest';
-            console.log('[SearchManager] State reset');
+            log('[SearchManager] State reset');
         },
 
         /**
@@ -1649,7 +1846,7 @@
                     return result.data || [];
                 })
                 .catch(function(error) {
-                    console.error('[SearchManager] Error fetching categories:', error);
+                    error('[SearchManager] Error fetching categories:', error);
                     return [];
                 });
         },
@@ -1717,7 +1914,7 @@
                 var stored = localStorage.getItem(self.STORAGE_KEY);
                 self._cart = stored ? JSON.parse(stored) : [];
             } catch (e) {
-                console.warn('[CartManager] Error reading cart from storage:', e);
+                warn('[CartManager] Error reading cart from storage:', e);
                 self._cart = [];
             }
             
@@ -1736,7 +1933,7 @@
                 var event = new CustomEvent('cartUpdated', { detail: { cart: self._cart } });
                 document.dispatchEvent(event);
             } catch (e) {
-                console.warn('[CartManager] Error saving cart:', e);
+                warn('[CartManager] Error saving cart:', e);
             }
         },
 
@@ -1751,7 +1948,7 @@
             quantity = parseInt(quantity) || 1;
             options = options || {};
             
-            console.log('[CartManager] Adding to cart:', productId, 'qty:', quantity);
+            log('[CartManager] Adding to cart:', productId, 'qty:', quantity);
             
             var cart = self._getCart();
             var existingIndex = -1;
@@ -1784,7 +1981,7 @@
             self._saveCart();
             
             NotificationManager.showToast('Added to cart!', 'success');
-            console.log('[CartManager] Cart updated, items:', cart.length);
+            log('[CartManager] Cart updated, items:', cart.length);
             
             return Promise.resolve(self.getCart());
         },
@@ -1795,7 +1992,7 @@
          * @returns {Object} Updated cart
          */
         removeFromCart: function(productId) {
-            console.log('[CartManager] Removing from cart:', productId);
+            log('[CartManager] Removing from cart:', productId);
             
             var cart = self._getCart();
             var newCart = [];
@@ -1891,7 +2088,7 @@
                     return summary;
                 })
                 .catch(function(error) {
-                    console.error('[CartManager] Error fetching product details:', error);
+                    error('[CartManager] Error fetching product details:', error);
                     return summary;
                 });
         },
@@ -1901,7 +2098,7 @@
          * @returns {Object} Empty cart
          */
         clearCart: function() {
-            console.log('[CartManager] Clearing cart');
+            log('[CartManager] Clearing cart');
             
             self._cart = [];
             self._saveCart();
@@ -1919,7 +2116,7 @@
         updateQuantity: function(productId, quantity) {
             quantity = parseInt(quantity) || 0;
             
-            console.log('[CartManager] Updating quantity:', productId, 'qty:', quantity);
+            log('[CartManager] Updating quantity:', productId, 'qty:', quantity);
             
             if (quantity <= 0) {
                 return self.removeFromCart(productId);
@@ -2058,7 +2255,7 @@
                 var stored = localStorage.getItem(self.STORAGE_KEY);
                 self._wishlist = stored ? JSON.parse(stored) : [];
             } catch (e) {
-                console.warn('[WishlistManager] Error reading wishlist:', e);
+                warn('[WishlistManager] Error reading wishlist:', e);
                 self._wishlist = [];
             }
             
@@ -2077,7 +2274,7 @@
                 var event = new CustomEvent('wishlistUpdated', { detail: { wishlist: self._wishlist } });
                 document.dispatchEvent(event);
             } catch (e) {
-                console.warn('[WishlistManager] Error saving wishlist:', e);
+                warn('[WishlistManager] Error saving wishlist:', e);
             }
         },
 
@@ -2087,7 +2284,7 @@
          * @returns {Promise<Object>} Updated wishlist
          */
         addToWishlist: function(productId) {
-            console.log('[WishlistManager] Adding to wishlist:', productId);
+            log('[WishlistManager] Adding to wishlist:', productId);
             
             var wishlist = self._getWishlist();
             
@@ -2117,7 +2314,7 @@
          * @returns {Object} Updated wishlist
          */
         removeFromWishlist: function(productId) {
-            console.log('[WishlistManager] Removing from wishlist:', productId);
+            log('[WishlistManager] Removing from wishlist:', productId);
             
             var wishlist = self._getWishlist();
             var newWishlist = [];
@@ -2172,7 +2369,7 @@
                     return summary;
                 })
                 .catch(function(error) {
-                    console.error('[WishlistManager] Error fetching products:', error);
+                    error('[WishlistManager] Error fetching products:', error);
                     return { ...summary, products: [] };
                 });
         },
@@ -2205,7 +2402,7 @@
          * @returns {Object} Empty wishlist
          */
         clearWishlist: function() {
-            console.log('[WishlistManager] Clearing wishlist');
+            log('[WishlistManager] Clearing wishlist');
             
             self._wishlist = [];
             self._saveWishlist();
@@ -2226,7 +2423,7 @@
             
             // This would sync to a user_wishlists table if implemented
             // For now, just log the action
-            console.log('[WishlistManager] Would sync to server for user:', window.currentUser.id);
+            log('[WishlistManager] Would sync to server for user:', window.currentUser.id);
             return Promise.resolve();
         },
 
@@ -2236,7 +2433,7 @@
          * @returns {Promise<Object>} Result
          */
         moveToCart: function(productId) {
-            console.log('[WishlistManager] Moving to cart:', productId);
+            log('[WishlistManager] Moving to cart:', productId);
             
             return CartManager.addToCart(productId, 1)
                 .then(function(cart) {
@@ -2284,7 +2481,7 @@
             type = type || 'info';
             duration = duration || self.DEFAULT_DURATION;
             
-            console.log('[NotificationManager] Toast:', type, message);
+            log('[NotificationManager] Toast:', type, message);
             
             var container = self._getOrCreateContainer();
             var toastId = generateId();
@@ -2395,7 +2592,7 @@
         getNotifications: function(options) {
             options = options || {};
             
-            console.log('[NotificationManager] Getting notifications...');
+            log('[NotificationManager] Getting notifications...');
             
             if (!window.currentUser || !window.currentUser.id) {
                 return Promise.resolve([]);
@@ -2417,7 +2614,7 @@
                     return result.data || [];
                 })
                 .catch(function(error) {
-                    console.error('[NotificationManager] Error getting notifications:', error);
+                    error('[NotificationManager] Error getting notifications:', error);
                     return [];
                 });
         },
@@ -2438,7 +2635,7 @@
                 .eq('id', id)
                 .eq('user_id', window.currentUser.id)
                 .then(function() {
-                    console.log('[NotificationManager] Marked as read:', id);
+                    log('[NotificationManager] Marked as read:', id);
                     
                     // Dispatch event
                     var event = new CustomEvent('notificationRead', { detail: { id: id } });
@@ -2447,7 +2644,7 @@
                     return true;
                 })
                 .catch(function(error) {
-                    console.error('[NotificationManager] Error marking read:', error);
+                    error('[NotificationManager] Error marking read:', error);
                     return false;
                 });
         },
@@ -2467,7 +2664,7 @@
                 .eq('user_id', window.currentUser.id)
                 .eq('read', false)
                 .then(function() {
-                    console.log('[NotificationManager] All marked as read');
+                    log('[NotificationManager] All marked as read');
                     
                     var event = new Event('notificationsAllRead');
                     document.dispatchEvent(event);
@@ -2475,7 +2672,7 @@
                     return true;
                 })
                 .catch(function(error) {
-                    console.error('[NotificationManager] Error marking all read:', error);
+                    error('[NotificationManager] Error marking all read:', error);
                     return false;
                 });
         },
@@ -2498,7 +2695,7 @@
                     return result.count || 0;
                 })
                 .catch(function(error) {
-                    console.error('[NotificationManager] Error getting unread count:', error);
+                    error('[NotificationManager] Error getting unread count:', error);
                     return 0;
                 });
         },
@@ -2522,7 +2719,7 @@
                     return true;
                 })
                 .catch(function(error) {
-                    console.error('[NotificationManager] Error deleting notification:', error);
+                    error('[NotificationManager] Error deleting notification:', error);
                     return false;
                 });
         },
@@ -2614,7 +2811,7 @@
          * @returns {Promise<Object>} Submission result
          */
         submitContactForm: function(data) {
-            console.log('[ContactManager] Submitting form...');
+            log('[ContactManager] Submitting form...');
             
             // Validate form data
             var validation = self.validateForm(data);
@@ -2641,16 +2838,16 @@
                 .select()
                 .single()
                 .then(function(result) {
-                    console.log('[ContactManager] Form submitted:', result.data.id);
+                    log('[ContactManager] Form submitted:', result.data.id);
                     NotificationManager.showToast('Message sent successfully! We\'ll get back to you soon.', 'success');
                     return { success: true, data: result.data };
                 })
                 .catch(function(error) {
-                    console.error('[ContactManager] Submission error:', error);
+                    error('[ContactManager] Submission error:', error);
                     
                     // If table doesn't exist, still show success (could use email service)
                     if (error.code === '42P01') { // Table doesn't exist
-                        console.log('[ContactManager] Table not found, using fallback');
+                        log('[ContactManager] Table not found, using fallback');
                         NotificationManager.showToast('Message sent successfully! We\'ll get back to you soon.', 'success');
                         return { success: true, fallback: true };
                     }
@@ -2809,7 +3006,7 @@
         subscribe: function(email, options) {
             options = options || {};
             
-            console.log('[NewsletterManager] Subscribing:', email);
+            log('[NewsletterManager] Subscribing:', email);
             
             // Validate email
             var validation = self.validateEmail(email);
@@ -2837,7 +3034,7 @@
                 .select()
                 .single()
                 .then(function(result) {
-                    console.log('[NewsletterManager] Subscribed:', result.data.id);
+                    log('[NewsletterManager] Subscribed:', result.data.id);
                     
                     // Track locally
                     try {
@@ -2851,7 +3048,7 @@
                     return { success: true, data: result.data };
                 })
                 .catch(function(error) {
-                    console.error('[NewsletterManager] Subscription error:', error);
+                    error('[NewsletterManager] Subscription error:', error);
                     
                     // If table doesn't exist, track locally anyway
                     if (error.code === '42P01') {
@@ -2883,7 +3080,7 @@
          * @returns {Promise<Object>} Unsubscription result
          */
         unsubscribe: function(email) {
-            console.log('[NewsletterManager] Unsubscribing:', email);
+            log('[NewsletterManager] Unsubscribing:', email);
             
             var validation = self.validateEmail(email);
             if (!validation.isValid) {
@@ -2900,7 +3097,7 @@
                 })
                 .eq('email', cleanEmail)
                 .then(function() {
-                    console.log('[NewsletterManager] Unsubscribed:', cleanEmail);
+                    log('[NewsletterManager] Unsubscribed:', cleanEmail);
                     
                     // Remove local tracking
                     try {
@@ -2911,7 +3108,7 @@
                     return { success: true };
                 })
                 .catch(function(error) {
-                    console.error('[NewsletterManager] Unsubscription error:', error);
+                    error('[NewsletterManager] Unsubscription error:', error);
                     NotificationManager.showToast('Unsubscription failed. Please try again.', 'error');
                     return { success: false, error: error.message };
                 });
@@ -2994,7 +3191,7 @@
          * @returns {Promise<Object>} Update result
          */
         updatePreferences: function(email, preferences) {
-            console.log('[NewsletterManager] Updating preferences for:', email);
+            log('[NewsletterManager] Updating preferences for:', email);
             
             var updates = {
                 updated_at: new Date().toISOString()
@@ -3016,7 +3213,7 @@
                     return { success: true, data: result.data };
                 })
                 .catch(function(error) {
-                    console.error('[NewsletterManager] Update error:', error);
+                    error('[NewsletterManager] Update error:', error);
                     NotificationManager.showToast('Failed to update preferences', 'error');
                     return { success: false, error: error.message };
                 });
@@ -3033,11 +3230,11 @@
      * Called when DOM is ready
      */
     window.initMarketplace = function() {
-        console.log('[Marketplace] Initializing...');
+        log('[Marketplace] Initializing...');
         
         // Setup global error handler for unhandled promise rejections
         window.addEventListener('unhandledrejection', function(event) {
-            console.error('[Marketplace] Unhandled rejection:', event.reason);
+            error('[Marketplace] Unhandled rejection:', event.reason);
         });
         
         // Setup keyboard shortcuts
@@ -3048,7 +3245,7 @@
             }
         });
         
-        console.log('[Marketplace] Initialized successfully');
+        log('[Marketplace] Initialized successfully');
         return true;
     };
 
@@ -3062,6 +3259,6 @@
     }
 
     // Log successful loading
-    console.log('[marketplace.js] Loaded successfully - All managers available');
+    log('[marketplace.js] Loaded successfully - All managers available');
 
 })();

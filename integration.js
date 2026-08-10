@@ -9,22 +9,30 @@
 (function () {
     'use strict';
 
+    // ─── DEBUG MODE - Set to true only during development ─────────────────
+    var DEBUG_MODE = false;
+    
+    function log(msg) {
+        if (DEBUG_MODE) log('', msg);
+    }
+    
+    function warn(msg) {
+        if (DEBUG_MODE) console.warn('[integration]', msg);
+    }
+    
+    function error(msg, err) {
+        if (DEBUG_MODE && err) {
+            console.error('[integration]', msg, err);
+        } else if (DEBUG_MODE) {
+            console.error('[integration]', msg);
+        }
+    }
+
     // ─── Guard: managers must exist ─────────────────────────────────────────
     if (!window.ProductManager || !window.SearchManager || !window.CartManager ||
         !window.WishlistManager || !window.NotificationManager || !window.ContactManager ||
         !window.NewsletterManager || !window.DashboardManager) {
-        console.warn('[integration] ⚠️ Marketplace managers not found. Integration layer skipped.');
-    console.warn('[integration] Debug info:');
-    console.warn('[integration]   - ProductManager:', typeof window.ProductManager);
-    console.warn('[integration]   - SearchManager:', typeof window.SearchManager);
-    console.warn('[integration]   - CartManager:', typeof window.CartManager);
-    console.warn('[integration]   - WishlistManager:', typeof window.WishlistManager);
-    console.warn('[integration]   - NotificationManager:', typeof window.NotificationManager);
-    console.warn('[integration]   - ContactManager:', typeof window.ContactManager);
-    console.warn('[integration]   - NewsletterManager:', typeof window.NewsletterManager);
-    console.warn('[integration]   - DashboardManager:', typeof window.DashboardManager);
-    console.warn('[integration]   - window.sb:', typeof window.sb);
-    console.warn('[integration]   - window.currentUser:', typeof window.currentUser);
+        warn('Marketplace managers not found. Integration layer skipped.');
         return;
     }
 
@@ -99,7 +107,11 @@
         if (activePill) activePill.classList.add('active');
 
         // Delegate to manager
-        ProductManager.renderCollection(cat === 'all' ? null : cat);
+        if (typeof ProductManager.renderCollection === 'function') {
+            ProductManager.renderCollection(cat === 'all' ? null : cat);
+        } else {
+            _origFilterCollection(cat);
+        }
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -201,14 +213,25 @@
         // Run original guards + view switching first
         _origNavigateTo(view, param);
 
+        // Scroll to top so navigation bar is visible after page switch
+        window.scrollTo({ top: 0, behavior: 'instant' });
+
         // After navigation, load view-specific data
         if (view === 'collection') {
             var activePill = document.querySelector('.cat-pill.active');
             var cat = activePill ? activePill.getAttribute('data-colcat') : null;
-            ProductManager.renderCollection(cat === 'all' ? null : cat);
+            if (typeof ProductManager.renderCollection === 'function') {
+                ProductManager.renderCollection(cat === 'all' ? null : cat);
+            } else if (typeof window.filterCollection === 'function') {
+                window.filterCollection(cat || 'all');
+            }
         }
         else if (view === 'library') {
-            ProductManager.renderLibrary();
+            if (typeof ProductManager.renderLibrary === 'function') {
+                ProductManager.renderLibrary();
+            } else if (typeof window.filterCollection === 'function') {
+                window.filterCollection('library');
+            }
         }
         else if (view === 'dashboard') {
             if (typeof currentUser !== 'undefined' && currentUser && currentUser.id) {
@@ -421,7 +444,7 @@
                     });
                 })
                 .catch(function (err) {
-                    console.error('Product detail load error:', err);
+                    error('Product detail load error:', err);
                     container.innerHTML = '<div class="text-center py-20"><div class="text-5xl mb-4 text-red-400"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="text-lg font-semibold text-subtle">Failed to load product</h3></div>';
                 });
         },
@@ -841,7 +864,7 @@
 
                 CheckoutManager._render();
             }).catch(function (err) {
-                console.error('Checkout load error:', err);
+                error('Checkout load error:', err);
                 container.innerHTML = '<div class="text-center py-20"><div class="text-5xl mb-4 text-red-400"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="text-lg font-semibold text-subtle">Failed to load checkout data</h3></div>';
             });
         },
@@ -1182,7 +1205,7 @@
                     CheckoutManager._render();
                 })
                 .catch(function (err) {
-                    console.error('Save address error:', err);
+                    error('Save address error:', err);
                     showToast('Failed to save address.', 'error');
                 });
         },
@@ -1415,7 +1438,7 @@
                         '</div></div>';
                 }
             }).catch(function (err) {
-                console.error('Place order error:', err);
+                error('Place order error:', err);
                 showToast('Failed to place order. Please try again.', 'error');
                 if (btn) {
                     btn.disabled = false;
@@ -1431,7 +1454,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     // 12. GLOBAL PATCHES COMPLETE — log it
     // ═══════════════════════════════════════════════════════════════════════════
-    console.log('[integration] All function patches applied. ' +
+    log(' All function patches applied. ' +
         'handleSearch, filterCollection, filterCollectionWithSearch, ' +
         'handleSubscribe, handleContactSubmit, navigateTo, updateAuthUI — patched.');
 

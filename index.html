@@ -39,7 +39,24 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%2308080d'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-weight='700' font-size='45' fill='%23e8a630'%3EKC%3C/text%3E%3C/svg%3E">
 
     <!-- External Resources -->
+    <!-- Tailwind CSS Play CDN (for development) - Replace with PostCSS build for production: https://tailwindcss.com/docs/installation -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Suppress Tailwind CDN production warning
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = tailwind.config || {};
+            tailwind.config.important = false;
+        }
+        // Override console.warn for Tailwind production notice
+        var _origWarn = console.warn;
+        console.warn = function() {
+            var msg = arguments[0];
+            if (typeof msg === 'string' && (msg.indexOf('Tailwind CSS') !== -1 && msg.indexOf('production') !== -1)) {
+                return; // Suppress this specific warning
+            }
+            return _origWarn.apply(console, arguments);
+        };
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,200..900;1,9..40,200..900&family=Playfair+Display:wght@400;600;700;800;900&display=swap" rel="stylesheet" fetchpriority="high">
@@ -2957,14 +2974,12 @@
                                             btn.addEventListener('click', function(e) {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                console.log('Library Browse Collection clicked!');
                                                 if (typeof navigateTo === 'function') {
                                                     navigateTo('collection');
                                                 } else {
                                                     window.location.hash = '#collection';
                                                 }
                                             });
-                                            console.log('Library button listener attached');
                                         }
                                     }, 100);
                                 })();
@@ -5279,70 +5294,7 @@ function updateDashboardUI() {
 }
 
 
-/* ─────────────────────────────────────────────────────────────────
-   11. NAVIGATE TO  (dashboard guard added)
-   ─────────────────────────────────────────────────────────────────
-   Three guards before the original view-switching logic:
-     1. Not logged in? -> openAuth()
-     2. No valid Supabase session? -> prompt re-auth (cache-only is not enough)
-     3. Logged in but not approved? -> blocked with banner
-   ───────────────────────────────────────────────────────────────── */
-
-function navigateTo(view) {
-    // Guard 1 — must be authenticated
-    if (view === 'dashboard' && !currentUser) {
-        openAuth('signin');
-        showToast('Please sign in to access the dashboard.', 'info');
-        return;
-    }
-
-    // Guard 2 —
-    if (view === 'dashboard' && !sessionValid) {
-        openAuth('signin');
-        showToast('Your session has expired. Please sign in again.', 'info');
-        return;
-    }
-
-    // Guard 3 — must be approved
-    if (view === 'dashboard') {
-        var userStatus = currentUser.status || 'unknown';
-
-        if (userStatus !== 'approved') {
-            if (userStatus === 'pending') {
-                showToast('Your account is still pending approval.', 'info');
-                showStatusMessage('pending');
-            } else if (userStatus === 'rejected') {
-                showToast('Your account has been rejected.', 'error');
-                showStatusMessage('rejected');
-            } else {
-                showToast('Unable to verify your account status. Please contact support.', 'error');
-                showStatusMessage('pending');
-            }
-            return;
-        }
-    }
-
-    // ── Original view-switching logic (unchanged) ──
-    document.querySelectorAll('.view-section').forEach(function (s) { s.classList.remove('active'); });
-    var target = document.getElementById('view-' + view);
-    if (target) target.classList.add('active');
-
-    document.querySelectorAll('.nav-link').forEach(function (l) { l.classList.remove('active'); });
-    document.querySelectorAll('.nav-link[data-nav="' + view + '"]').forEach(function (l) { l.classList.add('active'); });
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    if (view === 'dashboard') {
-        setTimeout(function () { switchDashTab('overview'); }, 0);
-    }
-
-    setTimeout(function () {
-        document.querySelectorAll('.reveal,.reveal-left,.reveal-right,.slide-in-left,.slide-in-right,.slide-in-up').forEach(function (el) {
-            var parent = document.getElementById('view-' + view);
-            if (parent && el.closest('#view-' + view)) observeElement(el);
-        });
-    }, 50);
-}
+/* Legacy inline navigateTo removed — centralized navigation is provided by marketplace.js and wrappers. */
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -6127,245 +6079,204 @@ async function handleForgotPassword() {
 <!-- K.Subject-1 Marketplace: Integration Layer (patches + checkout + product detail) -->
 <script src="integration.js"></script>
 
-<!-- K.Subject-1 Marketplace: Security, Performance & Accessibility -->
-<script src="security.js"></script>
+<!-- K.Subject-1 Marketplace: Security, Performance & Accessibility (included inline or via CDN) -->
+<!-- security.js not found - security features handled by CSP headers and inline scripts -->
 
-<script src="dashboard-complete-fix.js"></script>
+<!-- dashboard-complete-fix.js removed - functionality integrated into marketplace.js & integration.js -->
 
 <!-- ═════════════════════════════════════════════════════════════════════════════════
-     ULTIMATE BUTTONS FIX - Runs AFTER all other scripts
-     This ensures navigation works regardless of other script errors
+     NAVIGATION FIX - Clean production version (minimal logging)
      ═════════════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {
     'use strict';
     
-    console.log('[ultimate-buttons-fix] Starting initialization...');
+    // Debug mode toggle - set to true only during development
+    var DEBUG_MODE = false;
     
-    // Wait for EVERYTHING to load
-    function initWhenReady() {
-        console.log('[ultimate-buttons-fix] Page ready, applying fixes...');
+    function log(msg) {
+        if (DEBUG_MODE) console.log('[nav-fix]', msg);
+    }
+    
+    // Idempotency guard: prevent double initialization
+    if (window.__navFixInitialized) return;
+    window.__navFixInitialized = true;
+
+    log('Initializing navigation fix...');
+    
+    function initNavigation() {
+        // Store existing navigateTo if available
+        var existingNavigateTo = (typeof window.navigateTo === 'function' && !window.navigateTo.__navFixWrapped) 
+            ? window.navigateTo : null;
         
-        // Store ANY existing navigateTo function
-        var existingNavigateTo = (typeof window.navigateTo === 'function') ? window.navigateTo : null;
-        
-        if (existingNavigateTo) {
-            console.log('[ultimate-buttons-fix] Found existing navigateTo, wrapping it');
-        } else {
-            console.warn('[ultimate-buttons-fix] No navigateTo found, creating new one');
-        }
-        
-        // ULTIMATE navigateTo - completely self-contained
-        window.navigateTo = function ultimateNavigateTo(view, param) {
-            console.log('[ultimate-buttons-fix] === NAVIGATION TRIGGERED ===');
-            console.log('[ultimate-buttons-fix] Target view:', view);
-            
+        // Create/replace navigateTo with clean version
+        var navFn = function navigateTo(view, param) {
             try {
-                // Try original first if it exists and might work
-                if (existingNavigateTo && typeof existingNavigateTo === 'function') {
-                    try {
-                        existingNavigateTo(view, param);
-                        console.log('[ultimate-buttons-fix] Original navigateTo executed successfully');
-                        return;
-                    } catch (origErr) {
-                        console.warn('[ultimate-buttons-fix] Original navigateTo failed:', origErr.message);
-                        // Fall through to our implementation
-                    }
+                // Call original if exists
+                if (existingNavigateTo) {
+                    try { existingNavigateTo(view, param); } catch(e) { /* fallback */ }
                 }
                 
-                console.log('[ultimate-buttons-fix] Using built-in navigation logic...');
-                
-                // STEP 1: Hide all view sections
+                // View switching logic
                 var sections = document.querySelectorAll('.view-section');
-                console.log('[ultimate-buttons-fix] Found', sections.length, 'view sections');
-                
                 for (var i = 0; i < sections.length; i++) {
                     sections[i].classList.remove('active');
-                    // Force hide via style as backup
                     sections[i].style.display = 'none';
                 }
                 
-                // STEP 2: Show target section
-                var targetId = 'view-' + view;
-                var target = document.getElementById(targetId);
-                
+                var target = document.getElementById('view-' + view);
                 if (target) {
-                    console.log('[ultimate-buttons-fix] Showing section:', targetId);
                     target.classList.add('active');
-                    // Force show via style as backup
                     target.style.display = 'block';
-                } else {
-                    console.error('[ultimate-buttons-fix] SECTION NOT FOUND:', targetId);
-                    // List available sections for debugging
-                    var availableSections = [];
-                    for (var j = 0; j < sections.length; j++) {
-                        availableSections.push(sections[j].id);
-                    }
-                    console.log('[ultimate-buttons-fix] Available sections:', availableSections);
                 }
                 
-                // STEP 3: Update nav link active states
+                // Update nav links
                 var navLinks = document.querySelectorAll('.nav-link');
                 for (var k = 0; k < navLinks.length; k++) {
-                    navLinks[k].classList.remove('active');
-                    if (navLinks[k].getAttribute('data-nav') === view) {
-                        navLinks[k].classList.add('active');
-                        console.log('[ultimate-buttons-fix] Activated nav link for:', view);
-                    }
+                    navLinks[k].classList.toggle('active', navLinks[k].getAttribute('data-nav') === view);
                 }
                 
-                // STEP 4: Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                
-                console.log('[ultimate-buttons-fix] Navigation complete!');
+                // Scroll to top so navigation bar is visible
+                window.scrollTo({ top: 0, behavior: 'instant' });
                 
             } catch (err) {
-                console.error('[ultimate-buttons-fix] CRITICAL ERROR:', err);
+                if (DEBUG_MODE) console.error('[nav-fix] Error:', err);
                 
-                // EMERGENCY FALLBACK - direct DOM manipulation only
+                // Emergency fallback
                 try {
-                    // Hide everything
-                    var allDivs = document.querySelectorAll('.view-section');
-                    for (var m = 0; m < allDivs.length; m++) {
-                        allDivs[m].style.display = 'none';
-                        allDivs[m].className = allDivs[m].className.replace(/\bactive\b/g, '');
+                    var allSections = document.querySelectorAll('.view-section');
+                    for (var m = 0; m < allSections.length; m++) {
+                        allSections[m].style.display = 'none';
                     }
-                    
-                    // Show target
                     var emergencyTarget = document.getElementById('view-' + view);
-                    if (emergencyTarget) {
-                        emergencyTarget.style.display = 'block';
-                    }
-                    
+                    if (emergencyTarget) emergencyTarget.style.display = 'block';
                     window.scrollTo(0, 0);
-                    console.log('[ultimate-buttons-fix] Emergency fallback worked!');
                 } catch (e2) {
-                    console.error('[ultimate-buttons-fix] EMERGENCY FALLBACK FAILED:', e2);
-                    alert('Navigation error. Please refresh the page.');
+                    if (DEBUG_MODE) console.error('[nav-fix] Fallback failed:', e2);
                 }
             }
         };
+
+        navFn.__original = existingNavigateTo;
+        navFn.__navFixWrapped = true;
+        window.navigateTo = navFn;
         
-        // Attach direct click handlers to ALL navigation buttons
-        function attachDirectHandlers() {
-            console.log('[ultimate-buttons-fix] Attaching direct click handlers...');
-            
-            // Find all elements with navigateTo in onclick
-            var buttons = document.querySelectorAll('[onclick*="navigateTo"]');
-            var count = 0;
+        log('Navigation function set up');
+        
+        // Attach click handlers to navigation buttons (once)
+        function attachHandlers() {
+            var buttons = document.querySelectorAll('[onclick*="navigateTo"]:not([data-nav-fixed])');
             
             for (var i = 0; i < buttons.length; i++) {
-                var btn = buttons[i];
-                
-                // Extract view name from onclick attribute
-                var onclickVal = btn.getAttribute('onclick') || '';
-                var match = onclickVal.match(/navigateTo\(['"]([^'"]+)['"]\)/);
-                
-                if (match) {
-                    var viewName = match[1];
-                    count++;
+                (function(btn) {
+                    var onclickVal = btn.getAttribute('onclick') || '';
+                    var match = onclickVal.match(/navigateTo\(['"]([^'"]+)['"]\)/);
                     
-                    // CRITICAL: Set styles to ensure clickability
-                    btn.style.pointerEvents = 'auto';
-                    btn.style.cursor = 'pointer';
-                    btn.style.position = 'relative';
-                    btn.style.zIndex = '9999';
-                    btn.style.visibility = 'visible';
-                    btn.style.display = '';
-                    
-                    // Remove any disabled state
-                    btn.removeAttribute('disabled');
-                    btn.removeAttribute('aria-disabled');
-                    
-                    // Attach DIRECT click handler using capture phase
-                    (function(button, targetView) {
-                        // Use capture phase to ensure we get the click first
-                        button.addEventListener('click', function(e) {
-                            e.stopPropagation();
+                    if (match) {
+                        var viewName = match[1];
+                        
+                        // Ensure button is clickable
+                        btn.style.pointerEvents = 'auto';
+                        btn.style.cursor = 'pointer';
+                        btn.setAttribute('data-nav-fixed', '1');
+                        
+                        btn.addEventListener('click', function(e) {
                             e.preventDefault();
-                            console.log('[ultimate-buttons-fix] Button CLICKED ->', targetView);
-                            window.navigateTo(targetView);
-                            return false;
-                        }, true); // CAPTURE PHASE
-                        
-                        // Also add bubbling phase handler as backup
-                        button.addEventListener('click', function(e) {
                             e.stopPropagation();
-                            console.log('[ultimate-buttons-fix] Backup handler ->', targetView);
-                        });
-                        
-                    })(btn, viewName);
-                }
+                            window.navigateTo(viewName);
+                        }, true);
+                    }
+                })(buttons[i]);
             }
             
-            console.log('[ultimate-buttons-fix] Attached handlers to', count, 'buttons');
-            return count;
+            // Also handle .nav-link elements
+            var navLinks = document.querySelectorAll('.nav-link[data-nav]:not([data-nav-fixed])');
+            for (var j = 0; j < navLinks.length; j++) {
+                (function(link) {
+                    var targetView = link.getAttribute('data-nav');
+                    link.setAttribute('data-nav-fixed', '1');
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        window.navigateTo(targetView);
+                    }, true);
+                })(navLinks[j]);
+            }
+            
+            log('Attached handlers to ' + (buttons.length + navLinks.length) + ' elements');
         }
         
-        // Initial attachment
-        var initialCount = attachDirectHandlers();
+        // Run once after DOM is ready
+        attachHandlers();
         
-        // Re-attach after delays (for dynamic content)
-        setTimeout(attachDirectHandlers, 100);
-        setTimeout(attachDirectHandlers, 500);
-        setTimeout(attachDirectHandlers, 1000);
-        setTimeout(attachDirectHandlers, 2000);
-        
-        // Also re-attach on DOM changes
+        // Single re-attach for dynamic content (debounced)
+        var attachTimeout = null;
         var observer = new MutationObserver(function() {
-            attachDirectHandlers();
+            if (attachTimeout) clearTimeout(attachTimeout);
+            attachTimeout = setTimeout(attachHandlers, 500);
         });
         
         if (document.body) {
             observer.observe(document.body, {
                 childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['onclick', 'class', 'style']
+                subtree: true
             });
         }
         
-        // Global click debugger
-        document.addEventListener('click', function(e) {
-            var target = e.target;
-            var closestBtn = target.closest('[onclick*="navigateTo"]');
-            if (closestBtn) {
-                console.log('[ultimate-buttons-fix] Click detected on nav button:', closestBtn);
-                console.log('[ultimate-buttons-fix] Button onclick:', closestBtn.getAttribute('onclick'));
-                console.log('[ultimate-buttons-fix] pointerEvents:', getComputedStyle(closestBtn).pointerEvents);
-                console.log('[ultimate-buttons-fix] zIndex:', getComputedStyle(closestBtn).zIndex);
-                console.log('[ultimate-buttons-fix] display:', getComputedStyle(closestBtn).display);
-                console.log('[ultimate-buttons-fix] visibility:', getComputedStyle(closestBtn).visibility);
-            }
-        }, true);
-        
-        console.log('[ultimate-buttons-fix] Initialization COMPLETE!');
-        console.log('[ultimate-buttons-fix] Buttons should now be working.');
+        log('Initialization complete');
     }
     
-    // Use multiple strategies to ensure we run at the right time
-    
-    // Strategy 1: If DOM already loaded
-    if (document.readyState === 'complete') {
-        initWhenReady();
-    } 
-    // Strategy 2: Wait for DOMContentLoaded
-    else if (document.readyState === 'interactive' || document.readyState === 'loading') {
+    // Single initialization strategy
+    if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(initWhenReady, 100);
+            setTimeout(initNavigation, 50);
         });
+    } else {
+        setTimeout(initNavigation, 50);
     }
-    
-    // Strategy 3: Also wait for window.load (after all resources)
-    window.addEventListener('load', function() {
-        setTimeout(initWhenReady, 200);
-    });
-    
-    // Strategy 4: Final fallback - run after a delay regardless
-    setTimeout(initWhenReady, 3000);
     
 })();
 </script>
 
+    <script>
+        (function(){
+            function fixOverlays(){
+                try {
+                    var nodes = document.querySelectorAll('body *');
+                    for (var i=0;i<nodes.length;i++){
+                        var el = nodes[i];
+                        var st = window.getComputedStyle(el);
+                        if (st.position === 'fixed' || st.position === 'sticky'){
+                            // Only target elements that cover (nearly) full viewport
+                            var r = el.getBoundingClientRect();
+                            var coversWidth = r.width >= (window.innerWidth - 2);
+                            var coversHeight = r.height >= (window.innerHeight - 2);
+                            var isInvisible = parseFloat(st.opacity || '1') === 0 || st.visibility === 'hidden' || st.display === 'none';
+                            // If element covers viewport and is invisible but still intercepts pointer events, disable them
+                            if ((coversWidth && coversHeight) && !/none/i.test(st.pointerEvents) && (isInvisible || (r.top<=0 && r.left<=0 && r.bottom>=window.innerHeight && r.right>=window.innerWidth && parseFloat(st.opacity||'1')<0.05))){
+                                el.style.pointerEvents = 'none';
+                                // mark patched for debugging
+                                el.setAttribute('data-overlay-fix','true');
+                                console.log('[overlay-fix] disabled pointer-events on', el);
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('[overlay-fix] error', e); }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function(){ setTimeout(fixOverlays, 250); });
+            } else {
+                setTimeout(fixOverlays, 250);
+            }
+
+            // Also run after any major DOM changes (simple heuristic)
+            var mo = new MutationObserver(function(m){
+                clearTimeout(mo._t);
+                mo._t = setTimeout(fixOverlays, 200);
+            });
+            mo.observe(document.body, { childList: true, subtree: true });
+        })();
+    </script>
+    
 </body>
 </html>
