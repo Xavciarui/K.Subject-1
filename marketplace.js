@@ -1,4 +1,22 @@
 /**
+ * ═════════════════════════════════════════════════════════════════════════════════
+ * K.Subject-1 Marketplace - Core Manager Classes (FIXED v3.1)
+ * 
+ * FIX APPLIED: Replaced all 'self.' references with 'this.' in:
+ *   - CartManager (lines 2303-2659): Fixed TypeError for getCart/loadCart
+ *   - WishlistManager (lines 2670-2924): Fixed TypeError for getWishlist/loadWishlist
+ * 
+ * This fixes: TypeError: Cannot read properties of null (reading 'getCart')
+ * Error occurred because object literal methods used 'self' which was undefined.
+ * 
+ * All other code remains EXACTLY the same as original.
+ * 
+ * @version 3.1.0 (FIXED)
+ * @original_version 1.0.0
+ * ═════════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
  * K.Subject-1 Marketplace - Core Manager Classes
  * 
  * This file contains all core manager classes for the marketplace application.
@@ -2312,19 +2330,19 @@
          * @returns {Array} Cart items
          */
         _getCart: function() {
-            if (self._cart !== null) {
-                return self._cart;
+            if (this._cart !== null) {
+                return this._cart;
             }
             
             try {
-                var stored = localStorage.getItem(self.STORAGE_KEY);
-                self._cart = stored ? JSON.parse(stored) : [];
+                var stored = localStorage.getItem(this.STORAGE_KEY);
+                this._cart = stored ? JSON.parse(stored) : [];
             } catch (e) {
                 warn('[CartManager] Error reading cart from storage:', e);
-                self._cart = [];
+                this._cart = [];
             }
             
-            return self._cart;
+            return this._cart;
         },
 
         /**
@@ -2333,10 +2351,10 @@
          */
         _saveCart: function() {
             try {
-                localStorage.setItem(self.STORAGE_KEY, JSON.stringify(self._cart || []));
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this._cart || []));
                 
                 // Dispatch custom event for UI updates
-                var event = new CustomEvent('cartUpdated', { detail: { cart: self._cart } });
+                var event = new CustomEvent('cartUpdated', { detail: { cart: this._cart } });
                 document.dispatchEvent(event);
             } catch (e) {
                 warn('[CartManager] Error saving cart:', e);
@@ -2356,7 +2374,7 @@
             
             log('[CartManager] Adding to cart:', productId, 'qty:', quantity);
             
-            var cart = self._getCart();
+            var cart = this._getCart();
             var existingIndex = -1;
             
             // Find existing item
@@ -2383,13 +2401,13 @@
                 });
             }
             
-            self._cart = cart;
-            self._saveCart();
+            this._cart = cart;
+            this._saveCart();
             
             NotificationManager.showToast('Added to cart!', 'success');
             log('[CartManager] Cart updated, items:', cart.length);
             
-            return Promise.resolve(self.getCart());
+            return Promise.resolve(this.getCart());
         },
 
         /**
@@ -2400,7 +2418,7 @@
         removeFromCart: function(productId) {
             log('[CartManager] Removing from cart:', productId);
             
-            var cart = self._getCart();
+            var cart = this._getCart();
             var newCart = [];
             
             for (var i = 0; i < cart.length; i++) {
@@ -2409,11 +2427,11 @@
                 }
             }
             
-            self._cart = newCart;
-            self._saveCart();
+            this._cart = newCart;
+            this._saveCart();
             
             NotificationManager.showToast('Removed from cart', 'info');
-            return self.getCart();
+            return this.getCart();
         },
 
         /**
@@ -2422,7 +2440,7 @@
          * @returns {Promise<Object>} Cart object with items, counts, totals
          */
         getCart: function(includeDetails) {
-            var cart = self._getCart();
+            var cart = this._getCart();
             var summary = {
                 items: cart,
                 itemCount: 0,
@@ -2506,11 +2524,11 @@
         clearCart: function() {
             log('[CartManager] Clearing cart');
             
-            self._cart = [];
-            self._saveCart();
+            this._cart = [];
+            this._saveCart();
             
             NotificationManager.showToast('Cart cleared', 'info');
-            return self.getCart();
+            return this.getCart();
         },
 
         /**
@@ -2525,10 +2543,10 @@
             log('[CartManager] Updating quantity:', productId, 'qty:', quantity);
             
             if (quantity <= 0) {
-                return self.removeFromCart(productId);
+                return this.removeFromCart(productId);
             }
             
-            var cart = self._getCart();
+            var cart = this._getCart();
             
             for (var i = 0; i < cart.length; i++) {
                 if (cart[i].productId === productId) {
@@ -2538,10 +2556,10 @@
                 }
             }
             
-            self._cart = cart;
-            self._saveCart();
+            this._cart = cart;
+            this._saveCart();
             
-            return self.getCart();
+            return this.getCart();
         },
 
         /**
@@ -2550,7 +2568,7 @@
          * @returns {boolean} True if in cart
          */
         isInCart: function(productId) {
-            var cart = self._getCart();
+            var cart = this._getCart();
             for (var i = 0; i < cart.length; i++) {
                 if (cart[i].productId === productId) {
                     return true;
@@ -2565,7 +2583,7 @@
          * @returns {number} Quantity in cart
          */
         getItemQuantity: function(productId) {
-            var cart = self._getCart();
+            var cart = this._getCart();
             for (var i = 0; i < cart.length; i++) {
                 if (cart[i].productId === productId) {
                     return cart[i].quantity;
@@ -2579,7 +2597,7 @@
          * @returns {number} Total item count
          */
         getCount: function() {
-            var cart = self._getCart();
+            var cart = this._getCart();
             var count = 0;
             for (var i = 0; i < cart.length; i++) {
                 count += cart[i].quantity;
@@ -2592,7 +2610,7 @@
          * @returns {Promise<number>} Subtotal amount
          */
         getSubtotal: function() {
-            return self.getCart(true).then(function(cart) {
+            return this.getCart(true).then(function(cart) {
                 return cart.subtotal;
             });
         },
@@ -2603,7 +2621,7 @@
          * @returns {Promise<Object>} Merged cart
          */
         mergeWithServerCart: function(serverCart) {
-            var localCart = self._getCart();
+            var localCart = this._getCart();
             var merged = localCart.slice();
             
             if (serverCart && serverCart.length > 0) {
@@ -2625,10 +2643,10 @@
                 }
             }
             
-            self._cart = merged;
-            self._saveCart();
+            this._cart = merged;
+            this._saveCart();
             
-            return self.getCart();
+            return this.getCart();
         },
 
         /**
@@ -2637,7 +2655,7 @@
          */
         loadCart: function() {
             log('[CartManager] Loading cart...');
-            return self.getCart().then(function(cart) {
+            return this.getCart().then(function(cart) {
                 // Update cart badge in UI
                 var countBadge = document.getElementById('cartCount');
                 if (countBadge) {
@@ -2679,19 +2697,19 @@
          * @returns {Array} Wishlist items
          */
         _getWishlist: function() {
-            if (self._wishlist !== null) {
-                return self._wishlist;
+            if (this._wishlist !== null) {
+                return this._wishlist;
             }
             
             try {
-                var stored = localStorage.getItem(self.STORAGE_KEY);
-                self._wishlist = stored ? JSON.parse(stored) : [];
+                var stored = localStorage.getItem(this.STORAGE_KEY);
+                this._wishlist = stored ? JSON.parse(stored) : [];
             } catch (e) {
                 warn('[WishlistManager] Error reading wishlist:', e);
-                self._wishlist = [];
+                this._wishlist = [];
             }
             
-            return self._wishlist;
+            return this._wishlist;
         },
 
         /**
@@ -2700,10 +2718,10 @@
          */
         _saveWishlist: function() {
             try {
-                localStorage.setItem(self.STORAGE_KEY, JSON.stringify(self._wishlist || []));
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this._wishlist || []));
                 
                 // Dispatch custom event for UI updates
-                var event = new CustomEvent('wishlistUpdated', { detail: { wishlist: self._wishlist } });
+                var event = new CustomEvent('wishlistUpdated', { detail: { wishlist: this._wishlist } });
                 document.dispatchEvent(event);
             } catch (e) {
                 warn('[WishlistManager] Error saving wishlist:', e);
@@ -2718,26 +2736,26 @@
         addToWishlist: function(productId) {
             log('[WishlistManager] Adding to wishlist:', productId);
             
-            var wishlist = self._getWishlist();
+            var wishlist = this._getWishlist();
             
             // Check if already in wishlist
             if (wishlist.indexOf(productId) !== -1) {
                 NotificationManager.showToast('Already in wishlist', 'info');
-                return Promise.resolve(self.getWishlist());
+                return Promise.resolve(this.getWishlist());
             }
             
             wishlist.push(productId);
-            self._wishlist = wishlist;
-            self._saveWishlist();
+            this._wishlist = wishlist;
+            this._saveWishlist();
             
             NotificationManager.showToast('Added to wishlist!', 'success');
             
             // Sync to server if logged in
             if (window.currentUser && window.currentUser.id) {
-                self._syncToServer();
+                this._syncToServer();
             }
             
-            return Promise.resolve(self.getWishlist());
+            return Promise.resolve(this.getWishlist());
         },
 
         /**
@@ -2748,7 +2766,7 @@
         removeFromWishlist: function(productId) {
             log('[WishlistManager] Removing from wishlist:', productId);
             
-            var wishlist = self._getWishlist();
+            var wishlist = this._getWishlist();
             var newWishlist = [];
             
             for (var i = 0; i < wishlist.length; i++) {
@@ -2757,17 +2775,17 @@
                 }
             }
             
-            self._wishlist = newWishlist;
-            self._saveWishlist();
+            this._wishlist = newWishlist;
+            this._saveWishlist();
             
             NotificationManager.showToast('Removed from wishlist', 'info');
             
             // Sync to server if logged in
             if (window.currentUser && window.currentUser.id) {
-                self._syncToServer();
+                this._syncToServer();
             }
             
-            return self.getWishlist();
+            return this.getWishlist();
         },
 
         /**
@@ -2776,7 +2794,7 @@
          * @returns {Promise<Object>} Wishlist object
          */
         getWishlist: function(includeDetails) {
-            var wishlist = self._getWishlist();
+            var wishlist = this._getWishlist();
             var summary = {
                 items: wishlist,
                 count: wishlist.length
@@ -2812,7 +2830,7 @@
          * @returns {boolean} True if in wishlist
          */
         isInWishlist: function(productId) {
-            var wishlist = self._getWishlist();
+            var wishlist = this._getWishlist();
             return wishlist.indexOf(productId) !== -1;
         },
 
@@ -2822,10 +2840,10 @@
          * @returns {Promise<Object>} Updated wishlist
          */
         toggleWishlist: function(productId) {
-            if (self.isInWishlist(productId)) {
-                return self.removeFromWishlist(productId);
+            if (this.isInWishlist(productId)) {
+                return this.removeFromWishlist(productId);
             } else {
-                return self.addToWishlist(productId);
+                return this.addToWishlist(productId);
             }
         },
 
@@ -2836,11 +2854,11 @@
         clearWishlist: function() {
             log('[WishlistManager] Clearing wishlist');
             
-            self._wishlist = [];
-            self._saveWishlist();
+            this._wishlist = [];
+            this._saveWishlist();
             
             NotificationManager.showToast('Wishlist cleared', 'info');
-            return self.getWishlist();
+            return this.getWishlist();
         },
 
         /**
@@ -2869,7 +2887,7 @@
             
             return CartManager.addToCart(productId, 1)
                 .then(function(cart) {
-                    self.removeFromWishlist(productId);
+                    this.removeFromWishlist(productId);
                     NotificationManager.showToast('Moved to cart!', 'success');
                     return cart;
                 });
@@ -2880,7 +2898,7 @@
          * @returns {number} Number of items
          */
         getCount: function() {
-            return self._getWishlist().length;
+            return this._getWishlist().length;
         },
 
         /**
@@ -2889,7 +2907,7 @@
          */
         loadWishlist: function() {
             log('[WishlistManager] Loading wishlist...');
-            return self.getWishlist().then(function(wishlist) {
+            return this.getWishlist().then(function(wishlist) {
                 // Update wishlist badges in UI
                 var wishBadges = document.querySelectorAll('.wishlist-badge, [data-wishlist-count]');
                 for (var i = 0; i < wishBadges.length; i++) {
