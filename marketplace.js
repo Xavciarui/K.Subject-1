@@ -428,58 +428,120 @@
 
         // Preserve dashboard/auth guards from legacy inline navigateTo
         try {
-            // ✅ FIX #4: Better session detection - prevent false sign-in prompts
-            var hasSession = window.currentUser || (typeof getSession === 'function' && getSession());
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ FIX #4 REVISED: ULTRA-ROBUST SESSION DETECTION
+            // This fixes: multiple "please sign in" toasts + false sign-in modals
+            // ═══════════════════════════════════════════════════════════════
             
-            if (view === 'dashboard' && !hasSession) {
-                // Double-check: currentUser might exist but getSession might not work
-                var reallyNoSession = !window.currentUser && !(typeof getSession === 'function' && getSession());
+            if (view === 'dashboard') {
+                log('[navigateTo] Dashboard requested - checking authentication...');
                 
-                if (reallyNoSession) {
+                // Method 1: Check window.currentUser (most reliable)
+                var hasUser = !!window.currentUser;
+                
+                // Method 2: Check getSession function
+                var hasSessionFromFunc = false;
+                if (typeof getSession === 'function') {
+                    try {
+                        hasSessionFromFunc = !!getSession();
+                    } catch(e) {
+                        warn('[navigateTo] getSession() error:', e);
+                    }
+                }
+                
+                // Method 3: Check localStorage directly (fallback)
+                var hasLocalStorage = false;
+                try {
+                    var stored = localStorage.getItem('ks1_session') || 
+                                 localStorage.getItem('currentUser') || 
+                                 localStorage.getItem('sb_session');
+                    hasLocalStorage = !!stored && stored !== 'null' && stored !== 'undefined';
+                } catch(e) {
+                    // localStorage might be blocked
+                }
+                
+                // Method 4: Check Supabase client session (MOST ACCURATE)
+                var hasSupabaseSession = false;
+                if (window.sb && typeof window.sb.auth.getSession === 'function') {
+                    // This is async but we can check synchronously too
+                    hasSupabaseSession = !!(window.sb.auth.session());
+                }
+                
+                // COMBINED CHECK: User is authenticated if ANY method succeeds
+                var isAuthenticated = hasUser || hasSessionFromFunc || hasLocalStorage || hasSupabaseSession;
+                
+                log('[navigateTo] Auth checks:', {
+                    hasUser: hasUser,
+                    hasSessionFromFunc: hasSessionFromFunc,
+                    hasLocalStorage: hasLocalStorage,
+                    hasSupabaseSession: hasSupabaseSession,
+                    isAuthenticated: isAuthenticated
+                });
+                
+                if (!isAuthenticated) {
+                    // TRULY not authenticated - show sign-in ONCE (with debounce)
+                    log('[navigateTo] User NOT authenticated - showing sign-in');
+                    
                     if (typeof openAuth === 'function') openAuth('signin');
-                    if (typeof showToast === 'function') showToast('Please sign in to access the dashboard.', 'info');
+                    
+                    // ✅ PREVENT MULTIPLE TOASTS: Only show once per 3 seconds
+                    if (!window._lastSignInToast || Date.now() - window._lastSignInToast > 3000) {
+                        if (typeof showToast === 'function') {
+                            showToast('Please sign in to access the dashboard.', 'info');
+                        }
+                        window._lastSignInToast = Date.now();
+                    }
                     return;
                 }
                 
-                // User has session but wasn't detected initially - allow access
-                console.log('[navigateTo] Session exists but wasn\'t detected initially, allowing dashboard access');
-            }
-
-            if (view === 'dashboard' && (typeof sessionValid !== 'undefined') && !sessionValid && !window.currentUser) {
-                if (typeof openAuth === 'function') openAuth('signin');
-                if (typeof showToast === 'function') showToast('Your session has expired. Please sign in again.', 'info');
-                return;
-            }
-
-            if (view === 'dashboard') {
-                var userStatus = (window.currentUser && window.currentUser.status) || 'unknown';
+                // ═══════════════════════════════════════════════════════════════
+                // USER IS AUTHENTICATED - Handle by status
+                // ═══════════════════════════════════════════════════════════════
                 
-                // ✅ FIX #4: Handle authenticated but non-approved users properly
-                if (userStatus === 'pending') {
-                    log('[navigateTo] User is pending, showing approval view instead of dashboard');
+                log('[navigateTo] User IS authenticated - checking status...');
+                
+                // Ensure currentUser is populated (might be missing even though authenticated)
+                if (!window.currentUser && hasLocalStorage) {
+                    try {
+                        var parsed = JSON.parse(localStorage.getItem('currentUser') || 'null');
+                        if (parsed) {
+                            window.currentUser = parsed;
+                            log('[navigateTo] Restored currentUser from localStorage');
+                        }
+                    } catch(e) {
+                        warn('[navigateTo] Failed to restore currentUser:', e);
+                    }
+                }
+                
+                var userStatus = (window.currentUser && window.currentUser.status) || 'unknown';
+                log('[navigateTo] User status:', userStatus);
+                
+                // Handle PENDING users
+                if (userStatus === 'pending' || userStatus === 'unknown') {
+                    log('[navigateTo] User pending/unknown - showing approval view');
                     
-                    // Only show toast if not already on approval page (avoid spam)
-                    var currentApprovalView = document.getElementById('view-approval-waiting');
-                    if (!currentApprovalView || !currentApprovalView.classList.contains('active')) {
+                    // Show toast only once (prevent spam)
+                    if (!window._lastPendingToast || Date.now() - window._lastPendingToast > 5000) {
                         if (typeof showToast === 'function') {
                             showToast('Your account is pending approval. Full access coming soon! ⏳', 'info');
                         }
+                        window._lastPendingToast = Date.now();
                     }
                     
-                    // Navigate to approval waiting instead of showing sign-in prompt
+                    // Navigate to approval waiting view
                     if (typeof navigateToApprovalWaiting === 'function') {
                         navigateToApprovalWaiting();
-                    } else {
+                    } else if (typeof _switchView === 'function') {
                         _switchView('approval-waiting');
                     }
                     return;
                 }
                 
-                // Handle rejected users
+                // Handle REJECTED users
                 if (userStatus === 'rejected') {
-                    log('[navigateTo] User is rejected, showing rejection message');
+                    log('[navigateTo] User rejected');
                     if (typeof showToast === 'function') {
-                        showToast('Your account application was not approved. Contact support for details.', 'error');
+                        showToast('Your account application was not approved.', 'error');
                     }
                     if (typeof showStatusMessage === 'function') {
                         showStatusMessage('rejected');
@@ -487,13 +549,19 @@
                     return;
                 }
                 
-                // FIX: If already approved, go straight to dashboard
-                if (userStatus === 'approved') {
+                // Handle APPROVED users - go to dashboard!
+                if (userStatus === 'approved' || userStatus === 'unknown') {
+                    log('[navigateTo] User approved/unknown - going to dashboard');
+                    
+                    // Hide any status messages
+                    if (typeof hideStatusMessage === 'function') {
+                        hideStatusMessage();
+                    }
+                    
                     return _navigateToDashboard(view);
                 }
                 
-                // FIX: Sync profile first, then check status
-                // This handles: missing profiles, role constraint issues, stale cache
+                // Fallback: Try sync profile for unknown statuses
                 if (window.currentUser && window.currentUser.id && window.sb && typeof window.syncUserProfile === 'function') {
                     log('[navigateTo] Status is "' + userStatus + '" - syncing profile before dashboard access...');
                     (function() {

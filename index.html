@@ -6397,6 +6397,47 @@ function showToast(message, type) {
     var container = safeGet('toastContainer');
     if (!container) return;
 
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ ANTI-SPAM: Prevent duplicate toasts from showing
+    // This fixes: Multiple "please sign in" toasts appearing (like 5 times!)
+    // ═══════════════════════════════════════════════════════════════
+    
+    // Initialize toast tracking if not exists
+    if (!window._toastHistory) {
+        window._toastHistory = [];
+    }
+    
+    // Create a unique key for this message+type combination
+    var toastKey = type + ':' + message;
+    var now = Date.now();
+    
+    // Check if identical toast was shown in last 3 seconds
+    var recentToast = window._toastHistory.find(function(t) {
+        return t.key === toastKey && (now - t.time) < 3000;
+    });
+    
+    if (recentToast) {
+        console.log('[showToast] Blocked duplicate toast:', message);
+        return; // BLOCK duplicate toast!
+    }
+    
+    // Record this toast
+    window._toastHistory.push({ key: toastKey, time: now });
+    
+    // Clean old entries (keep only last 10)
+    if (window._toastHistory.length > 10) {
+        window._toastHistory = window._toastHistory.slice(-10);
+    }
+    
+    // Also limit total visible toasts to prevent flooding
+    var existingToasts = container.querySelectorAll('.toast');
+    if (existingToasts.length >= 3) {
+        // Remove the oldest toast
+        if (existingToasts[0] && existingToasts[0].parentNode) {
+            existingToasts[0].parentNode.removeChild(existingToasts[0]);
+        }
+    }
+
     var toast = document.createElement('div');
     toast.className = 'toast';
 
