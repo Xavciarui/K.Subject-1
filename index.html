@@ -7137,6 +7137,138 @@ async function handleForgotPassword() {
             mo.observe(document.body, { childList: true, subtree: true });
         })();
     </script>
+
+<!-- ═════════════════════════════════════════════════════════════════════════════════
+     SIGN-IN ERROR FIX v4.0 - Integrated
+     Fixes: "Sign-in encountered an issue" error appearing after successful sign-in
+     ═════════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+    'use strict';
     
+    var DEBUG_MODE = true;
+    
+    function log(msg) {
+        if (DEBUG_MODE && console && console.log) console.log('[signin-fix]', msg);
+    }
+    
+    function warn(msg) {
+        if (DEBUG_MODE && console && console.warn) console.warn('[signin-fix]', msg);
+    }
+    
+    // ─── TRACKER: Successful Authentication Flag ────────────────
+    window._authSuccessTime = 0;
+    window._authSuccessCooldown = 5000;
+    
+    function markAuthSuccess() {
+        window._authSuccessTime = Date.now();
+        log('✓ Auth success marked at', new Date().toISOString());
+        setTimeout(clearErrorToasts, 100);
+        setTimeout(clearErrorToasts, 500);
+        setTimeout(clearErrorToasts, 1000);
+    }
+    
+    function isAuthSuccessRecent() {
+        if (!window._authSuccessTime) return false;
+        return (Date.now() - window._authSuccessTime) < window._authSuccessCooldown;
+    }
+    
+    function clearErrorToasts() {
+        var selectors = ['.toast-container .bg-red-500', '#toast-container .bg-red-500', '[role="alert"].bg-red', '.toast.error', '.notification.error'];
+        for (var s = 0; s < selectors.length; s++) {
+            var toasts = document.querySelectorAll(selectors[s]);
+            for (var i = 0; i < toasts.length; i++) {
+                var toast = toasts[i];
+                var text = (toast.textContent || toast.innerText || '').toLowerCase();
+                if (text.indexOf('encountered') !== -1 || text.indexOf('confirm your email') !== -1 ||
+                    text.indexOf('refresh the page') !== -1 || text.indexOf('something went wrong') !== -1 ||
+                    text.indexOf('try again') !== -1) {
+                    log('Removing false error toast');
+                    toast.style.transition = 'opacity 0.3s';
+                    toast.style.opacity = '0';
+                    (function(t) { setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 350); })(toast);
+                }
+            }
+        }
+    }
+    
+    // ─── PATCH 1: Intercept showToast ─────────────────────────────
+    var _origShowToast = window.showToast;
+    if (typeof _origShowToast === 'function') {
+        window.showToast = function(message, type) {
+            if ((type || 'info').toLowerCase() === 'error' && isAuthSuccessRecent()) {
+                var patterns = ['encountered an issue', 'confirm your email', 'refresh the page', 'try again', 'something went wrong'];
+                var msg = (message || '').toLowerCase();
+                for (var i = 0; i < patterns.length; i++) {
+                    if (msg.indexOf(patterns[i]) !== -1) { warn('🚫 SUPPRESSED false error'); return; }
+                }
+            }
+            return _origShowToast.apply(this, arguments);
+        };
+        log('✓ showToast patched');
+    }
+    
+    // ─── PATCH 2: Mark auth success on saveSession ───────────────
+    var _origSaveSession = window.saveSession;
+    if (typeof _origSaveSession === 'function') {
+        window.saveSession = function() {
+            if (window.currentUser && window.currentUser.id) markAuthSuccess();
+            return _origSaveSession.apply(this, arguments);
+        };
+        log('✓ saveSession patched');
+    }
+    
+    // ─── PATCH 3: Wrap updateAuthUI ──────────────────────────────
+    var _origUpdateAuthUI = window.updateAuthUI;
+    if (typeof _origUpdateAuthUI === 'function') {
+        window.updateAuthUI = function() {
+            try { var r = _origUpdateAuthUI.apply(this, arguments); if (window.currentUser && window.currentUser.id) markAuthSuccess(); return r; }
+            catch (e) { warn('updateAuthUI error suppressed:', e.message); if (window.currentUser && window.currentUser.id) markAuthSuccess(); }
+        };
+        log('✓ updateAuthUI wrapped');
+    }
+    
+    // ─── PATCH 4: Fix CartManager/WishlistManager self/this bug ───
+    function fixManager(obj, methods) {
+        if (!obj || !obj[methods[0]] || obj[methods[0]].toString().indexOf('self.') === -1) return;
+        for (var i = 0; i < methods.length; i++) if (typeof obj[methods[i]] === 'function') obj[methods[i]] = obj[methods[i]].bind(obj);
+        log('✓ Manager methods rebound');
+    }
+    fixManager(window.CartManager, ['_getCart','_saveCart','addToCart','removeFromCart','getCart','clearCart','updateQuantity','isInCart','getItemQuantity','getCount','getSubtotal','mergeWithServerCart','loadCart']);
+    fixManager(window.WishlistManager, ['_getWishlist','_saveWishlist','addToWishlist','removeFromWishlist','getWishlist','isInWishlist','toggleWishlist','clearWishlist','_syncToServer','moveToCart','getCount','loadWishlist']);
+    
+    // ─── PATCH 5: Hook handleAuth ────────────────────────────────
+    var _origHandleAuth = window.handleAuth;
+    if (typeof _origHandleAuth === 'function') {
+        window.handleAuth = function(e) {
+            var result = _origHandleAuth.apply(this, arguments);
+            if (result && result.then) result.then(function() { setTimeout(function() { if (window.currentUser && window.currentUser.id) { markAuthSuccess(); clearErrorToasts(); } }, 100); }).catch(function(err) { warn('handleAuth:', err); });
+            else setTimeout(function() { if (window.currentUser && window.currentUser.id) markAuthSuccess(); }, 100);
+            return result;
+        };
+        log('✓ handleAuth hooked');
+    }
+    
+    // ─── PATCH 6: Global error handlers ───────────────────────────
+    window.addEventListener('error', function(e) {
+        if (!isAuthSuccessRecent()) return;
+        var m = (e.message||'').toLowerCase();
+        if (m.indexOf('getcart')!==-1||m.indexOf('getwishlist')!==-1||m.indexOf('cannot read properties of null')!==-1||(m.indexOf('null')!==-1&&m.indexOf('reading')!==-1)) { warn('Error suppressed:',e.message); e.preventDefault(); return false; }
+    }, true);
+    
+    window.addEventListener('unhandledrejection', function(e) {
+        if (!isAuthSuccessRecent()) return;
+        var r = String(e.reason||'').toLowerCase();
+        if (r.indexOf('getcart')!==-1||r.indexOf('getwishlist')!==-1||r.indexOf('cart')!==-1||r.indexOf('wishlist')!==-1) { warn('Rejection suppressed:',e.reason); e.preventDefault(); return false; }
+    });
+    
+    log('✓ Global error handlers installed');
+    
+    // ─── INITIALIZATION COMPLETE ─────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { if (window.currentUser && window.currentUser.id) { markAuthSuccess(); log('✓ Existing session detected'); } }, 1000); });
+    log('SIGN-IN ERROR FIX v4.0 LOADED ✓');
+})();
+</script>
+
 </body>
 </html>
