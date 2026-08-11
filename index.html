@@ -5310,7 +5310,9 @@ async function handleAuth(e, type) {
                     console.warn('[signup] Auto signin failed:', signInRes.error);
                     // Even if auto-signin fails, try to continue with user data
                     // We'll create the profile on next login
-                    showToast('Account created successfully! Please sign in.', 'success');
+                    // ✅ FIX #1: Show proper email confirmation message
+                    showToast('Account created! 📧 Please check your email to confirm your account before signing in.', 'success');
+                    showSignupEmailConfirmation();
                     
                     // Clear form
                     if (firstNameEl) firstNameEl.value = '';
@@ -5496,10 +5498,12 @@ async function handleAuth(e, type) {
                 navigateTo('approval-waiting');
             } else if (profile.status === 'pending') {
                 console.log('[signin] User is pending - showing approval waiting screen');
-                showToast('Your account is pending admin review. ⏳', 'info');
+                showToast('Signed in successfully! ✅ Your account is pending admin review. ⏳', 'info');
                 showStatusMessage('pending');
                 startApprovalPolling();  // Check for approval periodically
-                navigateTo('approval-waiting');
+                
+                // ✅ FIX #2: Use reliable navigation function for pending users
+                navigateToApprovalWaiting();
             } else if (profile.status === 'rejected') {
                 showToast('Your application was not approved.', 'error');
                 showStatusMessage('rejected');
@@ -5514,7 +5518,35 @@ async function handleAuth(e, type) {
             }
 
         } catch (err) {
-            showToast('Something went wrong. Please try again.', 'error');
+            console.error('[auth] Signin error:', err);
+            
+            // ✅ FIX #3: Provide specific, actionable error messages
+            var errorMsg = 'Sign-in issue detected.';
+            
+            if (err && err.message) {
+                var errMsg = err.message.toLowerCase();
+                
+                if (errMsg.indexOf('invalid login credentials') !== -1 || 
+                    errMsg.indexOf('wrong password') !== -1 ||
+                    errMsg.indexOf('email') !== -1) {
+                    errorMsg = 'Invalid email or password. Please check your credentials and try again.';
+                } else if (errMsg.indexOf('network') !== -1 || 
+                           errMsg.indexOf('fetch') !== -1 ||
+                           errMsg.indexOf('timeout') !== -1) {
+                    errorMsg = 'Network issue. Please check your connection and try again.';
+                } else if (errMsg.indexOf('too many') !== -1 || 
+                           errMsg.indexOf('rate limit') !== -1) {
+                    errorMsg = 'Too many attempts. Please wait a moment and try again.';
+                } else if (errMsg.indexOf('email not confirmed') !== -1 ||
+                           errMsg.indexOf('not verified') !== -1 ||
+                           errMsg.indexOf('confirmation') !== -1) {
+                    errorMsg = 'Please confirm your email address first. Check your inbox for the confirmation link.';
+                } else {
+                    errorMsg = 'Sign-in encountered an issue. If you just signed up, please confirm your email first. Otherwise, please refresh the page and try again.';
+                }
+            }
+            
+            showToast(errorMsg, 'error');
         } finally {
             authSubmitting = false;
             setTimeout(function () { _authHandlingInProgress = false; }, 2000);
@@ -5725,6 +5757,224 @@ function showStatusMessage(status) {
 function hideStatusMessage() {
     var el = document.getElementById('statusBanner');
     if (el && el.parentNode) el.parentNode.removeChild(el);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────
+   8.5  NEW HELPER FUNCTIONS (Auth Fixes v4.0)
+   ─────────────────────────────────────────────────────────────────
+   Added to fix authentication UX issues:
+   - Email confirmation notice for signup
+   - Reliable approval-waiting navigation
+   - Pending user welcome notification
+   ───────────────────────────────────────────────────────────────── */
+
+/**
+ * Show prominent email confirmation notice after signup
+ * Called when email verification is ON and no session exists after signup
+ * ✅ FIX #1: Replaces generic "account created" message with clear email instructions
+ */
+function showSignupEmailConfirmation() {
+    // Remove any existing notice
+    var existing = document.getElementById('emailConfirmNotice');
+    if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
+    }
+    
+    var notice = document.createElement('div');
+    notice.id = 'emailConfirmNotice';
+    notice.style.cssText = [
+        'position: fixed',
+        'top: 80px',
+        'left: 50%',
+        'transform: translateX(-50%)',
+        'z-index: 9999',
+        'max-width: 420px',
+        'width: 90%',
+        'background: linear-gradient(135deg, rgba(129,178,154,0.15), rgba(129,178,154,0.05))',
+        'border: 1px solid rgba(129,178,154,0.3)',
+        'border-radius: 16px',
+        'padding: 20px',
+        'backdrop-filter: blur(12px)',
+        '-webkit-backdrop-filter: blur(12px)',
+        'box-shadow: 0 8px 32px rgba(0,0,0,0.3)',
+        'animation: authFixSlideIn 0.3s ease-out'
+    ].join(';');
+    
+    notice.innerHTML = [
+        '<div style="display: flex; align-items: flex-start; gap: 12px;">',
+        '  <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(129,178,154,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">',
+        '    <i class="fa-solid fa-envelope" style="color: #81b29a; font-size: 18px;"></i>',
+        '  </div>',
+        '  <div style="flex: 1;">',
+        '    <p style="color: #81b29a; font-weight: 600; font-size: 14px; margin: 0 0 6px 0;">Check Your Email! 📧</p>',
+        '    <p style="color: #c4c0c8; font-size: 13px; margin: 0 0 12px 0; line-height: 1.5;">',
+        "      We've sent a confirmation link to your email address. Please click it to activate your account before signing in.",
+        '    </p>',
+        '    <ul style="list-style: none; padding: 0; margin: 0 0 12px 0;">',
+        '      <li style="color: #9b97a8; font-size: 12px; margin-bottom: 4px;">✓ Check your spam folder if you don\'t see it</li>',
+        '      <li style="color: #9b97a8; font-size: 12px; margin-bottom: 4px;">✓ The link expires in 24 hours</li>',
+        '      <li style="color: #9b97a8; font-size: 12px;">✓ After confirming, you can sign in immediately</li>',
+        '    </ul>',
+        '    <button onclick="document.getElementById(\'emailConfirmNotice\').remove()" ',
+        '            style="padding: 10px 20px; border-radius: 8px; background: rgba(129,178,154,0.2); color: #81b29a; border: none; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%;">',
+        "        Got it, I'll check my email!",
+        '    </button>',
+        '  </div>',
+        '  <button onclick="document.getElementById(\'emailConfirmNotice\').remove()" ',
+        '          style="background: none; border: none; color: #6b6880; cursor: pointer; padding: 4px;" aria-label="Dismiss">',
+        '    <i class="fa-solid fa-xmark"></i>',
+        '  </button>',
+        '</div>'
+    ].join('');
+    
+    document.body.appendChild(notice);
+    
+    // Auto-remove after 20 seconds
+    setTimeout(function() {
+        if (notice && notice.parentNode) {
+            notice.style.opacity = '0';
+            notice.style.transition = 'opacity 0.3s ease';
+            setTimeout(function() {
+                if (notice.parentNode) notice.parentNode.removeChild(notice);
+            }, 300);
+        }
+    }, 20000);
+    
+    // Add animation keyframes only once
+    if (!document.getElementById('authFixAnimationStyles')) {
+        var style = document.createElement('style');
+        style.id = 'authFixAnimationStyles';
+        style.textContent = '@keyframes authFixSlideIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }';
+        document.head.appendChild(style);
+    }
+}
+
+/**
+ * Navigate to approval-waiting view with proper setup
+ * Ensures the view is visible and properly styled
+ * ✅ FIX #2: Reliable navigation that doesn't result in dull/empty page
+ */
+function navigateToApprovalWaiting() {
+    console.log('[navigateToApprovalWaiting] Navigating to approval waiting view...');
+    
+    var approvalView = document.getElementById('view-approval-waiting');
+    if (!approvalView) {
+        console.error('[navigateToApprovalWaiting] Approval-waiting view not found!');
+        // Fallback: try data-view pattern
+        approvalView = document.querySelector('[data-view="approval-waiting"]');
+    }
+    
+    if (!approvalView) {
+        console.error('[navigateToApprovalWaiting] No approval view found at all!');
+        return;
+    }
+    
+    // Hide ALL views first (multiple methods for compatibility)
+    var allViews = document.querySelectorAll('.view-section, [data-view]');
+    for (var i = 0; i < allViews.length; i++) {
+        allViews[i].classList.add('hidden');
+        allViews[i].classList.remove('active');
+        allViews[i].style.display = 'none';
+    }
+    
+    // Show approval view with multiple methods for compatibility
+    approvalView.classList.remove('hidden');
+    approvalView.classList.add('active');
+    approvalView.style.display = 'block';
+    
+    // Ensure data-view attribute exists
+    if (!approvalView.getAttribute('data-view')) {
+        approvalView.setAttribute('data-view', 'approval-waiting');
+    }
+    
+    // Update nav items to deselect everything
+    var navItems = document.querySelectorAll('[data-nav], .nav-link');
+    for (var j = 0; j < navItems.length; j++) {
+        navItems[j].classList.remove('active', 'bg-primary', 'text-primary-foreground');
+    }
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Show a subtle welcome notification after short delay
+    setTimeout(function() {
+        showPendingUserWelcome();
+    }, 500);
+    
+    console.log('[navigateToApprovalWaiting] Approval waiting view displayed successfully');
+}
+
+/**
+ * Show welcome notification for pending users
+ * Confirms they're signed in and explains the pending status
+ * ✅ FIX #2: Prevents dull/empty page experience
+ */
+function showPendingUserWelcome() {
+    // Remove existing if any
+    var existing = document.getElementById('pendingUserWelcome');
+    if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
+    }
+    
+    var welcome = document.createElement('div');
+    welcome.id = 'pendingUserWelcome';
+    welcome.style.cssText = [
+        'position: fixed',
+        'bottom: 24px',
+        'right: 24px',
+        'left: 24px',
+        'max-width: 400px',
+        'margin: 0 auto',
+        'z-index: 9998',
+        'background: linear-gradient(135deg, rgba(232,166,48,0.95), rgba(232,166,48,0.85))',
+        'border-radius: 12px',
+        'padding: 14px 16px',
+        'color: #1a1a1a',
+        'box-shadow: 0 8px 32px rgba(232,166,48,0.3)',
+        'animation: authFixSlideUp 0.4s ease-out',
+        'font-family: system-ui, -apple-system, sans-serif'
+    ].join(';');
+    
+    welcome.innerHTML = [
+        '<div style="display: flex; align-items: center; gap: 10px;">',
+        '  <span class="relative flex h-4 w-4 flex-shrink-0">',
+        '    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>',
+        '    <span class="relative inline-flex rounded-full h-4 w-4 bg-yellow-500"></span>',
+        '  </span>',
+        '  <div style="flex: 1;">',
+        "    <p style='font-weight: 600; font-size: 13px; margin: 0; color: #1a1a1a;'>You're Signed In! ✅</p>",
+        "    <p style='font-size: 12px; margin: 2px 0 0 0; opacity: 0.8;'>",
+        "      Account pending review. This page auto-refreshes when approved.",
+        '    </p>',
+        '  </div>',
+        "  <button onclick=\"this.closest('#pendingUserWelcome').remove()\" ",
+        "          style='background: rgba(0,0,0,0.1); border: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 11px;' aria-label='Dismiss'>",
+        '    Dismiss',
+        '  </button>',
+        '</div>'
+    ].join('');
+    
+    document.body.appendChild(welcome);
+    
+    // Add slideUp animation if not present
+    if (!document.getElementById('authFixSlideUpStyle')) {
+        var style = document.createElement('style');
+        style.id = 'authFixSlideUpStyle';
+        style.textContent = '@keyframes authFixSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }';
+        document.head.appendChild(style);
+    }
+    
+    // Auto-remove after 8 seconds
+    setTimeout(function() {
+        if (welcome && welcome.parentNode) {
+            welcome.style.opacity = '0';
+            welcome.style.transition = 'opacity 0.3s ease';
+            setTimeout(function() {
+                if (welcome.parentNode) welcome.parentNode.removeChild(welcome);
+            }, 300);
+        }
+    }, 8000);
 }
 
 

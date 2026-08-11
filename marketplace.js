@@ -428,14 +428,21 @@
 
         // Preserve dashboard/auth guards from legacy inline navigateTo
         try {
-            // FIXED: Check both window.currentUser AND localStorage session
-            // This prevents false "sign in" prompts when user is logged in but currentUser hasn't been set yet
+            // ✅ FIX #4: Better session detection - prevent false sign-in prompts
             var hasSession = window.currentUser || (typeof getSession === 'function' && getSession());
             
             if (view === 'dashboard' && !hasSession) {
-                if (typeof openAuth === 'function') openAuth('signin');
-                if (typeof showToast === 'function') showToast('Please sign in to access the dashboard.', 'info');
-                return;
+                // Double-check: currentUser might exist but getSession might not work
+                var reallyNoSession = !window.currentUser && !(typeof getSession === 'function' && getSession());
+                
+                if (reallyNoSession) {
+                    if (typeof openAuth === 'function') openAuth('signin');
+                    if (typeof showToast === 'function') showToast('Please sign in to access the dashboard.', 'info');
+                    return;
+                }
+                
+                // User has session but wasn't detected initially - allow access
+                console.log('[navigateTo] Session exists but wasn\'t detected initially, allowing dashboard access');
             }
 
             if (view === 'dashboard' && (typeof sessionValid !== 'undefined') && !sessionValid && !window.currentUser) {
@@ -446,6 +453,39 @@
 
             if (view === 'dashboard') {
                 var userStatus = (window.currentUser && window.currentUser.status) || 'unknown';
+                
+                // ✅ FIX #4: Handle authenticated but non-approved users properly
+                if (userStatus === 'pending') {
+                    log('[navigateTo] User is pending, showing approval view instead of dashboard');
+                    
+                    // Only show toast if not already on approval page (avoid spam)
+                    var currentApprovalView = document.getElementById('view-approval-waiting');
+                    if (!currentApprovalView || !currentApprovalView.classList.contains('active')) {
+                        if (typeof showToast === 'function') {
+                            showToast('Your account is pending approval. Full access coming soon! ⏳', 'info');
+                        }
+                    }
+                    
+                    // Navigate to approval waiting instead of showing sign-in prompt
+                    if (typeof navigateToApprovalWaiting === 'function') {
+                        navigateToApprovalWaiting();
+                    } else {
+                        _switchView('approval-waiting');
+                    }
+                    return;
+                }
+                
+                // Handle rejected users
+                if (userStatus === 'rejected') {
+                    log('[navigateTo] User is rejected, showing rejection message');
+                    if (typeof showToast === 'function') {
+                        showToast('Your account application was not approved. Contact support for details.', 'error');
+                    }
+                    if (typeof showStatusMessage === 'function') {
+                        showStatusMessage('rejected');
+                    }
+                    return;
+                }
                 
                 // FIX: If already approved, go straight to dashboard
                 if (userStatus === 'approved') {
