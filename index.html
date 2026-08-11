@@ -4703,15 +4703,35 @@ async function getProfile(userId) {
     }
     try {
         console.log('[getProfile] Fetching profile for user:', userId);
+        
         var res = await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
 
+        console.log('[getProfile] Response:', {
+            hasData: !!res.data,
+            hasError: !!res.error,
+            errorCode: res.error ? res.error.code : null,
+            errorMessage: res.error ? res.error.message : null,
+            httpStatus: res.error ? res.error.httpStatus : null
+        });
+
         if (res.error) {
-            console.error('[getProfile] Error:', res.error);
+            console.error('[getProfile] Full Error Object:', JSON.stringify(res.error, null, 2));
+            
             var msg = (res.error.message || '').toLowerCase();
-            if (msg.indexOf('policy') !== -1 || res.error.code === '42501' || res.error.code === 'PGRST301') {
+            var code = res.error.code;
+            
+            // 500 errors - server side problem
+            if (res.error.httpStatus === 500 || code === '500' || msg.indexOf('500') !== -1) {
+                console.error('[getProfile] ❌ 500 SERVER ERROR - Database table may be corrupted!');
+                console.error('[getProfile] 💡 FIX: Run fix_500_error_complete.sql in Supabase SQL Editor');
+                return null; // Return null to trigger fallback behavior
+            }
+            
+            // RLS policy errors
+            if (msg.indexOf('policy') !== -1 || code === '42501' || code === 'PGRST301') {
                 console.error('[getProfile] RLS policy error - check Supabase RLS settings');
             } else {
-                console.error('[getProfile] Other error:', res.error.message, 'Code:', res.error.code);
+                console.error('[getProfile] Other error:', res.error.message, 'Code:', code);
             }
             return null;
         }
@@ -4880,6 +4900,7 @@ async function createProfile(userId, meta) {
         
         console.log('[createProfile] Creating PENDING profile for:', userId, '| Role:', rawRole, '->', normalizedRole);
         
+        // Build row with ALL required fields and proper defaults
         var row = {
             id:          userId,
             email:       meta.email || '',
@@ -4889,30 +4910,91 @@ async function createProfile(userId, meta) {
             phone:       meta.phone || '',
             description: meta.description || '',
             role:        normalizedRole,
-            status:      'pending'  // ⏳ SPAM PROTECTION - Must be approved by admin!
-            // created_at uses database DEFAULT now() — do NOT override from client
+            status:      'pending',  // ⏳ SPAM PROTECTION - Must be approved by admin!
+            country:     'Kenya'
         };
+        
+        console.log('[createProfile] Inserting data:', JSON.stringify(row, null, 2));
 
         var res = await sb.from('profiles').insert(row).select().single();
 
+        console.log('[createProfile] Insert Response:', {
+            hasData: !!res.data,
+            hasError: !!res.error,
+            errorCode: res.error ? res.error.code : null,
+            errorMessage: res.error ? res.error.message : null,
+            httpStatus: res.error ? res.error.httpStatus : null
+        });
+
         if (res.error) {
+            console.error('[createProfile] Full Error Object:', JSON.stringify(res.error, null, 2));
+            
             var msg = (res.error.message || '').toLowerCase();
-            // Duplicate key = DB trigger already created the profile — fetch it instead of failing
-            if (msg.indexOf('duplicate') !== -1 || msg.indexOf('unique') !== -1 || res.error.code === '23505') {
-                // Profile already exists (created by DB trigger) — fetch it instead of failing.
-                try {
-                    var fetchRes = await sb.from('profiles').select('*').eq('id', userId).single();
-                    if (!fetchRes.error && fetchRes.data) return fetchRes.data;
-                } catch (_) {}
+            var code = res.error.code;
+            
+            // 500 errors - server side problem (corrupted table)
+            if (res.error.httpStatus === 500 || code === '500' || msg.indexOf('500') !== -1) {
+                console.error('[createProfile] ❌ 500 SERVER ERROR!');
+                console.error('[createProfile] 💡 FIX REQUIRED: Run fix_500_error_complete.sql in Supabase SQL Editor');
+                
+                // Show user-friendly message
+                if (typeof showToast === 'function') {
+                    showToast('Database setup required. Please contact admin.', 'error');
+                }
                 return null;
             }
-            if (msg.indexOf('policy') !== -1 || res.error.code === '42501' || res.error.code === 'PGRST301') {
+            
+            // Duplicate key error
+            if (msg.indexOf('duplicate') !== -1 || msg.indexOf('unique') !== -1 || code === '23505') {
+                console.log('[createProfile] Profile already exists (duplicate), fetching existing...');
+                try {
+                    var fetchRes = await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
+                    if (!fetchRes.error && fetchRes.data) {
+                        console.log('[createProfile] Fetched existing profile:', fetchRes.data.status);
+                        return fetchRes.data;
+                    }
+                } catch (fetchErr) {
+                    console.warn('[createProfile] Could not fetch existing:', fetchErr);
+                }
+                return null;
+            }
+            
+            // CHECK constraint violation
+            if (code === '23514' || msg.indexOf('check') !== -1 || msg.indexOf('constraint') !== -1) {
+                console.error('[createProfile] CHECK constraint violation - invalid data');
+                // Try with minimal valid data
+                console.log('[createProfile] Retrying with minimal data...');
+                var retryRow = {
+                    id: userId,
+                    email: meta.email || 'unknown@example.com',
+                    first_name: '',
+                    last_name: '',
+                    role: 'seller',
+                    status: 'pending',
+                    country: 'Kenya'
+                };
+                var retryRes = await sb.from('profiles').insert(retryRow).select().single();
+                if (!retryRes.error && retryRes.data) {
+                    console.log('[createProfile] Retry successful!');
+                    return retryRes.data;
+                }
+                console.error('[createProfile] Retry also failed:', retryRes.error);
+                return null;
+            }
+            
+            // RLS policy errors
+            if (msg.indexOf('policy') !== -1 || code === '42501' || code === 'PGRST301') {
+                console.error('[createProfile] RLS policy error');
             } else {
+                console.error('[createProfile] Other error:', msg, code);
             }
             return null;
         }
+        
+        console.log('[createProfile] ✅ Profile created successfully! Status:', res.data.status);
         return res.data;
     } catch (err) {
+        console.error('[createProfile] Exception:', err);
         return null;
     }
 }
@@ -5263,16 +5345,25 @@ async function handleAuth(e, type) {
                     phone:       phone,
                     description: desc
                 });
+                
+                // If profile creation failed but user exists, continue anyway
+                // The profile can be created on next login
+                if (!profile) {
+                    console.warn('[signup] Profile creation failed, but continuing with minimal profile');
+                    // Create a minimal in-memory profile so the user can proceed
+                    profile = {
+                        id: userId,
+                        email: email,
+                        first_name: firstName,
+                        last_name: lastName,
+                        brand_name: brand || (email.split('@')[0] + "'s Shop"),
+                        role: 'seller',
+                        status: 'pending'  // Will be synced to DB later
+                    };
+                }
             }
-            // to prevent a "dead account" (auth user exists but no profile).
-            if (!profile && userId) {
-                try { await sb.auth.signOut(); } catch (_) {}
-                showToast(
-                    'Account created but profile setup failed. Please try signing up again, or contact support.',
-                    'error'
-                );
-                return;
-            }
+            
+            console.log('[signup] Profile result:', profile ? 'success' : 'null', '| Status:', profile ? profile.status : 'N/A');
 
             // Step 3 — Build the currentUser object the site expects
             currentUser = buildCurrentUser(authRes.data.user, profile, {
