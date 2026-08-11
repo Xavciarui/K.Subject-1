@@ -450,11 +450,13 @@
                 }
                 
                 // Method 3: Check localStorage directly (fallback)
+                // ✅ FIXED: Check 'kc_session' which is what saveSession() actually uses!
                 var hasLocalStorage = false;
                 try {
-                    var stored = localStorage.getItem('ks1_session') || 
+                    var stored = localStorage.getItem('kc_session') || 
                                  localStorage.getItem('currentUser') || 
-                                 localStorage.getItem('sb_session');
+                                 localStorage.getItem('sb_session') ||
+                                 localStorage.getItem('ks1_session');
                     hasLocalStorage = !!stored && stored !== 'null' && stored !== 'undefined';
                 } catch(e) {
                     // localStorage might be blocked
@@ -501,12 +503,17 @@
                 log('[navigateTo] User IS authenticated - checking status...');
                 
                 // Ensure currentUser is populated (might be missing even though authenticated)
+                // ✅ FIXED: Try 'kc_session' first since that's what saveSession() uses
                 if (!window.currentUser && hasLocalStorage) {
                     try {
-                        var parsed = JSON.parse(localStorage.getItem('currentUser') || 'null');
+                        var parsed = JSON.parse(
+                            localStorage.getItem('kc_session') || 
+                            localStorage.getItem('currentUser') || 
+                            'null'
+                        );
                         if (parsed) {
                             window.currentUser = parsed;
-                            log('[navigateTo] Restored currentUser from localStorage');
+                            log('[navigateTo] Restored currentUser from localStorage (kc_session)');
                         }
                     } catch(e) {
                         warn('[navigateTo] Failed to restore currentUser:', e);
