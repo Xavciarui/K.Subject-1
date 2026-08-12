@@ -5511,7 +5511,7 @@ async function handleAuth(e, type) {
                 console.log('[signin] User approved - going to dashboard');
                 hideStatusMessage();
                 updateDashboardUI();
-                showToast('Welcome back! 🎉', 'success');
+                showToast('Welcome back! ', 'success');
                 setTimeout(function() {
                     navigateTo('dashboard');
                 }, 300);
