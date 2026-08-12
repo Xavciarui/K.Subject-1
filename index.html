@@ -3933,7 +3933,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <button onclick="showToast('Product management will be available soon.','info')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
+                            <button onclick="openProductModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
                                 <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add Product
                             </button>
                             <button onclick="navigateTo('home')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm hover:bg-white/[0.07] hover:text-softWhite transition">
@@ -3975,7 +3975,7 @@
                                         </div>
                                         <span class="text-[11px] text-muted">Total</span>
                                     </div>
-                                    <p class="text-2xl font-bold font-display dash-count-anim">0</p>
+                                    <p class="text-2xl font-bold font-display dash-count-anim" id="statTotalProducts">0</p>
                                     <p class="text-xs text-muted mt-1">Products</p>
                                 </div>
                                 <div class="dash-stat-card" style="--stat-color:#81b29a;">
@@ -3985,7 +3985,7 @@
                                         </div>
                                         <span class="text-[11px] text-muted">Total</span>
                                     </div>
-                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.1s;">0</p>
+                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.1s;" id="statOrders">0</p>
                                     <p class="text-xs text-muted mt-1">Orders</p>
                                 </div>
                                 <div class="dash-stat-card" style="--stat-color:#648cc8;">
@@ -3995,7 +3995,7 @@
                                         </div>
                                         <span class="text-[11px] text-muted">Revenue</span>
                                     </div>
-                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.2s;">0 <span class="text-sm text-muted font-body">MMK</span></p>
+                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.2s;" id="statRevenue">0 <span class="text-sm text-muted font-body">KSh</span></p>
                                     <p class="text-xs text-muted mt-1">Total Earnings</p>
                                 </div>
                                 <div class="dash-stat-card" style="--stat-color:#e07a5f;">
@@ -4005,7 +4005,7 @@
                                         </div>
                                         <span class="text-[11px] text-muted">Views</span>
                                     </div>
-                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.3s;">0</p>
+                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.3s;" id="statViews">0</p>
                                     <p class="text-xs text-muted mt-1">Profile Views</p>
                                 </div>
                             </div>
@@ -4014,19 +4014,19 @@
                             <div class="mb-8">
                                 <h3 class="text-sm font-semibold text-subtle mb-4 uppercase tracking-wider">Quick Actions</h3>
                                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                    <div class="dash-quick-action" onclick="showToast('Product management will be available soon.','info')">
+                                    <div class="dash-quick-action" onclick="openProductModal()" id="quickAddProduct">
                                         <div class="dash-qa-icon">
                                             <i class="fa-solid fa-plus text-lg" aria-hidden="true"></i>
                                         </div>
                                         <span class="text-xs font-medium text-subtle">Add Product</span>
                                     </div>
-                                    <div class="dash-quick-action" onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))">
+                                    <div class="dash-quick-action" onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))" id="quickViewOrders">
                                         <div class="dash-qa-icon">
                                             <i class="fa-solid fa-clipboard-list text-lg" aria-hidden="true"></i>
                                         </div>
                                         <span class="text-xs font-medium text-subtle">View Orders</span>
                                     </div>
-                                    <div class="dash-quick-action" onclick="showToast('Analytics will be available soon.','info')">
+                                    <div class="dash-quick-action" onclick="showToast('Analytics coming soon!','info')">
                                         <div class="dash-qa-icon">
                                             <i class="fa-solid fa-chart-bar text-lg" aria-hidden="true"></i>
                                         </div>
@@ -4047,28 +4047,28 @@
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Products</h3>
                                     <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="text-xs text-accent hover:text-accentDim transition">View All</button>
                                 </div>
-                                <div class="empty-state-dash">
+                                <div id="dashProductsList" class="empty-state-dash">
                                     <div class="empty-state-visual">
                                                                                 <i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i>
                                     </div>
                                     <h3 class="empty-state-title">Your Product Showcase</h3>
                                     <p class="empty-state-desc">Start by adding your first product to see it appear here. Build your catalog and watch it come to life.</p>
-                                    <button onclick="showToast('Product management will be available soon.','info')" class="empty-state-action">
+                                    <button onclick="openProductModal()" class="empty-state-action">
                                         <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
                                         Add Your First Product
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Recent Orders (Empty) -->
+                            <!-- Recent Orders -->
                             <div class="mb-8">
                                 <div class="flex items-center justify-between mb-4">
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Orders</h3>
                                     <button onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))" class="text-xs text-accent hover:text-accentDim transition">View All</button>
                                 </div>
-                                <div class="empty-state-dash">
+                                <div id="dashOrdersList" class="empty-state-dash">
                                     <div class="empty-state-visual">
-                                                                                <i class="fa-solid fa-receipt empty-state-icon" aria-hidden="true"></i>
+                                        <i class="fa-solid fa-receipt empty-state-icon" aria-hidden="true"></i>
                                     </div>
                                     <h3 class="empty-state-title">Orders Will Appear Here</h3>
                                     <p class="empty-state-desc">Once customers start purchasing your products, orders will show up here in real-time.</p>
@@ -4078,7 +4078,8 @@
                             <!-- Activity Feed (Empty) -->
                             <div>
                                 <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider mb-4">Activity</h3>
-                                <div class="empty-state-dash">
+                                <div id="dashActivityFeed" class="dash-activity-feed">
+                                <div id="dashProductsList" class="empty-state-dash">
                                     <div class="empty-state-visual">
                                                                                 <i class="fa-solid fa-clock-rotate-left empty-state-icon" aria-hidden="true"></i>
                                     </div>
@@ -4090,14 +4091,14 @@
 
                         <!-- ── PRODUCTS TAB (EMPTY) ── -->
                         <div class="dash-tab-content" id="dashTabProducts" style="display:none;">
-                            <div class="empty-state-dash">
+                            <div id="dashProductsList" class="empty-state-dash">
                                 <div class="empty-state-visual">
                                                                         <i class="fa-solid fa-boxes-stacked empty-state-icon" aria-hidden="true"></i>
                                 </div>
                                 <h3 class="empty-state-title">Your Product Catalog</h3>
                                 <p class="empty-state-desc">You haven't added any products yet. Start building your collection by adding your first item and watch your catalog come to life.</p>
                                 <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                                    <button onclick="showToast('Product management will be available soon.','info')" class="empty-state-action">
+                                    <button onclick="openProductModal()" class="empty-state-action">
                                         <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
                                         Add First Product
                                     </button>
@@ -4178,7 +4179,7 @@
                                                 <label for="settingsAddress" class="block text-xs font-medium text-subtle mb-1.5">Address</label>
                                                 <input type="text" class="auth-input" placeholder="Your business address" id="settingsAddress" autocomplete="street-address">
                                             </div>
-                                            <button onclick="showToast('Settings saved!','success')" class="px-6 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
+                                            <button onclick="saveShopSettings()" class="px-6 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
                                                 Save Changes
                                             </button>
                                         </div>
@@ -4193,7 +4194,8 @@
                                             <div class="w-20 h-20 rounded-2xl bg-accent/10 border border-accent/10 flex items-center justify-center mb-3">
                                                 <i class="fa-solid fa-store text-accent text-xl" aria-hidden="true"></i>
                                             </div>
-                                            <button onclick="showToast('Image upload will be available soon.','info')" class="text-xs text-accent hover:text-accentDim transition">Upload Image</button>
+                                            <input type="file" id="settingsAvatarInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(this)">
+                                        <button onclick="document.getElementById('settingsAvatarInput').click()" class="text-xs text-accent hover:text-accentDim transition">Upload Image</button>
                                         </div>
                                     </div>
                                     <div class="bg-card border border-white/[0.04] rounded-2xl p-6">
@@ -4274,7 +4276,7 @@
                                         <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
                                         <span>Back</span>
                                     </button>
-                                    <button onclick="showToast('Product management will be available soon.','info')" class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-accent text-bg font-semibold text-xs hover:bg-accentDim transition">
+                                    <button onclick="openProductModal()" class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-accent text-bg font-semibold text-xs hover:bg-accentDim transition">
                                         <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Add
                                     </button>
                                 </div>
@@ -4340,7 +4342,7 @@
                                 <div class="mb-6">
                                     <h3 class="text-xs font-semibold text-subtle mb-3 uppercase tracking-wider">Quick Actions</h3>
                                     <div class="grid grid-cols-2 gap-3">
-                                        <div class="dash-quick-action" onclick="showToast('Product management will be available soon.','info')">
+                                        <div class="dash-quick-action" onclick="openProductModal()">
                                             <div class="dash-qa-icon">
                                                 <i class="fa-solid fa-plus text-base" aria-hidden="true"></i>
                                             </div>
@@ -4352,7 +4354,7 @@
                                             </div>
                                             <span class="text-[11px] font-medium text-subtle">View Orders</span>
                                         </div>
-                                        <div class="dash-quick-action" onclick="showToast('Analytics will be available soon.','info')">
+                                        <div class="dash-quick-action" onclick="showToast('Analytics coming soon!','info')">
                                             <div class="dash-qa-icon">
                                                 <i class="fa-solid fa-chart-bar text-base" aria-hidden="true"></i>
                                             </div>
@@ -4419,7 +4421,7 @@
                                     <h3 class="text-base font-semibold text-softWhite mb-2">Your Product Catalog</h3>
                                     <p class="text-xs text-muted leading-relaxed mb-5">You haven't added any products yet. Start building your collection!</p>
                                     <div class="flex flex-col gap-2">
-                                        <button onclick="showToast('Product management will be available soon.','info')" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
+                                        <button onclick="openProductModal()" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
                                             <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add First Product
                                         </button>
                                         <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm font-medium hover:bg-white/[0.08] transition">
@@ -7267,6 +7269,235 @@ async function handleForgotPassword() {
     // ─── INITIALIZATION COMPLETE ─────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { if (window.currentUser && window.currentUser.id) { markAuthSuccess(); log('✓ Existing session detected'); } }, 1000); });
     log('SIGN-IN ERROR FIX v4.0 LOADED ✓');
+})();
+</script>
+
+<!-- ═════════════════════════════════════════════════════════════════════════════════
+     DASHBOARD FEATURES ENHANCEMENT - Makes all dashboard features work
+     ═════════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+    'use strict';
+    
+    var DEBUG = true;
+    function log(msg) { if (DEBUG && console) console.log('[dash-enhance]', msg); }
+    function warn(msg) { if (DEBUG && console) console.warn('[dash-enhance]', msg); }
+    
+    // ─── ENHANCED SWITCH DASH TAB ─────────────────────────────
+    // Save original and wrap with data loading
+    var _origSwitchDashTab = window.switchDashTab;
+    
+    window.switchDashTab = function(tabName, btnElement) {
+        // Visual tab switching
+        if (btnElement) {
+            document.querySelectorAll('.dash-tab-btn, .dash-sidebar-link').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            btnElement.classList.add('active');
+        }
+        
+        // Hide all tab contents
+        document.querySelectorAll('.dash-tab-content').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        
+        // Show selected tab (desktop + mobile)
+        var desktopTab = document.getElementById('dashTab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+        var mobileTab = document.getElementById('dashTab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Mobile');
+        
+        if (desktopTab) desktopTab.style.display = '';
+        if (mobileTab) mobileTab.style.display = '';
+        
+        // Load data based on tab
+        if (window.currentUser && window.currentUser.id) {
+            log('Loading data for tab:', tabName);
+            
+            if (tabName === 'overview') {
+                if (typeof window.loadDashboardStats === 'function') window.loadDashboardStats();
+                if (typeof window.loadRecentProducts === 'function') window.loadRecentProducts(4);
+                if (typeof window.loadRecentOrders === 'function') window.loadRecentOrders(3);
+                if (typeof window.loadActivityFeed === 'function') window.loadActivityFeed();
+            } else if (tabName === 'products') {
+                if (typeof window.loadRecentProducts === 'function') window.loadRecentProducts(12);
+            } else if (tabName === 'orders') {
+                if (typeof window.loadRecentOrders === 'function') window.loadRecentOrders(20);
+            } else if (tabName === 'settings') {
+                // Populate settings form with current user data
+                populateSettingsForm();
+            }
+        }
+        
+        // Update mobile title
+        var titles = {
+            overview: ['Dashboard Overview', 'Welcome to your seller dashboard'],
+            products: ['Your Products', 'Manage your product catalog'],
+            orders: ['Orders', 'Track and manage orders'],
+            settings: ['Shop Settings', 'Configure your shop']
+        };
+        
+        if (titles[tabName]) {
+            var dt = document.getElementById('dashTitleMobile');
+            var ds = document.getElementById('dashSubtitleMobile');
+            if (dt) dt.textContent = titles[tabName][0];
+            if (ds) ds.textContent = titles[tabName][1];
+        }
+    };
+    
+    // ─── POPULATE SETTINGS FORM ──────────────────────────────
+    window.populateSettingsForm = function() {
+        if (!window.currentUser) return;
+        
+        var fields = {
+            'settingsShopName': window.currentUser.brand || '',
+            'settingsEmail': window.currentUser.email || '',
+            'settingsDesc': window.currentUser.description || ''
+        };
+        
+        for (var id in fields) {
+            var el = document.getElementById(id);
+            if (el) el.value = fields[id];
+        }
+    };
+    
+    // ─── SAVE SHOP SETTINGS ─────────────────────────────────
+    window.saveShopSettings = function() {
+        if (!window.currentUser || !window.currentUser.id || !window.sb) {
+            showToast('Please sign in first.', 'error');
+            return;
+        }
+        
+        var data = {
+            brand_name: document.getElementById('settingsShopName')?.value || '',
+            description: document.getElementById('settingsDesc')?.value || ''
+        };
+        
+        window.sb.from('profiles')
+            .update(data)
+            .eq('id', window.currentUser.id)
+            .then(function() {
+                // Update local currentUser
+                if (window.currentUser) {
+                    window.currentUser.brand = data.brand_name;
+                    window.currentUser.description = data.description;
+                    if (typeof saveSession === 'function') saveSession();
+                    if (typeof updateDashboardUI === 'function') updateDashboardUI();
+                    if (typeof updateAuthUI === 'function') updateAuthUI();
+                }
+                showToast('Settings saved successfully!', 'success');
+            })
+            .catch(function(err) {
+                warn('Error saving settings:', err);
+                showToast('Failed to save settings.', 'error');
+            });
+    };
+    
+    // ─── HANDLE AVATAR UPLOAD ───────────────────────────────
+    window.handleAvatarUpload = function(input) {
+        if (!input.files || !input.files[0]) return;
+        
+        var file = input.files[0];
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file.', 'error');
+            return;
+        }
+        
+        if (!window.currentUser || !window.currentUser.id) {
+            showToast('Please sign in first.', 'error');
+            return;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            // Update avatar display
+            var avatars = [
+                document.getElementById('dashAvatar'),
+                document.getElementById('dashAvatarMobile')
+            ];
+            avatars.forEach(function(av) {
+                if (av) {
+                    av.textContent = '';
+                    av.style.backgroundImage = 'url(' + e.target.result + ')';
+                    av.style.backgroundSize = 'cover';
+                    av.style.backgroundPosition = 'center';
+                }
+            });
+            showToast('Avatar updated! (Preview only - storage not configured)', 'success');
+        };
+        reader.readAsDataURL(file);
+    };
+    
+    // ─── LOAD CATEGORIES FOR PRODUCT FORM ─────────────────
+    window.loadCategories = function() {
+        var select = document.getElementById('productCategory');
+        if (!select || !window.sb) return;
+        
+        window.sb.from('categories')
+            .select('id, name, slug')
+            .eq('is_active', true)
+            .order('name')
+            .then(function(result) {
+                var categories = result.data || [];
+                
+                // Clear options except default
+                select.innerHTML = '<option value="">Select category...</option>';
+                
+                categories.forEach(function(cat) {
+                    var opt = document.createElement('option');
+                    opt.value = cat.id;
+                    opt.textContent = cat.name;
+                    select.appendChild(opt);
+                });
+                
+                log('Loaded', categories.length, 'categories');
+            })
+            .catch(function(err) {
+                warn('Error loading categories:', err);
+            });
+    };
+    
+    // ─── DASHBOARD INITIALIZATION ON AUTH ─────────────────
+    function initDashboardOnAuth() {
+        log('Initializing dashboard on auth...');
+        
+        // Load initial stats if on dashboard view
+        var dashView = document.getElementById('view-dashboard');
+        if (dashView && dashView.style.display !== 'none') {
+            if (typeof window.initEnhancedDashboard === 'function') {
+                window.initEnhancedDashboard();
+            }
+        }
+        
+        // Load categories for product form
+        setTimeout(function() {
+            if (typeof window.loadCategories === 'function') window.loadCategories();
+        }, 500);
+    }
+    
+    // Watch for auth changes
+    var _authCheckInterval = setInterval(function() {
+        if (window.currentUser && window.currentUser.id && window.currentUser.status === 'approved') {
+            clearInterval(_authCheckInterval);
+            initDashboardOnAuth();
+        }
+    }, 1000);
+    
+    // Also init on DOMContentLoaded if user already exists
+    if (document.readyState !== 'loading') {
+        if (window.currentUser && window.currentUser.id) {
+            initDashboardOnAuth();
+        }
+    } else {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.currentUser && window.currentUser.id) {
+                initDashboardOnAuth();
+            }
+        });
+    }
+    
+    // Stop checking after 30 seconds
+    setTimeout(function() { clearInterval(_authCheckInterval); }, 30000);
+    
+    log('✓ Dashboard Enhancement loaded');
 })();
 </script>
 
