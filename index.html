@@ -3995,7 +3995,7 @@
                                         </div>
                                         <span class="text-[11px] text-muted">Revenue</span>
                                     </div>
-                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.2s;" id="statRevenue">0 <span class="text-sm text-muted font-body">KSh</span></p>
+                                    <p class="text-2xl font-bold font-display dash-count-anim" style="animation-delay:0.2s;" id="statRevenue">0 <span class="text-sm text-muted font-body">MMK</span></p>
                                     <p class="text-xs text-muted mt-1">Total Earnings</p>
                                 </div>
                                 <div class="dash-stat-card" style="--stat-color:#e07a5f;">
@@ -4113,38 +4113,30 @@
                         <div class="dash-tab-content" id="dashTabOrders" style="display:none;">
                             <!-- Order Stats -->
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center">
-                                    <p class="text-lg font-bold">0</p>
+                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statPendingOrders">
+                                    <p class="text-lg font-bold" id="countPending">0</p>
                                     <p class="text-[11px] text-muted mt-0.5">Pending</p>
                                 </div>
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center">
-                                    <p class="text-lg font-bold">0</p>
+                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statShippedOrders">
+                                    <p class="text-lg font-bold" id="countShipped">0</p>
                                     <p class="text-[11px] text-muted mt-0.5">Shipped</p>
                                 </div>
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center">
-                                    <p class="text-lg font-bold">0</p>
+                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statDeliveredOrders">
+                                    <p class="text-lg font-bold" id="countDelivered">0</p>
                                     <p class="text-[11px] text-muted mt-0.5">Delivered</p>
                                 </div>
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center">
-                                    <p class="text-lg font-bold">0</p>
+                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statCancelledOrders">
+                                    <p class="text-lg font-bold" id="countCancelled">0</p>
                                     <p class="text-[11px] text-muted mt-0.5">Cancelled</p>
                                 </div>
                             </div>
 
-                            <div class="bg-card border border-white/[0.04] rounded-2xl overflow-x-auto overflow-hidden">
-                                <div class="dash-table-row dash-table-header border-b border-white/[0.04]">
-                                    <span>Order ID</span>
-                                    <span>Customer</span>
-                                    <span>Amount</span>
-                                    <span>Status</span>
-                                    <span>Action</span>
-                                </div>
-                                <div class="p-12 text-center">
-                                    <div class="w-16 h-16 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
-                                        <i class="fa-solid fa-inbox text-2xl text-muted" aria-hidden="true"></i>
+                            <div class="bg-card border border-white/[0.04] rounded-2xl overflow-hidden" id="ordersContainerDesktop">
+                                <!-- Orders will be loaded here by JavaScript -->
+                                <div id="dashOrdersList">
+                                    <div class="flex justify-center py-12">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                                     </div>
-                                    <p class="font-medium text-subtle">No orders received</p>
-                                    <p class="text-sm text-muted mt-1">Orders will appear here when customers purchase your products.</p>
                                 </div>
                             </div>
                         </div>
@@ -4436,30 +4428,28 @@
                                 <!-- Order Stats Mini -->
                                 <div class="grid grid-cols-2 gap-3 mb-5">
                                     <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-sage font-display">0</p>
+                                        <p class="text-lg font-bold text-sage font-display" id="countPendingMobile">0</p>
                                         <p class="text-[10px] text-muted uppercase tracking-wide">Pending</p>
                                     </div>
                                     <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-accent font-display">0</p>
+                                        <p class="text-lg font-bold text-accent font-display" id="countShippedMobile">0</p>
                                         <p class="text-[10px] text-muted uppercase tracking-wide">Shipped</p>
                                     </div>
                                     <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-[#648cc8] font-display">0</p>
+                                        <p class="text-lg font-bold text-[#648cc8] font-display" id="countDeliveredMobile">0</p>
                                         <p class="text-[10px] text-muted uppercase tracking-wide">Delivered</p>
                                     </div>
                                     <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-coral font-display">0</p>
+                                        <p class="text-lg font-bold text-coral font-display" id="countCancelledMobile">0</p>
                                         <p class="text-[10px] text-muted uppercase tracking-wide">Total</p>
                                     </div>
                                 </div>
                                 
-                                <!-- Orders Empty State -->
-                                <div class="bg-card border border-white/[0.04] rounded-2xl p-6 text-center">
-                                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] flex items-center justify-center">
-                                        <i class="fa-solid fa-truck text-2xl text-muted" aria-hidden="true"></i>
+                                <!-- Orders List Container for Mobile -->
+                                <div id="dashOrdersListMobile">
+                                    <div class="flex justify-center py-8">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                                     </div>
-                                    <h3 class="text-base font-semibold text-softWhite mb-2">No Orders Yet</h3>
-                                    <p class="text-xs text-muted leading-relaxed">When customers place orders, they'll appear here with full details.</p>
                                 </div>
                             </div>
 
@@ -6964,7 +6954,11 @@ async function handleForgotPassword() {
     function err(m, e) { if(DEBUG && console.error) console.error('[dash-v4]', m, e); }
     
     var sg = window.safeGet || function(id) { return document.getElementById(id); };
-    var fp = window.formatPrice || function(v) { return 'KSh ' + v; };
+    var fp = window.formatPrice || function(v) { 
+        if (v === null || v === undefined || isNaN(v)) return 'MMK 0';
+        var num = parseFloat(v);
+        return 'MMK ' + num.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+    };
     var eh = window.escapeHtml || function(s) { return String(s); };
     
     // ════════════════════════════════════════════════════════════════════════════════
@@ -7112,10 +7106,10 @@ async function handleForgotPassword() {
     
     function renderProductModal(data) {
         return '<form id="productForm" class="space-y-5">' +
-            '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-tag mr-2 text-purple-400"></i>Product Title <span class="text-red-400">*</span></label><input type="text" id="productTitle" name="title" required maxlength="200" class="modal-input" placeholder="e.g., Premium Wireless Headphones"></div>' +
+            '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-tag mr-2 text-accent"></i>Product Title <span class="text-red-400">*</span></label><input type="text" id="productTitle" name="title" required maxlength="200" class="modal-input" placeholder="e.g., Premium Wireless Headphones"></div>' +
             
             '<div class="grid grid-cols-2 gap-4">' +
-                '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-shilling-sign mr-2 text-green-400"></i>Price (KES) <span class="text-red-400">*</span></label><input type="number" id="productPrice" name="price" required min="0" step="0.01" class="modal-input" placeholder="0.00"></div>' +
+                '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-coins mr-2 text-green-400"></i>Price (MMK) <span class="text-red-400">*</span></label><input type="number" id="productPrice" name="price" required min="0" step="1" class="modal-input" placeholder="0"></div>' +
                 '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-percent mr-2 text-yellow-400"></i>Compare at Price</label><input type="number" id="productComparePrice" name="compare_price" min="0" step="0.01" class="modal-input" placeholder="Optional"></div>' +
             '</div>' +
             
@@ -7129,14 +7123,14 @@ async function handleForgotPassword() {
                 '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-toggle-on mr-2 text-cyan-400"></i>Status</label><select id="productStatus" name="status" class="modal-select"><option value="draft">Draft</option><option value="active" selected>Active</option><option value="inactive">Inactive</option></select></div>' +
             '</div>' +
             
-            '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-align-left mr-2 text-indigo-400"></i>Short Description</label><input type="text" id="productShortDesc" name="short_description" maxlength="200" class="modal-input" placeholder="Brief tagline (optional)"></div>' +
+            '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-align-left mr-2 text-blue-400"></i>Short Description</label><input type="text" id="productShortDesc" name="short_description" maxlength="200" class="modal-input" placeholder="Brief tagline (optional)"></div>' +
             
             '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-file-alt mr-2 text-teal-400"></i>Full Description</label><textarea id="productDescription" name="description" rows="4" class="modal-textarea" placeholder="Detailed product description..."></textarea></div>' +
             
             '<div class="modal-field-group"><label class="modal-label"><i class="fas fa-images mr-2 text-rose-400"></i>Product Images</label>' +
                 '<div id="imageDropZone" class="image-drop-zone">' +
                     '<div id="dropZoneContent" class="text-center py-6">' +
-                        '<i class="fas fa-cloud-arrow-up text-5xl text-purple-400 mb-3 drop-icon"></i>' +
+                        '<i class="fas fa-cloud-arrow-up text-5xl text-accent mb-3 drop-icon"></i>' +
                         '<p class="text-gray-300 text-sm mb-1"><strong>Drag & drop images here</strong></p>' +
                         '<p class="text-gray-500 text-xs mb-3">or click to browse • PNG, JPG, GIF up to 5MB</p>' +
                         '<button type="button" id="browseImagesBtn" class="browse-btn"><i class="fas fa-folder-open mr-2"></i>Choose Images</button>' +
@@ -7389,8 +7383,17 @@ async function handleForgotPassword() {
             showToast(isEdit ? 'Product updated successfully!' : 'Product created successfully!', 'success');
             window.closeModal();
             
+            // Refresh all dashboard data in real-time
             if(typeof loadRecentProducts === 'function') loadRecentProducts();
             if(typeof loadDashboardStats === 'function') loadDashboardStats();
+            if(typeof loadOrders === 'function') loadOrders();
+            
+            // Refresh collection if function exists
+            if(typeof window.loadSellerCollection === 'function') {
+                window.loadSellerCollection();
+            } else if(typeof window.refreshCollection === 'function') {
+                window.refreshCollection();
+            }
         })
         .catch(function(e){
             err('Save error:', e);
@@ -7497,8 +7500,17 @@ async function handleForgotPassword() {
                 window.sb.from('products').delete().eq('id', id)
                 .then(function(){
                     showToast('Product deleted successfully', 'success');
+                    // Refresh all data
                     if(typeof loadRecentProducts === 'function') loadRecentProducts();
                     if(typeof loadDashboardStats === 'function') loadDashboardStats();
+                    if(typeof loadOrders === 'function') loadOrders();
+                    
+                    // Refresh collection
+                    if(typeof window.loadSellerCollection === 'function') {
+                        window.loadSellerCollection();
+                    } else if(typeof window.refreshCollection === 'function') {
+                        window.refreshCollection();
+                    }
                 })
                 .catch(function(e){
                     err('Delete error:', e);
@@ -7558,13 +7570,13 @@ async function handleForgotPassword() {
     };
     
     function loadDashboardStats(){
-        var uid = window.currentUser.id;
-        if(!window.sb){ showEmptyStats(); return; }
+        var uid = window.currentUser && window.currentUser.id;
+        if(!uid || !window.sb){ showEmptyStats(); return; }
         
         Promise.all([
             window.sb.from('products').select('id', {count:'exact', head:true}).eq('seller_id', uid),
             window.sb.from('products').select('id', {count:'exact', head:true}).eq('seller_id', uid).eq('is_active', true),
-            window.sb.from('orders').select('total,status').eq('seller_id', uid).order('created_at', {ascending:false}).limit(100),
+            window.sb.from('orders').select('total,status,created_at').eq('seller_id', uid).order('created_at', {ascending:false}).limit(100),
             window.sb.from('products').select('view_count').eq('seller_id', uid)
         ]).then(function(r){
             var tp = r[0].count || 0;
@@ -7585,11 +7597,20 @@ async function handleForgotPassword() {
                 tv += parseInt(views[j].view_count || 0, 10);
             }
             
-            updateStat('statTotalProducts', tp);
-            updateStat('statActiveProducts', ap);
+            updateStat('statTotalProducts', tp.toLocaleString());
+            updateStat('statActiveProducts', ap.toLocaleString());
             updateStat('statRevenue', fp(rev));
-            updateStat('statOrders', tot);
+            updateStat('statOrders', tot.toLocaleString());
             updateStat('statViews', tv.toLocaleString());
+            
+            // Load recent products after stats
+            if(typeof loadRecentProducts === 'function') loadRecentProducts();
+            
+            // Load orders for orders tab
+            if(typeof loadOrders === 'function') loadOrders();
+            
+            // Update activity feed
+            if(typeof updateActivityFeed === 'function') updateActivityFeed(ords);
         }).catch(function(e){
             err('Stats error:', e);
             showEmptyStats();
@@ -7608,7 +7629,7 @@ async function handleForgotPassword() {
     function showEmptyStats(){
         updateStat('statTotalProducts', '0');
         updateStat('statActiveProducts', '0');
-        updateStat('statRevenue', 'KSh 0.00');
+        updateStat('statRevenue', 'MMK 0');
         updateStat('statOrders', '0');
         updateStat('statViews', '0');
     }
@@ -7618,7 +7639,7 @@ async function handleForgotPassword() {
         var c = sg('dashProductsList');
         if(!c || !window.sb || !window.currentUser) return;
         
-        c.innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div></div>';
+        c.innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
         
         window.sb.from('products')
             .select('*, product_images(*)')
@@ -7671,23 +7692,23 @@ async function handleForgotPassword() {
             var sc = p.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400';
             var st = p.is_active ? 'Active' : (p.status || 'Draft');
             
-            h += '<div class="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden hover:border-purple-500/50 transition-all duration-300 group">' +
+            h += '<div class="bg-gray-800/50 rounded-xl border border-white/[0.06] overflow-hidden hover:border-accent/30 transition-all duration-300 group">' +
                 '<div class="relative h-40 bg-gray-900 overflow-hidden">' +
-                    '<img src="' + eh(img) + '" alt="' + eh(p.title) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">' +
+                    '<img src="' + eh(img) + '" alt="' + eh(p.title) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">' +
                     '<span class="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ' + sc + '">' + st + '</span>' +
                 '</div>' +
                 '<div class="p-4">' +
-                    '<h3 class="font-semibold text-white truncate mb-1">' + eh(p.title) + '</h3>' +
-                    '<p class="text-purple-400 font-bold text-lg">' + fp(p.price) + '</p>' +
-                    '<div class="flex items-center justify-between mt-3 text-xs text-gray-500">' +
-                        '<span><i class="fas fa-box mr-1"></i>' + (p.stock_quantity || 0) + ' in stock</span>' +
+                    '<h3 class="font-semibold text-softWhite truncate mb-1" title="' + eh(p.title) + '">' + eh(p.title) + '</h3>' +
+                    '<p class="text-accent font-bold text-lg">' + fp(p.price) + '</p>' +
+                    '<div class="flex items-center justify-between mt-3 text-xs text-muted">' +
+                        '<span><i class="fas fa-box mr-1"></i>' + (p.stock_quantity || 0) + ' stock</span>' +
                         '<span><i class="fas fa-eye mr-1"></i>' + (p.view_count || 0) + ' views</span>' +
                     '</div>' +
                     '<div class="flex gap-2 mt-3">' +
-                        '<button onclick="openProductModal(\'' + p.id + '\')" class="flex-1 px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600/30 transition text-sm">' +
+                        '<button onclick="openProductModal(\'' + p.id + '\')" class="flex-1 px-3 py-1.5 bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition text-sm font-medium">' +
                             '<i class="fas fa-pen mr-1"></i>Edit' +
                         '</button>' +
-                        '<button onclick="deleteProduct(\'' + p.id + '\', \'' + eh(p.title).replace(/'/g, "\\'") + '\')" class="px-3 py-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition text-sm">' +
+                        '<button onclick="deleteProduct(\'' + p.id + '\', \'' + eh(p.title).replace(/'/g, "\\'") + '\')" class="px-3 py-1.5 bg-red-600/10 text-red-400 rounded-lg hover:bg-red-600/20 transition text-sm" title="Delete product">' +
                             '<i class="fas fa-trash"></i>' +
                         '</button>' +
                     '</div>' +
@@ -7703,6 +7724,270 @@ async function handleForgotPassword() {
     window.loadCategories = function(){
         loadCategoriesIntoDropdown();
     };
+    
+    // ════════════════════════════════════════════════════════════════════════════════
+    // LOAD ORDERS FOR ORDERS TAB
+    // ════════════════════════════════════════════════════════════════════════════════
+    function loadOrders(limit){
+        limit = limit || 20;
+        var containers = [
+            sg('dashOrdersList'),
+            sg('dashOrdersListMobile')
+        ];
+        
+        var hasContainer = false;
+        for(var c = 0; c < containers.length; c++){
+            if(containers[c]) hasContainer = true;
+        }
+        
+        if(!hasContainer || !window.sb || !window.currentUser) return;
+        
+        // Show loading state in all order containers
+        for(var i = 0; i < containers.length; i++){
+            if(containers[i]){
+                containers[i].innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
+            }
+        }
+        
+        window.sb.from('orders')
+            .select('*, buyer:buyer_id(id,full_name,avatar_url), order_items(*, product:product_id(title,images))')
+            .eq('seller_id', window.currentUser.id)
+            .order('created_at', {ascending:false})
+            .limit(limit)
+            .then(function(r){
+                var orders = r.data || [];
+                
+                var html = '';
+                if(orders.length === 0){
+                    html = renderEmptyState('orders', 'No orders yet! When customers purchase your products, orders will appear here.');
+                } else {
+                    html = renderOrdersTable(orders);
+                }
+                
+                // Update all order containers
+                for(var j = 0; j < containers.length; j++){
+                    if(containers[j]){
+                        containers[j].innerHTML = html;
+                    }
+                }
+                
+                // Update order status counts
+                updateOrderStatusCounts(orders);
+            })
+            .catch(function(e){
+                err('Orders error:', e);
+                var errHtml = renderErrorState('Failed to load orders');
+                for(var k = 0; k < containers.length; k++){
+                    if(containers[k]){
+                        containers[k].innerHTML = errHtml;
+                    }
+                }
+            });
+    }
+    
+    function updateOrderStatusCounts(orders){
+        var counts = {pending: 0, shipped: 0, delivered: 0, cancelled: 0};
+        
+        for(var i = 0; i < orders.length; i++){
+            var status = (orders[i].status || 'pending').toLowerCase();
+            if(counts.hasOwnProperty(status)){
+                counts[status]++;
+            } else {
+                counts.pending++;
+            }
+        }
+        
+        // Desktop stats
+        updateEl('countPending', counts.pending);
+        updateEl('countShipped', counts.shipped);
+        updateEl('countDelivered', counts.delivered);
+        updateEl('countCancelled', counts.cancelled);
+        
+        // Mobile stats
+        updateEl('countPendingMobile', counts.pending);
+        updateEl('countShippedMobile', counts.shipped);
+        updateEl('countDeliveredMobile', counts.delivered);
+        updateEl('countCancelledMobile', counts.cancelled);
+    }
+    
+    function updateEl(id, val){
+        var el = sg(id);
+        if(el) el.textContent = val;
+    }
+    
+    function renderOrdersTable(orders){
+        var h = '<div class="overflow-x-auto"><table class="w-full text-sm">' +
+            '<thead><tr class="border-b border-white/[0.06] text-left text-muted text-xs uppercase tracking-wider">' +
+                '<th class="pb-3 pr-4">Order ID</th>' +
+                '<th class="pb-3 pr-4">Customer</th>' +
+                '<th class="pb-3 pr-4">Items</th>' +
+                '<th class="pb-3 pr-4">Total</th>' +
+                '<th class="pb-3 pr-4">Status</th>' +
+                '<th class="pb-3 pr-4">Date</th>' +
+                '<th class="pb-3">Actions</th>' +
+            '</tr></thead><tbody>';
+        
+        for(var i = 0; i < orders.length; i++){
+            var o = orders[i];
+            var buyerName = o.buyer ? (o.buyer.full_name || 'Customer') : 'Customer';
+            var itemsCount = o.order_items ? o.order_items.length : 1;
+            var statusClass = getStatusClass(o.status);
+            var dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : 'N/A';
+            
+            h += '<tr class="dash-table-row border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">' +
+                '<td class="py-3 pr-4 font-mono text-xs text-accent/80">#' + (o.id || '').substring(0, 8).toUpperCase() + '</td>' +
+                '<td class="py-3 pr-4">' + eh(buyerName) + '</td>' +
+                '<td class="py-3 pr-4 text-muted">' + itemsCount + ' item(s)</td>' +
+                '<td class="py-3 pr-4 font-semibold text-softWhite">' + fp(o.total) + '</td>' +
+                '<td class="py-3 pr-4"><span class="inline-flex px-2 py-1 rounded-full text-xs font-medium ' + statusClass + '">' + capitalizeFirst(o.status || 'pending') + '</span></td>' +
+                '<td class="py-3 pr-4 text-muted text-xs">' + dateStr + '</td>' +
+                '<td class="py-3">' +
+                    '<button onclick="viewOrderDetail(\'' + o.id + '\')" class="text-accent hover:text-accentDim text-xs font-medium mr-2" title="View details">View</button>' +
+                '</td>' +
+            '</tr>';
+        }
+        
+        h += '</tbody></table></div>';
+        return h;
+    }
+    
+    function getStatusClass(status){
+        switch(status){
+            case 'delivered': return 'bg-green-500/20 text-green-400';
+            case 'shipped': return 'bg-blue-500/20 text-blue-400';
+            case 'processing': return 'bg-yellow-500/20 text-yellow-400';
+            case 'cancelled': return 'bg-red-500/20 text-red-400';
+            default: return 'bg-gray-500/20 text-gray-400';
+        }
+    }
+    
+    function capitalizeFirst(str){
+        if(!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    
+    window.viewOrderDetail = function(orderId){
+        showToast('Order detail view coming soon for order: ' + orderId, 'info');
+    };
+    
+    // ════════════════════════════════════════════════════════════════════════════════
+    // ACTIVITY FEED UPDATES
+    // ════════════════════════════════════════════════════════════════════════════════
+    function updateActivityFeed(orders){
+        var feed = sg('dashActivityFeed');
+        if(!feed) return;
+        
+        var recentOrders = (orders || []).slice(0, 5);
+        
+        if(recentOrders.length === 0){
+            feed.innerHTML = '<div class="text-center py-6 text-muted text-sm"><i class="fas fa-clock mb-2 block text-lg opacity-50"></i>No recent activity</div>';
+            return;
+        }
+        
+        var html = '';
+        for(var i = 0; i < recentOrders.length; i++){
+            var o = recentOrders[i];
+            var icon = o.status === 'delivered' ? 'fa-check-circle text-green-400' :
+                       o.status === 'shipped' ? 'fa-truck text-blue-400' :
+                       o.status === 'processing' ? 'fa-cog text-yellow-400 animate-spin-slow' :
+                       'fa-circle text-muted';
+            var timeAgo = getTimeAgo(o.created_at);
+            
+            html += '<div class="dash-activity-item">' +
+                '<div class="dash-activity-dot"><i class="fas ' + icon + '"></i></div>' +
+                '<div class="flex-1 min-w-0">' +
+                    '<p class="text-sm text-softWhite truncate">Order #' + (o.id || '').substring(0, 8).toUpperCase() + ' - ' + fp(o.total) + '</p>' +
+                    '<p class="text-xs text-muted mt-0.5">' + capitalizeFirst(o.status || 'pending') + ' · ' + timeAgo + '</p>' +
+                '</div>' +
+            '</div>';
+        }
+        
+        feed.innerHTML = html;
+    }
+    
+    function getTimeAgo(dateStr){
+        if(!dateStr) return 'Unknown';
+        var now = Date.now();
+        var then = new Date(dateStr).getTime();
+        var diff = Math.floor((now - then) / 1000); // seconds
+        
+        if(diff < 60) return 'Just now';
+        if(diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if(diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        if(diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+        return new Date(dateStr).toLocaleDateString();
+    }
+    
+    // ════════════════════════════════════════════════════════════════════════════════
+    // SELLER COLLECTION SYNC - Products appear in Collection after creation
+    // ════════════════════════════════════════════════════════════════════════════════
+    window.loadSellerCollection = function() {
+        if(!window.sb || !window.currentUser) return;
+        
+        var collectionContent = document.getElementById('collectionContent');
+        if(!collectionContent) return;
+        
+        window.sb.from('products')
+            .select('*, product_images(*), categories(name)')
+            .eq('seller_id', window.currentUser.id)
+            .eq('is_active', true)
+            .order('created_at', {ascending: false})
+            .then(function(r) {
+                var products = r.data || [];
+                renderSellerCollection(products, collectionContent);
+            })
+            .catch(function(e) {
+                err('Collection load error:', e);
+                // Keep existing content or show error
+                if(collectionContent.innerHTML.trim() === '') {
+                    collectionContent.innerHTML = '<div class="empty-state"><div class="empty-state-visual"><i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i></div><h3 class="empty-state-title">Unable to load collection</h3><p class="empty-state-desc">Please try refreshing the page.</p></div>';
+                }
+            });
+    };
+    
+    function renderSellerCollection(products, container) {
+        if(!container) return;
+        
+        if(products.length === 0) {
+            container.innerHTML = '<div class="empty-state" id="collectionEmptyState">' +
+                '<div class="empty-state-visual"><i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i></div>' +
+                '<h3 class="empty-state-title">Your Collection is Empty</h3>' +
+                '<p class="empty-state-desc">Start adding products to build your curated collection. Your items will appear here for customers to discover.</p>' +
+                '<button onclick="openProductModal()" class="empty-state-action"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add Your First Product</button>' +
+            '</div>';
+            return;
+        }
+        
+        var html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-6">';
+        
+        for(var i = 0; i < products.length; i++) {
+            var p = products[i];
+            var img = p.product_images && p.product_images.length ? p.product_images[0].url : null;
+            var category = p.categories ? p.categories.name : 'General';
+            
+            html += '<article class="product-card group card-shine rounded-2xl border border-white/[0.05] bg-card overflow-hidden cursor-pointer" data-product-id="' + p.id + '" onclick="viewProductDetail(\'' + p.id + '\')" onmousemove="handleShine(event,this)">' +
+                '<div class="relative aspect-square bg-surface overflow-hidden">' +
+                    (img 
+                        ? '<img src="' + eh(img) + '" alt="' + eh(p.title) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">'
+                        : '<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent/10 to-transparent"><i class="fa-solid fa-image text-4xl text-muted/30"></i></div>'
+                    ) +
+                    '<div class="absolute top-3 left-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-medium uppercase tracking-wider bg-bg/80 backdrop-blur-sm text-muted border border-white/[0.06]">' + eh(category) + '</span></div>' +
+                    '<button onclick="event.stopPropagation();quickAddToCart(\'' + p.id + '\')" class="absolute bottom-3 right-3 w-10 h-10 rounded-xl bg-accent text-bg flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:bg-accentDim hover:scale-105 shadow-lg shadow-accent/20" aria-label="Add to cart"><i class="fa-solid fa-plus text-sm"></i></button>' +
+                '</div>' +
+                '<div class="p-4 sm:p-5">' +
+                    '<h3 class="font-semibold text-softWhite text-sm sm:text-base leading-tight mb-2 line-clamp-2 group-hover:text-accent transition-colors" title="' + eh(p.title) + '">' + eh(p.title) + '</h3>' +
+                    '<div class="flex items-center justify-between gap-3">' +
+                        '<p class="text-base sm:text-lg font-bold text-accent font-display">' + fp(p.price) + '</p>' +
+                        '<span class="text-xs text-muted flex items-center gap-1"><i class="fa-solid fa-eye text-[10px]"></i>' + (p.view_count || 0) + '</span>' +
+                    '</div>' +
+                    (p.short_description ? '<p class="text-xs text-muted mt-2 line-clamp-2">' + eh(p.short_description) + '</p>' : '') +
+                '</div>' +
+            '</article>';
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
     
     // Initialize styles when DOM ready
     if(document.readyState === 'loading'){
