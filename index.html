@@ -1407,6 +1407,262 @@
         }
 
         /* ═══════════════════════════════════════
+           27.5.2 CLASSIC CLEAN DESIGN - Simple & Minimal
+           Like image 3 reference - no flashy effects
+        ═══════════════════════════════════════ */
+        
+        /* Classic Empty State */
+        .classic-empty-state {
+            background: rgba(19, 19, 28, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 60px 24px;
+            text-align: center;
+        }
+        
+        .classic-empty-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+            background: rgba(232, 166, 48, 0.08);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .classic-empty-icon i {
+            font-size: 28px;
+            color: #9b97a8;
+        }
+        
+        .classic-empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ede8e0;
+            margin-bottom: 8px;
+        }
+        
+        .classic-empty-desc {
+            font-size: 14px;
+            color: #9b97a8;
+            max-width: 340px;
+            margin: 0 auto 24px;
+            line-height: 1.5;
+        }
+        
+        .classic-action-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 24px;
+            background: #e8a630;
+            color: #08080d;
+            font-weight: 600;
+            font-size: 14px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .classic-action-btn:hover {
+            background: #f0b540;
+        }
+        
+        /* Filter Pills (Product Categories / Order Status) */
+        .prod-filter-btn,
+        .order-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: transparent;
+            color: #9b97a8;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .prod-filter-btn:hover,
+        .order-filter-btn:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: #ede8e0;
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        
+        .prod-filter-btn.active {
+            background: #e8a630;
+            color: #08080d;
+            border-color: #e8a630;
+            font-weight: 600;
+        }
+        
+        .order-filter-btn.active {
+            background: rgba(232, 166, 48, 0.15);
+            color: #e8a630;
+            border-color: rgba(232, 166, 48, 0.3);
+        }
+        
+        /* Status Dots for Order Filters */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .status-dot.pending { background: #f59e0b; }
+        .status-dot.processing { background: #3b82f6; }
+        .status-dot.shipped { background: #8b5cf6; }
+        .status-dot.delivered { background: #10b981; }
+        .status-dot.cancelled { background: #ef4444; }
+        
+        /* Classic Stat Cards */
+        .classic-stat-card {
+            background: rgba(19, 19, 28, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            transition: border-color 0.15s ease;
+        }
+        
+        .classic-stat-card:hover {
+            border-color: rgba(232, 166, 48, 0.2);
+        }
+        
+        .classic-stat-num {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ede8e0;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .classic-stat-label {
+            font-size: 12px;
+            color: #9b97a8;
+            margin-top: 4px;
+        }
+        
+        /* Products Grid Container */
+        .products-grid-container {
+            min-height: 300px;
+        }
+        
+        /* Orders Table Wrapper */
+        .orders-table-wrapper {
+            min-height: 250px;
+        }
+        
+        /* Classic Product Card (for when products exist) */
+        .classic-product-card {
+            background: rgba(19, 19, 28, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.15s ease;
+        }
+        
+        .classic-product-card:hover {
+            border-color: rgba(232, 166, 48, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .classic-product-img {
+            aspect-ratio: 1;
+            object-fit: cover;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        .classic-product-info {
+            padding: 14px;
+        }
+        
+        .classic-product-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ede8e0;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .classic-product-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e8a630;
+        }
+        
+        .classic-product-category {
+            font-size: 12px;
+            color: #9b97a8;
+            margin-top: 4px;
+        }
+        
+        /* Classic Order Row */
+        .classic-order-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.15s ease;
+        }
+        
+        .classic-order-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .classic-order-row:last-child {
+            border-bottom: none;
+        }
+        
+        .classic-order-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #e8a630;
+            min-width: 90px;
+        }
+        
+        .classic-order-customer {
+            font-size: 14px;
+            color: #ede8e0;
+            min-width: 120px;
+        }
+        
+        .classic-order-items {
+            font-size: 13px;
+            color: #9b97a8;
+            min-width: 70px;
+        }
+        
+        .classic-order-total {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ede8e0;
+            min-width: 90px;
+        }
+        
+        .classic-order-status {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 12px;
+            min-width: 85px;
+            text-align: center;
+        }
+        
+        .classic-order-date {
+            font-size: 12px;
+            color: #9b97a8;
+            min-width: 85px;
+        }
+
+        /* ═══════════════════════════════════════
            27.6 DASHBOARD SIDEBAR ENHANCEMENT
         ═══════════════════════════════════════ */
         .dash-sidebar-wrapper {
@@ -4398,168 +4654,162 @@
                                 </div>
                             </div>
 
-                            <!-- Recent Products (Beautiful Empty State) -->
+                            <!-- Recent Products (Classic Simple) -->
                             <div class="mb-8">
                                 <div class="flex items-center justify-between mb-4">
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Products</h3>
                                     <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="text-xs text-accent hover:text-accentDim transition font-medium">View All →</button>
                                 </div>
-                                <div id="dashProductsList" class="beautiful-empty-state">
-                                    <div class="empty-state-container">
-                                        <div class="empty-state-icon-wrapper gradient-gold">
-                                            <i class="fa-solid fa-box-open empty-state-icon-animated"></i>
-                                        </div>
-                                        <h3 class="empty-state-title-fancy">Your Product Showcase Awaits</h3>
-                                        <p class="empty-state-desc-fancy">Start building your catalog! Add your first product and watch it come to life with beautiful cards.</p>
-                                        <div class="empty-state-actions">
-                                            <button onclick="openProductModal()" class="empty-state-btn-primary">
-                                                <i class="fa-solid fa-plus mr-2"></i>Create Your First Product
-                                            </button>
-                                            <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="empty-state-btn-secondary">
-                                                <i class="fa-solid fa-gear mr-2"></i>Configure Shop
-                                            </button>
-                                        </div>
-                                        <div class="empty-state-tips">
-                                            <p class="tip-title"><i class="fa-light fa-lightbulb mr-1"></i> Pro Tips:</p>
-                                            <ul class="tips-list">
-                                                <li>Use high-quality product images</li>
-                                                <li>Write detailed descriptions</li>
-                                                <li>Set competitive prices in MMK</li>
-                                            </ul>
-                                        </div>
+                                <div id="dashProductsList" class="classic-empty-state" style="padding: 40px 20px;">
+                                    <div class="classic-empty-icon" style="width: 56px; height: 56px;">
+                                        <i class="fa-solid fa-box-open" style="font-size: 22px;"></i>
                                     </div>
+                                    <h3 class="classic-empty-title" style="font-size: 16px;">No products yet</h3>
+                                    <p class="classic-empty-desc" style="font-size: 13px;">Add your first product to get started.</p>
+                                    <button onclick="openProductModal()" class="classic-action-btn" style="padding: 10px 20px; font-size: 13px;">
+                                        <i class="fa-solid fa-plus mr-2"></i>Add Product
+                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Recent Orders (Beautiful Empty State) -->
+                            <!-- Recent Orders (Classic Simple) -->
                             <div class="mb-8">
                                 <div class="flex items-center justify-between mb-4">
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Orders</h3>
                                     <button onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))" class="text-xs text-accent hover:text-accentDim transition font-medium">View All →</button>
                                 </div>
-                                <div id="dashOrdersListOverview" class="beautiful-empty-state">
-                                    <div class="empty-state-container">
-                                        <div class="empty-state-icon-wrapper gradient-blue">
-                                            <i class="fa-solid fa-receipt empty-state-icon-animated"></i>
-                                        </div>
-                                        <h3 class="empty-state-title-fancy">Orders Will Appear Here</h3>
-                                        <p class="empty-state-desc-fancy">Once customers start purchasing your products, orders will show up here in real-time with all the details you need.</p>
-                                        <div class="empty-state-stats-mini">
-                                            <div class="mini-stat">
-                                                <span class="mini-stat-number">0</span>
-                                                <span class="mini-stat-label">Pending</span>
-                                            </div>
-                                            <div class="mini-stat">
-                                                <span class="mini-stat-number">0</span>
-                                                <span class="mini-stat-label">Shipped</span>
-                                            </div>
-                                            <div class="mini-stat">
-                                                <span class="mini-stat-number">0</span>
-                                                <span class="mini-stat-label">Delivered</span>
-                                            </div>
-                                        </div>
-                                        <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="empty-state-btn-primary mt-4">
-                                            <i class="fa-solid fa-arrow-right mr-2"></i>Go Add Products
-                                        </button>
+                                <div id="dashOrdersListOverview" class="classic-empty-state" style="padding: 40px 20px;">
+                                    <div class="classic-empty-icon" style="width: 56px; height: 56px;">
+                                        <i class="fa-solid fa-receipt" style="font-size: 22px;"></i>
                                     </div>
+                                    <h3 class="classic-empty-title" style="font-size: 16px;">No orders yet</h3>
+                                    <p class="classic-empty-desc" style="font-size: 13px;">Customer orders will appear here.</p>
                                 </div>
                             </div>
 
-                            <!-- Activity Feed (Beautiful Empty State) -->
+                            <!-- Activity Feed (Classic Simple) -->
                             <div>
                                 <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider mb-4">Activity</h3>
-                                <div id="dashActivityFeed" class="dash-activity-feed beautiful-empty-state">
-                                    <div class="empty-state-container compact">
-                                        <div class="empty-state-icon-wrapper gradient-purple">
-                                            <i class="fa-solid fa-clock-rotate-left empty-state-icon-animated small"></i>
-                                        </div>
-                                        <h3 class="empty-state-title-fancy small">Activity Feed is Quiet</h3>
-                                        <p class="empty-state-desc-fancy small">Your recent actions, sales milestones, and shop updates will appear here as your business grows.</p>
-                                        <div class="activity-placeholder-items">
-                                            <div class="placeholder-item">
-                                                <div class="placeholder-dot"></div>
-                                                <div class="placeholder-text"><span></span><span></span></div>
-                                            </div>
-                                            <div class="placeholder-item">
-                                                <div class="placeholder-dot"></div>
-                                                <div class="placeholder-text"><span></span><span></span></div>
-                                            </div>
-                                            <div class="placeholder-item">
-                                                <div class="placeholder-dot"></div>
-                                                <div class="placeholder-text"><span></span><span></span></div>
-                                            </div>
-                                        </div>
+                                <div id="dashActivityFeed" class="classic-empty-state" style="padding: 32px 20px;">
+                                    <div class="classic-empty-icon" style="width: 48px; height: 48px; margin-bottom: 16px;">
+                                        <i class="fa-solid fa-clock-rotate-left" style="font-size: 18px;"></i>
                                     </div>
+                                    <h3 class="classic-empty-title" style="font-size: 14px;">No activity yet</h3>
+                                    <p class="classic-empty-desc" style="font-size: 12px; max-width: 260px;">Your recent actions will appear here.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- ── PRODUCTS TAB (Beautiful Empty State) ── -->
+                        <!-- ── PRODUCTS TAB (Classic Clean Design) ── -->
                         <div class="dash-tab-content" id="dashTabProducts" style="display:none;">
-                            <div id="dashProductsListFull" class="beautiful-empty-state">
-                                <div class="empty-state-container large">
-                                    <div class="empty-state-icon-wrapper gradient-gold large">
-                                        <i class="fa-solid fa-boxes-stacked empty-state-icon-animated large"></i>
+                            <!-- Search Bar -->
+                            <div class="mb-5">
+                                <div class="relative max-w-md">
+                                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
+                                    <input type="text" id="productSearchInput" placeholder="Search products..." 
+                                        class="w-full pl-10 pr-4 py-2.5 bg-card border border-white/[0.06] rounded-xl text-sm text-softWhite placeholder-muted outline-none focus:border-accent/40 transition"
+                                        oninput="filterProducts(this.value)">
+                                </div>
+                            </div>
+                            
+                            <!-- Category Filters -->
+                            <div class="flex flex-wrap gap-2 mb-6" id="productCategoryFilters">
+                                <button class="prod-filter-btn active" data-category="all" onclick="filterByCategory('all', this)">All Items</button>
+                                <button class="prod-filter-btn" data-category="tech" onclick="filterByCategory('tech', this)">
+                                    <i class="fa-solid fa-microchip mr-1.5 text-xs"></i>Tech & Gadgets
+                                </button>
+                                <button class="prod-filter-btn" data-category="fashion" onclick="filterByCategory('fashion', this)">
+                                    <i class="fa-solid fa-shirt mr-1.5 text-xs"></i>Fashion
+                                </button>
+                                <button class="prod-filter-btn" data-category="beauty" onclick="filterByCategory('beauty', this)">
+                                    <i class="fa-solid fa-spa mr-1.5 text-xs"></i>Beauty & Care
+                                </button>
+                                <button class="prod-filter-btn" data-category="home" onclick="filterByCategory('home', this)">
+                                    <i class="fa-solid fa-house mr-1.5 text-xs"></i>Home & Living
+                                </button>
+                                <button class="prod-filter-btn" data-category="sports" onclick="filterByCategory('sports', this)">
+                                    <i class="fa-solid fa-futbol mr-1.5 text-xs"></i>Sports
+                                </button>
+                            </div>
+                            
+                            <!-- Products Grid Container -->
+                            <div id="dashProductsListFull" class="products-grid-container">
+                                <!-- Products will be loaded here by JavaScript -->
+                                <div class="classic-empty-state">
+                                    <div class="classic-empty-icon">
+                                        <i class="fa-solid fa-boxes-stacked"></i>
                                     </div>
-                                    <h3 class="empty-state-title-fancy large">Your Product Catalog is Empty</h3>
-                                    <p class="empty-state-desc-fancy">You haven't added any products yet. Start building your collection by adding your first item and watch your catalog come to life with beautiful product cards.</p>
-                                    <div class="empty-state-actions">
-                                        <button onclick="openProductModal()" class="empty-state-btn-primary large">
-                                            <i class="fa-solid fa-plus mr-2"></i>Add Your First Product
-                                        </button>
-                                        <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="empty-state-btn-secondary large">
-                                            <i class="fa-solid fa-gear mr-2"></i>Configure Shop Settings
-                                        </button>
-                                    </div>
-                                    <div class="empty-state-features">
-                                        <div class="feature-item">
-                                            <i class="fa-solid fa-image"></i>
-                                            <span>Multiple Images</span>
-                                        </div>
-                                        <div class="feature-item">
-                                            <i class="fa-solid fa-tags"></i>
-                                            <span>Categories</span>
-                                        </div>
-                                        <div class="feature-item">
-                                            <i class="fa-solid fa-coins"></i>
-                                            <span>MMK Pricing</span>
-                                        </div>
-                                        <div class="feature-item">
-                                            <i class="fa-solid fa-chart-line"></i>
-                                            <span>Analytics</span>
-                                        </div>
-                                    </div>
+                                    <h3 class="classic-empty-title">No items yet</h3>
+                                    <p class="classic-empty-desc">Your product collection is waiting. Start adding products to see them here.</p>
+                                    <button onclick="openProductModal()" class="classic-action-btn">
+                                        <i class="fa-solid fa-plus mr-2"></i>Add Your First Product
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- ── ORDERS TAB (EMPTY) ── -->
+                        <!-- ── ORDERS TAB (Classic Clean Design) ── -->
                         <div class="dash-tab-content" id="dashTabOrders" style="display:none;">
-                            <!-- Order Stats -->
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statPendingOrders">
-                                    <p class="text-lg font-bold" id="countPending">0</p>
-                                    <p class="text-[11px] text-muted mt-0.5">Pending</p>
-                                </div>
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statShippedOrders">
-                                    <p class="text-lg font-bold" id="countShipped">0</p>
-                                    <p class="text-[11px] text-muted mt-0.5">Shipped</p>
-                                </div>
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statDeliveredOrders">
-                                    <p class="text-lg font-bold" id="countDelivered">0</p>
-                                    <p class="text-[11px] text-muted mt-0.5">Delivered</p>
-                                </div>
-                                <div class="bg-card border border-white/[0.04] rounded-xl p-4 text-center" id="statCancelledOrders">
-                                    <p class="text-lg font-bold" id="countCancelled">0</p>
-                                    <p class="text-[11px] text-muted mt-0.5">Cancelled</p>
+                            <!-- Search Bar -->
+                            <div class="mb-5">
+                                <div class="relative max-w-md">
+                                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
+                                    <input type="text" id="orderSearchInput" placeholder="Search orders..." 
+                                        class="w-full pl-10 pr-4 py-2.5 bg-card border border-white/[0.06] rounded-xl text-sm text-softWhite placeholder-muted outline-none focus:border-accent/40 transition"
+                                        oninput="filterOrders(this.value)">
                                 </div>
                             </div>
-
-                            <div class="bg-card border border-white/[0.04] rounded-2xl overflow-hidden" id="ordersContainerDesktop">
-                                <!-- Orders will be loaded here by JavaScript -->
-                                <div id="dashOrdersList">
-                                    <div class="flex justify-center py-12">
-                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+                            
+                            <!-- Status Filter Pills -->
+                            <div class="flex flex-wrap gap-2 mb-6" id="orderStatusFilters">
+                                <button class="order-filter-btn active" data-status="all" onclick="filterByStatus('all', this)">All Orders</button>
+                                <button class="order-filter-btn" data-status="pending" onclick="filterByStatus('pending', this)">
+                                    <span class="status-dot pending"></span>Pending
+                                </button>
+                                <button class="order-filter-btn" data-status="processing" onclick="filterByStatus('processing', this)">
+                                    <span class="status-dot processing"></span>Processing
+                                </button>
+                                <button class="order-filter-btn" data-status="shipped" onclick="filterByStatus('shipped', this)">
+                                    <span class="status-dot shipped"></span>Shipped
+                                </button>
+                                <button class="order-filter-btn" data-status="delivered" onclick="filterByStatus('delivered', this)">
+                                    <span class="status-dot delivered"></span>Delivered
+                                </button>
+                                <button class="order-filter-btn" data-status="cancelled" onclick="filterByStatus('cancelled', this)">
+                                    <span class="status-dot cancelled"></span>Cancelled
+                                </button>
+                            </div>
+                            
+                            <!-- Order Stats Row -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6" id="orderStatsRow">
+                                <div class="classic-stat-card" id="statPendingOrders">
+                                    <p class="classic-stat-num" id="countPending">0</p>
+                                    <p class="classic-stat-label">Pending</p>
+                                </div>
+                                <div class="classic-stat-card" id="statShippedOrders">
+                                    <p class="classic-stat-num" id="countShipped">0</p>
+                                    <p class="classic-stat-label">Shipped</p>
+                                </div>
+                                <div class="classic-stat-card" id="statDeliveredOrders">
+                                    <p class="classic-stat-num" id="countDelivered">0</p>
+                                    <p class="classic-stat-label">Delivered</p>
+                                </div>
+                                <div class="classic-stat-card" id="statCancelledOrders">
+                                    <p class="classic-stat-num" id="countCancelled">0</p>
+                                    <p class="classic-stat-label">Cancelled</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Orders Table Container -->
+                            <div class="bg-card border border-white/[0.05] rounded-xl overflow-hidden" id="ordersContainerDesktop">
+                                <div id="dashOrdersList" class="orders-table-wrapper">
+                                    <!-- Orders will be loaded here by JavaScript -->
+                                    <div class="classic-empty-state">
+                                        <div class="classic-empty-icon">
+                                            <i class="fa-solid fa-receipt"></i>
+                                        </div>
+                                        <h3 class="classic-empty-title">No orders yet</h3>
+                                        <p class="classic-empty-desc">When customers purchase your products, orders will appear here.</p>
                                     </div>
                                 </div>
                             </div>
@@ -4828,51 +5078,95 @@
                                 </div>
                             </div>
 
-                            <!-- ── MOBILE PRODUCTS TAB ── -->
+                            <!-- ── MOBILE PRODUCTS TAB (Classic) ── -->
                             <div class="dash-tab-content" id="dashTabProductsMobile" style="display:none;">
-                                <div class="bg-card border border-white/[0.04] rounded-2xl p-6 text-center">
-                                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] flex items-center justify-center">
-                                        <i class="fa-solid fa-boxes-stacked text-2xl text-muted" aria-hidden="true"></i>
+                                <!-- Search Bar -->
+                                <div class="mb-4">
+                                    <div class="relative">
+                                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
+                                        <input type="text" placeholder="Search products..." 
+                                            class="w-full pl-10 pr-4 py-2.5 bg-card border border-white/[0.06] rounded-xl text-sm text-softWhite placeholder-muted outline-none focus:border-accent/40 transition"
+                                            oninput="filterProducts(this.value)">
                                     </div>
-                                    <h3 class="text-base font-semibold text-softWhite mb-2">Your Product Catalog</h3>
-                                    <p class="text-xs text-muted leading-relaxed mb-5">You haven't added any products yet. Start building your collection!</p>
-                                    <div class="flex flex-col gap-2">
-                                        <button onclick="openProductModal()" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
-                                            <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Add First Product
-                                        </button>
-                                        <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm font-medium hover:bg-white/[0.08] transition">
-                                            <i class="fa-solid fa-gear text-xs" aria-hidden="true"></i> Configure Shop
+                                </div>
+                                
+                                <!-- Category Filters -->
+                                <div class="flex flex-wrap gap-2 mb-4" id="productCategoryFiltersMobile">
+                                    <button class="prod-filter-btn active text-xs" data-category="all" onclick="filterByCategory('all', this)">All</button>
+                                    <button class="prod-filter-btn text-xs" data-category="tech" onclick="filterByCategory('tech', this)">Tech</button>
+                                    <button class="prod-filter-btn text-xs" data-category="fashion" onclick="filterByCategory('fashion', this)">Fashion</button>
+                                    <button class="prod-filter-btn text-xs" data-category="beauty" onclick="filterByCategory('beauty', this)">Beauty</button>
+                                </div>
+                                
+                                <!-- Products Container -->
+                                <div id="dashProductsListFullMobile" class="products-grid-container">
+                                    <div class="classic-empty-state" style="padding: 40px 20px;">
+                                        <div class="classic-empty-icon" style="width: 56px; height: 56px;">
+                                            <i class="fa-solid fa-boxes-stacked" style="font-size: 22px;"></i>
+                                        </div>
+                                        <h3 class="classic-empty-title" style="font-size: 16px;">No items yet</h3>
+                                        <p class="classic-empty-desc" style="font-size: 13px;">Your product collection is waiting.</p>
+                                        <button onclick="openProductModal()" class="classic-action-btn" style="padding: 10px 20px; font-size: 13px;">
+                                            <i class="fa-solid fa-plus mr-2"></i>Add Product
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- ── MOBILE ORDERS TAB ── -->
+                            <!-- ── MOBILE ORDERS TAB (Classic) ── -->
                             <div class="dash-tab-content" id="dashTabOrdersMobile" style="display:none;">
+                                <!-- Search Bar -->
+                                <div class="mb-4">
+                                    <div class="relative">
+                                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
+                                        <input type="text" placeholder="Search orders..." 
+                                            class="w-full pl-10 pr-4 py-2.5 bg-card border border-white/[0.06] rounded-xl text-sm text-softWhite placeholder-muted outline-none focus:border-accent/40 transition"
+                                            oninput="filterOrders(this.value)">
+                                    </div>
+                                </div>
+                                
+                                <!-- Status Filter Pills -->
+                                <div class="flex flex-wrap gap-2 mb-4" id="orderStatusFiltersMobile">
+                                    <button class="order-filter-btn active text-xs" data-status="all" onclick="filterByStatus('all', this)">All</button>
+                                    <button class="order-filter-btn text-xs" data-status="pending" onclick="filterByStatus('pending', this)">
+                                        <span class="status-dot pending"></span>Pending
+                                    </button>
+                                    <button class="order-filter-btn text-xs" data-status="shipped" onclick="filterByStatus('shipped', this)">
+                                        <span class="status-dot shipped"></span>Shipped
+                                    </button>
+                                    <button class="order-filter-btn text-xs" data-status="delivered" onclick="filterByStatus('delivered', this)">
+                                        <span class="status-dot delivered"></span>Delivered
+                                    </button>
+                                </div>
+                                
                                 <!-- Order Stats Mini -->
-                                <div class="grid grid-cols-2 gap-3 mb-5">
-                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-sage font-display" id="countPendingMobile">0</p>
-                                        <p class="text-[10px] text-muted uppercase tracking-wide">Pending</p>
+                                <div class="grid grid-cols-2 gap-3 mb-4">
+                                    <div class="classic-stat-card" style="padding: 12px;">
+                                        <p class="classic-stat-num" style="font-size: 20px;" id="countPendingMobile">0</p>
+                                        <p class="classic-stat-label">Pending</p>
                                     </div>
-                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-accent font-display" id="countShippedMobile">0</p>
-                                        <p class="text-[10px] text-muted uppercase tracking-wide">Shipped</p>
+                                    <div class="classic-stat-card" style="padding: 12px;">
+                                        <p class="classic-stat-num" style="font-size: 20px;" id="countShippedMobile">0</p>
+                                        <p class="classic-stat-label">Shipped</p>
                                     </div>
-                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-[#648cc8] font-display" id="countDeliveredMobile">0</p>
-                                        <p class="text-[10px] text-muted uppercase tracking-wide">Delivered</p>
+                                    <div class="classic-stat-card" style="padding: 12px;">
+                                        <p class="classic-stat-num" style="font-size: 20px;" id="countDeliveredMobile">0</p>
+                                        <p class="classic-stat-label">Delivered</p>
                                     </div>
-                                    <div class="bg-card border border-white/[0.04] rounded-xl p-3 text-center">
-                                        <p class="text-lg font-bold text-coral font-display" id="countCancelledMobile">0</p>
-                                        <p class="text-[10px] text-muted uppercase tracking-wide">Total</p>
+                                    <div class="classic-stat-card" style="padding: 12px;">
+                                        <p class="classic-stat-num" style="font-size: 20px;" id="countCancelledMobile">0</p>
+                                        <p class="classic-stat-label">Cancelled</p>
                                     </div>
                                 </div>
                                 
                                 <!-- Orders List Container for Mobile -->
-                                <div id="dashOrdersListMobile">
-                                    <div class="flex justify-center py-8">
-                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+                                <div id="dashOrdersListMobile" class="orders-table-wrapper">
+                                    <div class="classic-empty-state" style="padding: 40px 20px;">
+                                        <div class="classic-empty-icon" style="width: 56px; height: 56px;">
+                                            <i class="fa-solid fa-receipt" style="font-size: 22px;"></i>
+                                        </div>
+                                        <h3 class="classic-empty-title" style="font-size: 16px;">No orders yet</h3>
+                                        <p class="classic-empty-desc" style="font-size: 13px;">Customer orders will appear here.</p>
                                     </div>
                                 </div>
                             </div>
@@ -8069,7 +8363,8 @@ async function handleForgotPassword() {
         var c = sg('dashProductsList') || sg('dashProductsListFull');
         if(!c || !window.sb || !window.currentUser) return;
         
-        c.innerHTML = '<div class="beautiful-empty-state"><div class="empty-state-container"><div class="empty-state-icon-wrapper gradient-gold"><i class="fa-solid fa-spinner empty-state-icon-animated" style="animation: spin 1s linear infinite;"></i></div><p class="empty-state-desc-fancy">Loading your products...</p></div></div>';
+        // Classic loading state
+        c.innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div><h3 class="classic-empty-title">Loading...</h3><p class="classic-empty-desc">Fetching your products</p></div>';
         
         window.sb.from('products')
             .select('*, product_images(*)')
@@ -8079,30 +8374,29 @@ async function handleForgotPassword() {
             .then(function(r){
                 var p = r.data || [];
                 
-                // Update both containers if they exist
-                var containers = ['dashProductsList', 'dashProductsListFull'];
+                // Update both containers if they exist (desktop + mobile)
+                var containers = ['dashProductsList', 'dashProductsListFull', 'dashProductsListFullMobile'];
                 for(var ci = 0; ci < containers.length; ci++){
                     var container = sg(containers[ci]);
                     if(container){
                         if(p.length === 0){
-                            // Keep beautiful empty state for empty products
-                            if(containers[ci] === 'dashProductsList'){
-                                // Overview keeps its beautiful empty state
-                            } else {
-                                container.innerHTML = renderBeautifulEmptyState('products');
-                            }
+                            // Use classic empty state
+                            container.innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-box-open"></i></div><h3 class="classic-empty-title">No items yet</h3><p class="classic-empty-desc">Your product collection is waiting. Start adding products.</p><button onclick="openProductModal()" class="classic-action-btn"><i class="fa-solid fa-plus mr-2"></i>Add Product</button></div>';
                         } else {
                             container.innerHTML = renderProductGrid(p);
                         }
                     }
                 }
+                
+                // Store for filtering
+                window.allProducts = p;
             })
             .catch(function(e){
                 err('Products error:', e);
-                var containers = ['dashProductsList', 'dashProductsListFull'];
+                var containers = ['dashProductsList', 'dashProductsListFull', 'dashProductsListFullMobile'];
                 for(var ei = 0; ei < containers.length; ei++){
                     var errContainer = sg(containers[ei]);
-                    if(errContainer) errContainer.innerHTML = renderErrorStateFancy('Failed to load products');
+                    if(errContainer) errContainer.innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="classic-empty-title">Error loading products</h3><p class="classic-empty-desc">Please try again later.</p></div>';
                 }
             });
     }
@@ -8174,31 +8468,30 @@ async function handleForgotPassword() {
     }
     
     function renderProductGrid(prods){
-        var h = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+        var h = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">';
         
         for(var i = 0; i < prods.length; i++){
             var p = prods[i];
-            var img = p.product_images && p.product_images.length ? p.product_images[0].url : 'https://via.placeholder.com/300x200?text=No+Image';
-            var sc = p.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400';
-            var st = p.is_active ? 'Active' : (p.status || 'Draft');
+            var img = p.product_images && p.product_images.length ? p.product_images[0].url : '';
+            var category = p.category || 'General';
             
-            h += '<div class="bg-gray-800/50 rounded-xl border border-white/[0.06] overflow-hidden hover:border-accent/30 transition-all duration-300 group">' +
-                '<div class="relative h-40 bg-gray-900 overflow-hidden">' +
-                    '<img src="' + eh(img) + '" alt="' + eh(p.title) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">' +
-                    '<span class="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ' + sc + '">' + st + '</span>' +
+            // Classic product card - simple and clean
+            h += '<div class="classic-product-card">' +
+                '<div class="classic-product-img">' +
+                    (img ? 
+                        '<img src="' + eh(img) + '" alt="' + eh(p.title) + '" class="w-full h-full object-cover" loading="lazy">' :
+                        '<div class="w-full h-full flex items-center justify-center text-muted"><i class="fa-solid fa-image text-3xl opacity-30"></i></div>'
+                    ) +
                 '</div>' +
-                '<div class="p-4">' +
-                    '<h3 class="font-semibold text-softWhite truncate mb-1" title="' + eh(p.title) + '">' + eh(p.title) + '</h3>' +
-                    '<p class="text-accent font-bold text-lg">' + fp(p.price) + '</p>' +
-                    '<div class="flex items-center justify-between mt-3 text-xs text-muted">' +
-                        '<span><i class="fas fa-box mr-1"></i>' + (p.stock_quantity || 0) + ' stock</span>' +
-                        '<span><i class="fas fa-eye mr-1"></i>' + (p.view_count || 0) + ' views</span>' +
-                    '</div>' +
+                '<div class="classic-product-info">' +
+                    '<h3 class="classic-product-title" title="' + eh(p.title) + '">' + eh(p.title) + '</h3>' +
+                    '<p class="classic-product-price">' + fp(p.price) + '</p>' +
+                    '<p class="classic-product-category">' + eh(category) + '</p>' +
                     '<div class="flex gap-2 mt-3">' +
-                        '<button onclick="openProductModal(\'' + p.id + '\')" class="flex-1 px-3 py-1.5 bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition text-sm font-medium">' +
+                        '<button onclick="openProductModal(\'' + p.id + '\')" class="flex-1 px-3 py-1.5 bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition text-xs font-medium">' +
                             '<i class="fas fa-pen mr-1"></i>Edit' +
                         '</button>' +
-                        '<button onclick="deleteProduct(\'' + p.id + '\', \'' + eh(p.title).replace(/'/g, "\\'") + '\')" class="px-3 py-1.5 bg-red-600/10 text-red-400 rounded-lg hover:bg-red-600/20 transition text-sm" title="Delete product">' +
+                        '<button onclick="deleteProduct(\'' + p.id + '\', \'' + eh(p.title).replace(/'/g, "\\'") + '\')" class="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition text-xs" title="Delete product">' +
                             '<i class="fas fa-trash"></i>' +
                         '</button>' +
                     '</div>' +
@@ -8235,7 +8528,7 @@ async function handleForgotPassword() {
         // Show loading state in all order containers
         for(var i = 0; i < containers.length; i++){
             if(containers[i]){
-                containers[i].innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
+                containers[i].innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div><h3 class="classic-empty-title">Loading...</h3><p class="classic-empty-desc">Fetching your orders</p></div>';
             }
         }
         
@@ -8249,7 +8542,7 @@ async function handleForgotPassword() {
                 
                 var html = '';
                 if(orders.length === 0){
-                    html = renderEmptyState('orders', 'No orders yet! When customers purchase your products, orders will appear here.');
+                    html = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-receipt"></i></div><h3 class="classic-empty-title">No orders yet</h3><p class="classic-empty-desc">When customers purchase your products, orders will appear here.</p></div>';
                 } else {
                     html = renderOrdersTable(orders);
                 }
@@ -8263,10 +8556,13 @@ async function handleForgotPassword() {
                 
                 // Update order status counts
                 updateOrderStatusCounts(orders);
+                
+                // Store for filtering
+                window.allOrders = orders;
             })
             .catch(function(e){
                 err('Orders error:', e);
-                var errHtml = renderErrorState('Failed to load orders');
+                var errHtml = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="classic-empty-title">Error loading orders</h3><p class="classic-empty-desc">Please try again later.</p></div>';
                 for(var k = 0; k < containers.length; k++){
                     if(containers[k]){
                         containers[k].innerHTML = errHtml;
@@ -8274,6 +8570,113 @@ async function handleForgotPassword() {
                 }
             });
     }
+    
+    // ════════════════════════════════════════════════════════════════════════════════
+    // FILTER FUNCTIONS - For Products & Orders tabs
+    // ════════════════════════════════════════════════════════════════════════════════
+    
+    // Product search filter
+    window.filterProducts = function(searchTerm) {
+        if(!window.allProducts) return;
+        
+        var container = sg('dashProductsListFull');
+        if(!container) return;
+        
+        var term = (searchTerm || '').toLowerCase().trim();
+        var filtered = window.allProducts.filter(function(p) {
+            return !term || 
+                   (p.title && p.title.toLowerCase().indexOf(term) !== -1) ||
+                   (p.category && p.category.toLowerCase().indexOf(term) !== -1);
+        });
+        
+        if(filtered.length === 0){
+            container.innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-search"></i></div><h3 class="classic-empty-title">No results found</h3><p class="classic-empty-desc">Try a different search term.</p></div>';
+        } else {
+            container.innerHTML = renderProductGrid(filtered);
+        }
+    };
+    
+    // Product category filter
+    window.filterByCategory = function(category, btn) {
+        if(!window.allProducts) return;
+        
+        // Update active button
+        var buttons = document.querySelectorAll('.prod-filter-btn');
+        for(var i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove('active');
+        }
+        if(btn) btn.classList.add('active');
+        
+        var container = sg('dashProductsListFull');
+        if(!container) return;
+        
+        var filtered;
+        if(category === 'all') {
+            filtered = window.allProducts;
+        } else {
+            filtered = window.allProducts.filter(function(p) {
+                return (p.category || 'General').toLowerCase() === category.toLowerCase();
+            });
+        }
+        
+        if(filtered.length === 0){
+            container.innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-box-open"></i></div><h3 class="classic-empty-title">No items in this category</h3><p class="classic-empty-desc">Products in this category will appear here.</p><button onclick="openProductModal()" class="classic-action-btn"><i class="fa-solid fa-plus mr-2"></i>Add Product</button></div>';
+        } else {
+            container.innerHTML = renderProductGrid(filtered);
+        }
+    };
+    
+    // Order search filter
+    window.filterOrders = function(searchTerm) {
+        if(!window.allOrders) return;
+        
+        var container = sg('dashOrdersList');
+        if(!container) return;
+        
+        var term = (searchTerm || '').toLowerCase().trim();
+        var filtered = window.allOrders.filter(function(o) {
+            if(!term) return true;
+            var idMatch = o.id && o.id.toLowerCase().indexOf(term) !== -1;
+            var buyerMatch = o.buyer && o.buyer.full_name && o.buyer.full_name.toLowerCase().indexOf(term) !== -1;
+            return idMatch || buyerMatch;
+        });
+        
+        if(filtered.length === 0){
+            container.innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-search"></i></div><h3 class="classic-empty-title">No orders found</h3><p class="classic-empty-desc">Try a different search term.</p></div>';
+        } else {
+            container.innerHTML = renderOrdersTable(filtered);
+        }
+    };
+    
+    // Order status filter
+    window.filterByStatus = function(status, btn) {
+        if(!window.allOrders) return;
+        
+        // Update active button
+        var buttons = document.querySelectorAll('.order-filter-btn');
+        for(var i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove('active');
+        }
+        if(btn) btn.classList.add('active');
+        
+        var container = sg('dashOrdersList');
+        if(!container) return;
+        
+        var filtered;
+        if(status === 'all') {
+            filtered = window.allOrders;
+        } else {
+            filtered = window.allOrders.filter(function(o) {
+                return (o.status || 'pending').toLowerCase() === status.toLowerCase();
+            });
+        }
+        
+        if(filtered.length === 0){
+            container.innerHTML = '<div class="classic-empty-state"><div class="classic-empty-icon"><i class="fa-solid fa-receipt"></i></div><h3 class="classic-empty-title">No ' + status + ' orders</h3><p class="classic-empty-desc">Orders with this status will appear here.</p></div>';
+        } else {
+            container.innerHTML = renderOrdersTable(filtered);
+        }
+    };
     
     function updateOrderStatusCounts(orders){
         var counts = {pending: 0, shipped: 0, delivered: 0, cancelled: 0};
@@ -8306,16 +8709,19 @@ async function handleForgotPassword() {
     }
     
     function renderOrdersTable(orders){
-        var h = '<div class="overflow-x-auto"><table class="w-full text-sm">' +
-            '<thead><tr class="border-b border-white/[0.06] text-left text-muted text-xs uppercase tracking-wider">' +
-                '<th class="pb-3 pr-4">Order ID</th>' +
-                '<th class="pb-3 pr-4">Customer</th>' +
-                '<th class="pb-3 pr-4">Items</th>' +
-                '<th class="pb-3 pr-4">Total</th>' +
-                '<th class="pb-3 pr-4">Status</th>' +
-                '<th class="pb-3 pr-4">Date</th>' +
-                '<th class="pb-3">Actions</th>' +
-            '</tr></thead><tbody>';
+        // Classic clean list design - no table header needed for simplicity
+        var h = '<div class="orders-list">';
+        
+        // Header row
+        h += '<div class="classic-order-row" style="background: rgba(255,255,255,0.02); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">' +
+            '<span class="classic-order-id">Order ID</span>' +
+            '<span class="classic-order-customer">Customer</span>' +
+            '<span class="classic-order-items">Items</span>' +
+            '<span class="classic-order-total">Total</span>' +
+            '<span class="classic-order-status">Status</span>' +
+            '<span class="classic-order-date">Date</span>' +
+            '<span style="min-width: 60px;">Action</span>' +
+        '</div>';
         
         for(var i = 0; i < orders.length; i++){
             var o = orders[i];
@@ -8324,20 +8730,20 @@ async function handleForgotPassword() {
             var statusClass = getStatusClass(o.status);
             var dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : 'N/A';
             
-            h += '<tr class="dash-table-row border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">' +
-                '<td class="py-3 pr-4 font-mono text-xs text-accent/80">#' + (o.id || '').substring(0, 8).toUpperCase() + '</td>' +
-                '<td class="py-3 pr-4">' + eh(buyerName) + '</td>' +
-                '<td class="py-3 pr-4 text-muted">' + itemsCount + ' item(s)</td>' +
-                '<td class="py-3 pr-4 font-semibold text-softWhite">' + fp(o.total) + '</td>' +
-                '<td class="py-3 pr-4"><span class="inline-flex px-2 py-1 rounded-full text-xs font-medium ' + statusClass + '">' + capitalizeFirst(o.status || 'pending') + '</span></td>' +
-                '<td class="py-3 pr-4 text-muted text-xs">' + dateStr + '</td>' +
-                '<td class="py-3">' +
-                    '<button onclick="viewOrderDetail(\'' + o.id + '\')" class="text-accent hover:text-accentDim text-xs font-medium mr-2" title="View details">View</button>' +
-                '</td>' +
-            '</tr>';
+            h += '<div class="classic-order-row">' +
+                '<span class="classic-order-id">#' + (o.id || '').substring(0, 8).toUpperCase() + '</span>' +
+                '<span class="classic-order-customer">' + eh(buyerName) + '</span>' +
+                '<span class="classic-order-items">' + itemsCount + ' item(s)</span>' +
+                '<span class="classic-order-total">' + fp(o.total) + '</span>' +
+                '<span class="classic-order-status ' + statusClass + '">' + capitalizeFirst(o.status || 'pending') + '</span>' +
+                '<span class="classic-order-date">' + dateStr + '</span>' +
+                '<span style="min-width: 60px;">' +
+                    '<button onclick="viewOrderDetail(\'' + o.id + '\')" class="text-accent hover:text-accentDim text-xs font-medium">View</button>' +
+                '</span>' +
+            '</div>';
         }
         
-        h += '</tbody></table></div>';
+        h += '</div>';
         return h;
     }
     
