@@ -1050,6 +1050,363 @@
 
 
         /* ═══════════════════════════════════════
+           27.5.1 BEAUTIFUL EMPTY STATES - Enhanced UI
+           Modern, engaging empty states with animations
+        ═══════════════════════════════════════ */
+        
+        .beautiful-empty-state {
+            background: linear-gradient(145deg, rgba(19, 19, 28, 0.8), rgba(13, 13, 20, 0.9));
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            padding: 48px 32px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .beautiful-empty-state::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(232, 166, 48, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .empty-state-container {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .empty-state-container.large {
+            padding: 40px 20px;
+        }
+        
+        .empty-state-container.compact {
+            padding: 32px 20px;
+        }
+        
+        /* Icon Wrapper with Gradient */
+        .empty-state-icon-wrapper {
+            width: 96px;
+            height: 96px;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            position: relative;
+        }
+        
+        .empty-state-icon-wrapper.large {
+            width: 120px;
+            height: 120px;
+            border-radius: 32px;
+            margin-bottom: 32px;
+        }
+        
+        .gradient-gold {
+            background: linear-gradient(135deg, rgba(232, 166, 48, 0.2) 0%, rgba(212, 146, 42, 0.1) 100%);
+            border: 1px solid rgba(232, 166, 48, 0.3);
+            box-shadow: 0 8px 32px rgba(232, 166, 48, 0.15);
+        }
+        
+        .gradient-blue {
+            background: linear-gradient(135deg, rgba(100, 140, 200, 0.2) 0%, rgba(80, 120, 180, 0.1) 100%);
+            border: 1px solid rgba(100, 140, 200, 0.3);
+            box-shadow: 0 8px 32px rgba(100, 140, 200, 0.15);
+        }
+        
+        .gradient-purple {
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            box-shadow: 0 8px 32px rgba(167, 139, 250, 0.15);
+        }
+        
+        /* Animated Icon */
+        .empty-state-icon-animated {
+            font-size: 36px;
+            color: #e8a630;
+            animation: floatIcon 3s ease-in-out infinite;
+        }
+        
+        .empty-state-icon-animated.large {
+            font-size: 48px;
+        }
+        
+        .empty-state-icon-animated.small {
+            font-size: 24px;
+        }
+        
+        .gradient-blue .empty-state-icon-animated {
+            color: #648cc8;
+        }
+        
+        .gradient-purple .empty-state-icon-animated {
+            color: #a78bfa;
+        }
+        
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        /* Typography */
+        .empty-state-title-fancy {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: #ede8e0;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+        
+        .empty-state-title-fancy.large {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state-title-fancy.small {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state-desc-fancy {
+            font-size: 14px;
+            color: #9b97a8;
+            line-height: 1.6;
+            max-width: 420px;
+            margin: 0 auto 28px;
+        }
+        
+        .empty-state-desc-fancy.small {
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        
+        /* Action Buttons */
+        .empty-state-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
+        
+        .empty-state-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #e8a630 0%, #d4922a 100%);
+            color: #08080d;
+            font-weight: 600;
+            font-size: 14px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(232, 166, 48, 0.3);
+        }
+        
+        .empty-state-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(232, 166, 48, 0.4);
+            background: linear-gradient(135deg, #f0b540 0%, #e8a630 100%);
+        }
+        
+        .empty-state-btn-primary.large {
+            padding: 16px 32px;
+            font-size: 15px;
+            border-radius: 16px;
+        }
+        
+        .empty-state-btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            padding: 14px 28px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #9b97a8;
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .empty-state-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ede8e0;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .empty-state-btn-secondary.large {
+            padding: 16px 32px;
+            font-size: 15px;
+        }
+        
+        /* Pro Tips Section */
+        .empty-state-tips {
+            background: rgba(232, 166, 48, 0.05);
+            border: 1px solid rgba(232, 166, 48, 0.15);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: left;
+            max-width: 380px;
+            margin: 0 auto;
+        }
+        
+        .tip-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e8a630;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .tips-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .tips-list li {
+            font-size: 13px;
+            color: #9b97a8;
+            padding: 6px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .tips-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #81b29a;
+            font-weight: 600;
+        }
+        
+        /* Mini Stats for Orders */
+        .empty-state-stats-mini {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin: 24px 0;
+        }
+        
+        .mini-stat {
+            text-align: center;
+        }
+        
+        .mini-stat-number {
+            display: block;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ede8e0;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .mini-stat-label {
+            font-size: 12px;
+            color: #6b6880;
+            margin-top: 4px;
+        }
+        
+        /* Feature Grid */
+        .empty-state-features {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 32px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .feature-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-item:hover {
+            background: rgba(232, 166, 48, 0.08);
+            border-color: rgba(232, 166, 48, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .feature-item i {
+            font-size: 18px;
+            color: #e8a630;
+        }
+        
+        .feature-item span {
+            font-size: 11px;
+            color: #9b97a8;
+            font-weight: 500;
+        }
+        
+        /* Activity Placeholder Items */
+        .activity-placeholder-items {
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 320px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .placeholder-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            opacity: 0.5;
+        }
+        
+        .placeholder-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(167, 139, 250, 0.5);
+            flex-shrink: 0;
+        }
+        
+        .placeholder-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .placeholder-text span {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+        }
+        
+        .placeholder-text span:first-child {
+            width: 60%;
+        }
+        
+        .placeholder-text span:last-child {
+            width: 40%;
+        }
+
+        /* ═══════════════════════════════════════
            27.6 DASHBOARD SIDEBAR ENHANCEMENT
         ═══════════════════════════════════════ */
         .dash-sidebar-wrapper {
@@ -4041,70 +4398,137 @@
                                 </div>
                             </div>
 
-                            <!-- Recent Products (Empty) -->
+                            <!-- Recent Products (Beautiful Empty State) -->
                             <div class="mb-8">
                                 <div class="flex items-center justify-between mb-4">
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Products</h3>
-                                    <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="text-xs text-accent hover:text-accentDim transition">View All</button>
+                                    <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="text-xs text-accent hover:text-accentDim transition font-medium">View All →</button>
                                 </div>
-                                <div id="dashProductsList" class="empty-state-dash">
-                                    <div class="empty-state-visual">
-                                                                                <i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i>
+                                <div id="dashProductsList" class="beautiful-empty-state">
+                                    <div class="empty-state-container">
+                                        <div class="empty-state-icon-wrapper gradient-gold">
+                                            <i class="fa-solid fa-box-open empty-state-icon-animated"></i>
+                                        </div>
+                                        <h3 class="empty-state-title-fancy">Your Product Showcase Awaits</h3>
+                                        <p class="empty-state-desc-fancy">Start building your catalog! Add your first product and watch it come to life with beautiful cards.</p>
+                                        <div class="empty-state-actions">
+                                            <button onclick="openProductModal()" class="empty-state-btn-primary">
+                                                <i class="fa-solid fa-plus mr-2"></i>Create Your First Product
+                                            </button>
+                                            <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="empty-state-btn-secondary">
+                                                <i class="fa-solid fa-gear mr-2"></i>Configure Shop
+                                            </button>
+                                        </div>
+                                        <div class="empty-state-tips">
+                                            <p class="tip-title"><i class="fa-light fa-lightbulb mr-1"></i> Pro Tips:</p>
+                                            <ul class="tips-list">
+                                                <li>Use high-quality product images</li>
+                                                <li>Write detailed descriptions</li>
+                                                <li>Set competitive prices in MMK</li>
+                                            </ul>
+                                        </div>
                                     </div>
-                                    <h3 class="empty-state-title">Your Product Showcase</h3>
-                                    <p class="empty-state-desc">Start by adding your first product to see it appear here. Build your catalog and watch it come to life.</p>
-                                    <button onclick="openProductModal()" class="empty-state-action">
-                                        <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
-                                        Add Your First Product
-                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Recent Orders -->
+                            <!-- Recent Orders (Beautiful Empty State) -->
                             <div class="mb-8">
                                 <div class="flex items-center justify-between mb-4">
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Orders</h3>
-                                    <button onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))" class="text-xs text-accent hover:text-accentDim transition">View All</button>
+                                    <button onclick="switchDashTab('orders',document.querySelector('[data-dash-tab=orders]'))" class="text-xs text-accent hover:text-accentDim transition font-medium">View All →</button>
                                 </div>
-                                <div id="dashOrdersList" class="empty-state-dash">
-                                    <div class="empty-state-visual">
-                                        <i class="fa-solid fa-receipt empty-state-icon" aria-hidden="true"></i>
+                                <div id="dashOrdersListOverview" class="beautiful-empty-state">
+                                    <div class="empty-state-container">
+                                        <div class="empty-state-icon-wrapper gradient-blue">
+                                            <i class="fa-solid fa-receipt empty-state-icon-animated"></i>
+                                        </div>
+                                        <h3 class="empty-state-title-fancy">Orders Will Appear Here</h3>
+                                        <p class="empty-state-desc-fancy">Once customers start purchasing your products, orders will show up here in real-time with all the details you need.</p>
+                                        <div class="empty-state-stats-mini">
+                                            <div class="mini-stat">
+                                                <span class="mini-stat-number">0</span>
+                                                <span class="mini-stat-label">Pending</span>
+                                            </div>
+                                            <div class="mini-stat">
+                                                <span class="mini-stat-number">0</span>
+                                                <span class="mini-stat-label">Shipped</span>
+                                            </div>
+                                            <div class="mini-stat">
+                                                <span class="mini-stat-number">0</span>
+                                                <span class="mini-stat-label">Delivered</span>
+                                            </div>
+                                        </div>
+                                        <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="empty-state-btn-primary mt-4">
+                                            <i class="fa-solid fa-arrow-right mr-2"></i>Go Add Products
+                                        </button>
                                     </div>
-                                    <h3 class="empty-state-title">Orders Will Appear Here</h3>
-                                    <p class="empty-state-desc">Once customers start purchasing your products, orders will show up here in real-time.</p>
                                 </div>
                             </div>
 
-                            <!-- Activity Feed (Empty) -->
+                            <!-- Activity Feed (Beautiful Empty State) -->
                             <div>
                                 <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider mb-4">Activity</h3>
-                                <div id="dashActivityFeed" class="dash-activity-feed">
-                                <div id="dashProductsList" class="empty-state-dash">
-                                    <div class="empty-state-visual">
-                                                                                <i class="fa-solid fa-clock-rotate-left empty-state-icon" aria-hidden="true"></i>
+                                <div id="dashActivityFeed" class="dash-activity-feed beautiful-empty-state">
+                                    <div class="empty-state-container compact">
+                                        <div class="empty-state-icon-wrapper gradient-purple">
+                                            <i class="fa-solid fa-clock-rotate-left empty-state-icon-animated small"></i>
+                                        </div>
+                                        <h3 class="empty-state-title-fancy small">Activity Feed is Quiet</h3>
+                                        <p class="empty-state-desc-fancy small">Your recent actions, sales milestones, and shop updates will appear here as your business grows.</p>
+                                        <div class="activity-placeholder-items">
+                                            <div class="placeholder-item">
+                                                <div class="placeholder-dot"></div>
+                                                <div class="placeholder-text"><span></span><span></span></div>
+                                            </div>
+                                            <div class="placeholder-item">
+                                                <div class="placeholder-dot"></div>
+                                                <div class="placeholder-text"><span></span><span></span></div>
+                                            </div>
+                                            <div class="placeholder-item">
+                                                <div class="placeholder-dot"></div>
+                                                <div class="placeholder-text"><span></span><span></span></div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <h3 class="empty-state-title">Activity Awaits</h3>
-                                    <p class="empty-state-desc">Your recent actions, updates, and milestones will appear here as your shop grows.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- ── PRODUCTS TAB (EMPTY) ── -->
+                        <!-- ── PRODUCTS TAB (Beautiful Empty State) ── -->
                         <div class="dash-tab-content" id="dashTabProducts" style="display:none;">
-                            <div id="dashProductsList" class="empty-state-dash">
-                                <div class="empty-state-visual">
-                                                                        <i class="fa-solid fa-boxes-stacked empty-state-icon" aria-hidden="true"></i>
-                                </div>
-                                <h3 class="empty-state-title">Your Product Catalog</h3>
-                                <p class="empty-state-desc">You haven't added any products yet. Start building your collection by adding your first item and watch your catalog come to life.</p>
-                                <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                                    <button onclick="openProductModal()" class="empty-state-action">
-                                        <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
-                                        Add First Product
-                                    </button>
-                                    <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-subtle text-sm font-medium hover:bg-white/[0.08] transition">
-                                        <i class="fa-solid fa-gear text-xs" aria-hidden="true"></i> Configure Shop
-                                    </button>
+                            <div id="dashProductsListFull" class="beautiful-empty-state">
+                                <div class="empty-state-container large">
+                                    <div class="empty-state-icon-wrapper gradient-gold large">
+                                        <i class="fa-solid fa-boxes-stacked empty-state-icon-animated large"></i>
+                                    </div>
+                                    <h3 class="empty-state-title-fancy large">Your Product Catalog is Empty</h3>
+                                    <p class="empty-state-desc-fancy">You haven't added any products yet. Start building your collection by adding your first item and watch your catalog come to life with beautiful product cards.</p>
+                                    <div class="empty-state-actions">
+                                        <button onclick="openProductModal()" class="empty-state-btn-primary large">
+                                            <i class="fa-solid fa-plus mr-2"></i>Add Your First Product
+                                        </button>
+                                        <button onclick="switchDashTab('settings',document.querySelector('[data-dash-tab=settings]'))" class="empty-state-btn-secondary large">
+                                            <i class="fa-solid fa-gear mr-2"></i>Configure Shop Settings
+                                        </button>
+                                    </div>
+                                    <div class="empty-state-features">
+                                        <div class="feature-item">
+                                            <i class="fa-solid fa-image"></i>
+                                            <span>Multiple Images</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <i class="fa-solid fa-tags"></i>
+                                            <span>Categories</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <i class="fa-solid fa-coins"></i>
+                                            <span>MMK Pricing</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <i class="fa-solid fa-chart-line"></i>
+                                            <span>Analytics</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -7620,7 +8044,12 @@ async function handleForgotPassword() {
     function updateStat(id, val){
         var el = sg(id);
         if(el){
-            el.textContent = val;
+            // Special handling for revenue to maintain MMK label
+            if(id === 'statRevenue') {
+                el.innerHTML = val + ' <span class="text-sm text-muted font-body">MMK</span>';
+            } else {
+                el.textContent = val;
+            }
             el.classList.add('stat-updated');
             setTimeout(function(){ el.classList.remove('stat-updated'); }, 500);
         }
@@ -7636,10 +8065,11 @@ async function handleForgotPassword() {
     
     function loadRecentProducts(limit){
         limit = limit || 6;
-        var c = sg('dashProductsList');
+        // Try to get the overview products list first, then full tab
+        var c = sg('dashProductsList') || sg('dashProductsListFull');
         if(!c || !window.sb || !window.currentUser) return;
         
-        c.innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
+        c.innerHTML = '<div class="beautiful-empty-state"><div class="empty-state-container"><div class="empty-state-icon-wrapper gradient-gold"><i class="fa-solid fa-spinner empty-state-icon-animated" style="animation: spin 1s linear infinite;"></i></div><p class="empty-state-desc-fancy">Loading your products...</p></div></div>';
         
         window.sb.from('products')
             .select('*, product_images(*)')
@@ -7648,14 +8078,74 @@ async function handleForgotPassword() {
             .limit(limit)
             .then(function(r){
                 var p = r.data || [];
-                c.innerHTML = p.length === 0 
-                    ? renderEmptyState('products', 'No products yet! Create your first product!')
-                    : renderProductGrid(p);
+                
+                // Update both containers if they exist
+                var containers = ['dashProductsList', 'dashProductsListFull'];
+                for(var ci = 0; ci < containers.length; ci++){
+                    var container = sg(containers[ci]);
+                    if(container){
+                        if(p.length === 0){
+                            // Keep beautiful empty state for empty products
+                            if(containers[ci] === 'dashProductsList'){
+                                // Overview keeps its beautiful empty state
+                            } else {
+                                container.innerHTML = renderBeautifulEmptyState('products');
+                            }
+                        } else {
+                            container.innerHTML = renderProductGrid(p);
+                        }
+                    }
+                }
             })
             .catch(function(e){
                 err('Products error:', e);
-                c.innerHTML = renderErrorState('Failed to load products');
+                var containers = ['dashProductsList', 'dashProductsListFull'];
+                for(var ei = 0; ei < containers.length; ei++){
+                    var errContainer = sg(containers[ei]);
+                    if(errContainer) errContainer.innerHTML = renderErrorStateFancy('Failed to load products');
+                }
             });
+    }
+    
+    function renderBeautifulEmptyState(type){
+        var configs = {
+            products: {
+                icon: 'fa-boxes-stacked',
+                gradient: 'gradient-gold',
+                title: 'Your Product Catalog is Empty',
+                desc: 'You haven\'t added any products yet. Start building your collection by adding your first item.',
+                action: '<button onclick="openProductModal()" class="empty-state-btn-primary"><i class="fa-solid fa-plus mr-2"></i>Add Your First Product</button>'
+            },
+            orders: {
+                icon: 'fa-receipt',
+                gradient: 'gradient-blue',
+                title: 'No Orders Yet',
+                desc: 'When customers purchase your products, orders will appear here with all the details.',
+                action: ''
+            }
+        };
+        
+        var cfg = configs[type] || configs.products;
+        
+        return '<div class="beautiful-empty-state"><div class="empty-state-container large">' +
+            '<div class="empty-state-icon-wrapper ' + cfg.gradient + ' large">' +
+                '<i class="fa-solid ' + cfg.icon + ' empty-state-icon-animated large"></i>' +
+            '</div>' +
+            '<h3 class="empty-state-title-fancy large">' + cfg.title + '</h3>' +
+            '<p class="empty-state-desc-fancy">' + cfg.desc + '</p>' +
+            (cfg.action ? '<div class="empty-state-actions">' + cfg.action + '</div>' : '') +
+        '</div></div>';
+    }
+    
+    function renderErrorStateFancy(msg){
+        return '<div class="beautiful-empty-state"><div class="empty-state-container">' +
+            '<div class="empty-state-icon-wrapper gradient-purple">' +
+                '<i class="fa-solid fa-triangle-exclamation empty-state-icon-animated" style="color: #e07a5f;"></i>' +
+            '</div>' +
+            '<h3 class="empty-state-title-fancy">Oops! Something went wrong</h3>' +
+            '<p class="empty-state-desc-fancy">' + msg + '</p>' +
+            '<button onclick="location.reload()" class="empty-state-btn-primary mt-4"><i class="fa-solid fa-rotate mr-2"></i>Try Again</button>' +
+        '</div></div>';
     }
     
     function initQuickActions(){
