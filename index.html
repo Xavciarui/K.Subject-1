@@ -4047,9 +4047,9 @@
                                     <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider">Recent Products</h3>
                                     <button onclick="switchDashTab('products',document.querySelector('[data-dash-tab=products]'))" class="text-xs text-accent hover:text-accentDim transition">View All</button>
                                 </div>
-                                <div id="dashProductsList" class="empty-state-dash">
+                                <div id="dashProductsListOverview" class="empty-state-dash">
                                     <div class="empty-state-visual">
-                                                                                <i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i>
+                                        <i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i>
                                     </div>
                                     <h3 class="empty-state-title">Your Product Showcase</h3>
                                     <p class="empty-state-desc">Start by adding your first product to see it appear here. Build your catalog and watch it come to life.</p>
@@ -4078,10 +4078,9 @@
                             <!-- Activity Feed (Empty) -->
                             <div>
                                 <h3 class="text-sm font-semibold text-subtle uppercase tracking-wider mb-4">Activity</h3>
-                                <div id="dashActivityFeed" class="dash-activity-feed">
-                                <div id="dashProductsList" class="empty-state-dash">
+                                <div id="dashActivityFeed" class="dash-activity-feed empty-state-dash">
                                     <div class="empty-state-visual">
-                                                                                <i class="fa-solid fa-clock-rotate-left empty-state-icon" aria-hidden="true"></i>
+                                        <i class="fa-solid fa-clock-rotate-left empty-state-icon" aria-hidden="true"></i>
                                     </div>
                                     <h3 class="empty-state-title">Activity Awaits</h3>
                                     <p class="empty-state-desc">Your recent actions, updates, and milestones will appear here as your shop grows.</p>
@@ -4089,11 +4088,11 @@
                             </div>
                         </div>
 
-                        <!-- ── PRODUCTS TAB (EMPTY) ── -->
+                        <!-- ── PRODUCTS TAB ── -->
                         <div class="dash-tab-content" id="dashTabProducts" style="display:none;">
-                            <div id="dashProductsList" class="empty-state-dash">
+                            <div id="dashProductsListFull" class="empty-state-dash">
                                 <div class="empty-state-visual">
-                                                                        <i class="fa-solid fa-boxes-stacked empty-state-icon" aria-hidden="true"></i>
+                                    <i class="fa-solid fa-boxes-stacked empty-state-icon" aria-hidden="true"></i>
                                 </div>
                                 <h3 class="empty-state-title">Your Product Catalog</h3>
                                 <p class="empty-state-desc">You haven't added any products yet. Start building your collection by adding your first item and watch your catalog come to life.</p>
@@ -7636,10 +7635,25 @@ async function handleForgotPassword() {
     
     function loadRecentProducts(limit){
         limit = limit || 6;
-        var c = sg('dashProductsList');
-        if(!c || !window.sb || !window.currentUser) return;
+        // Get ALL product containers (overview + full tab)
+        var containers = [
+            sg('dashProductsListOverview'),
+            sg('dashProductsListFull')
+        ];
         
-        c.innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
+        var hasContainer = false;
+        for(var ci = 0; ci < containers.length; ci++){
+            if(containers[ci]) hasContainer = true;
+        }
+        
+        if(!hasContainer || !window.sb || !window.currentUser) return;
+        
+        // Show loading state in all product containers
+        for(var i = 0; i < containers.length; i++){
+            if(containers[i]){
+                containers[i].innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
+            }
+        }
         
         window.sb.from('products')
             .select('*, product_images(*)')
@@ -7648,13 +7662,25 @@ async function handleForgotPassword() {
             .limit(limit)
             .then(function(r){
                 var p = r.data || [];
-                c.innerHTML = p.length === 0 
+                var html = p.length === 0 
                     ? renderEmptyState('products', 'No products yet! Create your first product!')
                     : renderProductGrid(p);
+                
+                // Update all product containers
+                for(var j = 0; j < containers.length; j++){
+                    if(containers[j]){
+                        containers[j].innerHTML = html;
+                    }
+                }
             })
             .catch(function(e){
                 err('Products error:', e);
-                c.innerHTML = renderErrorState('Failed to load products');
+                var errHtml = renderErrorState('Failed to load products');
+                for(var k = 0; k < containers.length; k++){
+                    if(containers[k]){
+                        containers[k].innerHTML = errHtml;
+                    }
+                }
             });
     }
     
@@ -7670,16 +7696,24 @@ async function handleForgotPassword() {
     
     function renderEmptyState(type, msg){
         var icons = {products:'fa-box-open', orders:'fa-receipt'};
-        return '<div class="text-center py-12">' +
-            '<i class="fas ' + (icons[type] || 'fa-inbox') + ' text-5xl text-gray-600 mb-4"></i>' +
-            '<p class="text-gray-400 text-lg">' + msg + '</p>' +
+        return '<div class="empty-state-dash">' +
+            '<div class="empty-state-visual">' +
+                '<i class="fa-solid ' + (icons[type] || 'fa-inbox') + ' empty-state-icon" aria-hidden="true"></i>' +
+            '</div>' +
+            '<h3 class="empty-state-title">' + (type === 'products' ? 'No Products Yet' : 'No Orders Yet') + '</h3>' +
+            '<p class="empty-state-desc">' + msg + '</p>' +
+            (type === 'products' ? '<button onclick="openProductModal()" class="empty-state-action"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add Product</button>' : '') +
         '</div>';
     }
     
     function renderErrorState(msg){
-        return '<div class="text-center py-12">' +
-            '<i class="fas fa-exclamation-circle text-5xl text-red-500 mb-4"></i>' +
-            '<p class="text-gray-400 text-lg">' + msg + '</p>' +
+        return '<div class="empty-state-dash">' +
+            '<div class="empty-state-visual">' +
+                '<i class="fa-solid fa-triangle-exclamation empty-state-icon" aria-hidden="true" style="color: #e07a5f;"></i>' +
+            '</div>' +
+            '<h3 class="empty-state-title">Error Loading Data</h3>' +
+            '<p class="empty-state-desc">' + msg + '</p>' +
+            '<button onclick="location.reload()" class="empty-state-action"><i class="fa-solid fa-rotate text-xs" aria-hidden="true"></i>Try Again</button>' +
         '</div>';
     }
     
@@ -7880,7 +7914,13 @@ async function handleForgotPassword() {
         var recentOrders = (orders || []).slice(0, 5);
         
         if(recentOrders.length === 0){
-            feed.innerHTML = '<div class="text-center py-6 text-muted text-sm"><i class="fas fa-clock mb-2 block text-lg opacity-50"></i>No recent activity</div>';
+            feed.innerHTML = '<div class="empty-state-dash" style="padding: 32px 20px;">' +
+                '<div class="empty-state-visual">' +
+                    '<i class="fa-solid fa-clock-rotate-left empty-state-icon" aria-hidden="true"></i>' +
+                '</div>' +
+                '<h3 class="empty-state-title" style="font-size: 16px;">No Recent Activity</h3>' +
+                '<p class="empty-state-desc">Your recent actions will appear here as your shop grows.</p>' +
+            '</div>';
             return;
         }
         
