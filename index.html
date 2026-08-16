@@ -6255,6 +6255,39 @@ function switchDashTab(tab, btn) {
     
     var targetMobile = safeGet(tabMapMobile[tab]);
     if (targetMobile) targetMobile.style.display = 'block';
+    
+    // Load tab-specific data on demand
+    if (tab === 'products') {
+        log('📋 Switched to Products tab - loading data...');
+        setTimeout(function() {
+            if (typeof window.loadSellerProducts === 'function') {
+                window.loadSellerProducts();
+            } else if (typeof loadRecentProducts === 'function') {
+                loadRecentProducts();
+            }
+        }, 100);
+    }
+    
+    if (tab === 'orders') {
+        log('📦 Switched to Orders tab - loading data...');
+        setTimeout(function() {
+            if (typeof loadOrders === 'function') {
+                loadOrders();
+            }
+        }, 100);
+    }
+    
+    if (tab === 'overview') {
+        // Refresh stats when returning to overview
+        setTimeout(function() {
+            if (typeof loadDashboardStats === 'function') {
+                loadDashboardStats();
+            }
+            if (typeof loadRecentProducts === 'function') {
+                loadRecentProducts();
+            }
+        }, 100);
+    }
 
     var titles = {
         overview: 'Dashboard Overview',
@@ -7387,25 +7420,42 @@ async function handleForgotPassword() {
         
         op.then(function(r){
             var p = r.data || r;
-            handleProductImages(p.id);
-            showToast(isEdit ? 'Product updated successfully!' : 'Product created successfully!', 'success');
-            window.closeModal();
             
-            // Refresh all dashboard data in real-time
-            if(typeof loadRecentProducts === 'function') loadRecentProducts();
-            if(typeof loadDashboardStats === 'function') loadDashboardStats();
-            if(typeof loadOrders === 'function') loadOrders();
+            log('✅ Product ' + (isEdit ? 'updated' : 'created') + ' successfully! ID:', p.id, 'Seller ID:', window.currentUser.id);
             
-            // Refresh collection if function exists
-            if(typeof window.loadSellerCollection === 'function') {
-                window.loadSellerCollection();
-            } else if(typeof window.refreshCollection === 'function') {
-                window.refreshCollection();
-            }
+            // Upload images FIRST, then refresh (fixes race condition)
+            handleProductImages(p.id).then(function() {
+                log('✅ Images uploaded, refreshing all views...');
+                
+                showToast(isEdit ? 'Product updated successfully!' : 'Product created successfully!', 'success');
+                window.closeModal();
+                
+                // Refresh ALL data sources with proper sequencing
+                refreshAllProductViews();
+            }).catch(function(imgErr) {
+                warn('⚠️ Image upload issue:', imgErr);
+                // Still refresh views even if images fail
+                showToast(isEdit ? 'Product updated! (Images may need re-upload)' : 'Product created! (Images may need re-upload)', 'warning');
+                window.closeModal();
+                refreshAllProductViews();
+            });
         })
         .catch(function(e){
-            err('Save error:', e);
-            showToast('Failed to save product: ' + ((e && e.message) || 'Unknown error'), 'error');
+            err('❌ Save error:', e);
+            
+            // Specific error messages for common issues
+            var errorMsg = 'Failed to save product';
+            if(e && e.code === '42501' || (e && e.message && e.message.indexOf('RLS') !== -1)) {
+                errorMsg = 'Permission denied. Please sign in again.';
+            } else if(e && e.code === '23505') {
+                errorMsg = 'A product with this SKU already exists.';
+            } else if(e && e.code === '23503') {
+                errorMsg = 'Invalid category selected.';
+            } else if(e && e.message) {
+                errorMsg = 'Failed to save: ' + e.message;
+            }
+            
+            showToast(errorMsg, 'error');
         });
     }
     
@@ -7416,7 +7466,7 @@ async function handleForgotPassword() {
                 if(window._pendingImages[i]) files.push(window._pendingImages[i]);
             }
         }
-        if(!files.length) return;
+        if(!files.length) return Promise.resolve(); // Return resolved promise if no files
         
         var promises = [];
         for(var j = 0; j < files.length; j++){
@@ -7444,11 +7494,13 @@ async function handleForgotPassword() {
             })(files[j], j);
         }
         
-        Promise.all(promises).then(function(){
-            log('Images uploaded successfully');
+        return Promise.all(promises).then(function(){
+            log('✅ All images uploaded successfully');
             showToast('Product images uploaded!', 'success');
+            return true;
         }).catch(function(w){
-            warn('Some images failed:', w);
+            warn('⚠️ Some images failed:', w);
+            return false;
         });
     }
     
@@ -7505,24 +7557,56 @@ async function handleForgotPassword() {
             'Delete Product', 
             'Are you sure you want to delete "' + eh(name) + '"? This cannot be undone.',
             function(){
-                window.sb.from('products').delete().eq('id', id)
-                .then(function(){
-                    showToast('Product deleted successfully', 'success');
-                    // Refresh all data
-                    if(typeof loadRecentProducts === 'function') loadRecentProducts();
-                    if(typeof loadDashboardStats === 'function') loadDashboardStats();
-                    if(typeof loadOrders === 'function') loadOrders();
+                log('🗑️ Deleting product:', id, name);
+                
+                // First, get product images to clean up storage
+                window.sb.from('product_images').select('*').eq('product_id', id)
+                .then(function(imgResult) {
+                    var images = imgResult.data || [];
+                    var storagePaths = [];
                     
-                    // Refresh collection
-                    if(typeof window.loadSellerCollection === 'function') {
-                        window.loadSellerCollection();
-                    } else if(typeof window.refreshCollection === 'function') {
-                        window.refreshCollection();
+                    for(var i = 0; i < images.length; i++) {
+                        if(images[i].storage_path) {
+                            storagePaths.push(images[i].storage_path);
+                        }
                     }
+                    
+                    // Delete the product (this also cascades to product_images via FK)
+                    return window.sb.from('products').delete().eq('id', id)
+                    .then(function() {
+                        log('✅ Product deleted from database');
+                        
+                        // Clean up storage files
+                        if(storagePaths.length > 0) {
+                            var removePromises = [];
+                            for(var j = 0; j < storagePaths.length; j++) {
+                                removePromises.push(
+                                    window.sb.storage.from('product-images').remove([storagePaths[j]])
+                                    .catch(function(err) { warn('Storage cleanup warning:', err); })
+                                );
+                            }
+                            return Promise.all(removePromises);
+                        }
+                        return Promise.resolve();
+                    })
+                    .then(function() {
+                        showToast('Product deleted successfully', 'success');
+                        
+                        // Use unified refresh
+                        if(typeof refreshAllProductViews === 'function') {
+                            refreshAllProductViews();
+                        } else {
+                            // Fallback to individual refreshes
+                            if(typeof loadRecentProducts === 'function') loadRecentProducts();
+                            if(typeof loadDashboardStats === 'function') loadDashboardStats();
+                            if(typeof loadOrders === 'function') loadOrders();
+                            if(typeof window.loadSellerCollection === 'function') window.loadSellerCollection();
+                        }
+                    });
                 })
                 .catch(function(e){
-                    err('Delete error:', e);
-                    showToast('Failed to delete product', 'error');
+                    err('❌ Delete error:', e);
+                    showToast('Failed to delete product: ' + ((e && e.message) || 'Unknown error'), 'error');
                 });
             }
         );
@@ -7569,15 +7653,106 @@ async function handleForgotPassword() {
     // DASHBOARD STATS & PRODUCTS
     // ════════════════════════════════════════════════════════════════════════════════
     window.initEnhancedDashboard = function(){
-        log('Initializing dashboard v4.0 (Dark Theme)...');
-        if(!window.currentUser || !window.currentUser.id) return;
+        log('🚀 Initializing dashboard v4.0 (Dark Theme)...');
         
+        if(!window.currentUser) { warn('⚠️ No currentUser object'); return; }
+        if(!window.currentUser.id) { warn('⚠️ User has no ID'); return; }
+        
+        log('👤 Dashboard init for user:', window.currentUser.id, 'Role:', window.currentUser.role || 'N/A');
+        
+        // Load all data sources
         loadDashboardStats();
         loadRecentProducts();
+        loadSellerCollection(); // Also load collection on dashboard init
         initQuickActions();
+        
+        log('✅ Dashboard initialization complete');
     };
     
-    function loadDashboardStats(){
+    // Load products specifically for Products tab
+    window.loadSellerProducts = function() {
+        if(!window.sb || !window.currentUser || !window.currentUser.id) return;
+        
+        log('📋 Loading seller products for Products tab...');
+        
+        var containers = [
+            document.getElementById('dashProductsList'),
+            document.getElementById('dashProductsTabContent')
+        ];
+        
+        // Show loading state
+        for(var i = 0; i < containers.length; i++) {
+            if(containers[i]) {
+                containers[i].innerHTML = '<div class="flex justify-center py-12"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-accent"></div></div>';
+            }
+        }
+        
+        window.sb.from('products')
+            .select('*, product_images(*)')
+            .eq('seller_id', window.currentUser.id)
+            .order('created_at', {ascending: false})
+            .then(function(r) {
+                var products = r.data || [];
+                log('✅ Products loaded:', products.length);
+                
+                var html = products.length === 0 
+                    ? renderEmptyState('products', 'No products yet! Create your first product!')
+                    : renderProductGrid(products);
+                
+                for(var j = 0; j < containers.length; j++) {
+                    if(containers[j]) {
+                        containers[j].innerHTML = html;
+                    }
+                }
+            })
+            .catch(function(e) {
+                err('❌ Products load error:', e);
+                var errorHtml = renderErrorState('Failed to load products');
+                for(var k = 0; k < containers.length; k++) {
+                    if(containers[k]) containers[k].innerHTML = errorHtml;
+                }
+            });
+    };
+    
+
+    // ════════════════════════════════════════════════════════════════════════════════
+    // UNIFIED REFRESH - Ensures all views sync after create/edit/delete
+    // ════════════════════════════════════════════════════════════════════════════════
+    function refreshAllProductViews() {
+        log('🔄 Refreshing all product views...');
+        
+        // Small delay to ensure Supabase has processed the write
+        setTimeout(function() {
+            // 1. Dashboard stats (product count, revenue)
+            if(typeof loadDashboardStats === 'function') {
+                loadDashboardStats();
+            }
+            
+            // 2. Recent products list (Overview tab)
+            if(typeof loadRecentProducts === 'function') {
+                loadRecentProducts();
+            }
+            
+            // 3. Products tab content
+            if(typeof loadSellerProducts === 'function') {
+                loadSellerProducts();
+            }
+            
+            // 4. Orders (in case product status changed)
+            if(typeof loadOrders === 'function') {
+                loadOrders();
+            }
+            
+            // 5. Seller collection (public page + dashboard)
+            if(typeof window.loadSellerCollection === 'function') {
+                window.loadSellerCollection();
+            }
+            
+            log('✅ All views refreshed');
+        }, 300); // 300ms delay for Supabase consistency
+    }
+    
+        function loadDashboardStats(){
         var uid = window.currentUser && window.currentUser.id;
         if(!uid || !window.sb){ showEmptyStats(); return; }
         
@@ -7972,28 +8147,64 @@ async function handleForgotPassword() {
     // SELLER COLLECTION SYNC - Products appear in Collection after creation
     // ════════════════════════════════════════════════════════════════════════════════
     window.loadSellerCollection = function() {
-        if(!window.sb || !window.currentUser) return;
+        log('📦 Loading seller collection...');
         
-        var collectionContent = document.getElementById('collectionContent');
-        if(!collectionContent) return;
+        if(!window.sb) { warn('⚠️ Supabase not initialized'); return; }
+        if(!window.currentUser) { warn('⚠️ No user logged in'); return; }
+        if(!window.currentUser.id) { warn('⚠️ User has no ID'); return; }
+        
+        log('👤 Loading collection for seller ID:', window.currentUser.id);
+        
+        // Try multiple possible container IDs (dashboard + public page)
+        var containers = [
+            document.getElementById('collectionContent'),
+            document.getElementById('dashProductsList'),
+            document.getElementById('dashProductsTabContent')
+        ];
         
         window.sb.from('products')
             .select('*, product_images(*), categories(name)')
             .eq('seller_id', window.currentUser.id)
-            .eq('is_active', true)
             .order('created_at', {ascending: false})
             .then(function(r) {
                 var products = r.data || [];
-                renderSellerCollection(products, collectionContent);
+                log('✅ Collection loaded:', products.length, 'products');
+                
+                // Update ALL found containers
+                for(var c = 0; c < containers.length; c++) {
+                    if(containers[c]) {
+                        renderSellerCollection(products, containers[c]);
+                    }
+                }
+                
+                // Also update specific dashboard containers
+                updateDashboardProductGrids(products);
             })
             .catch(function(e) {
-                err('Collection load error:', e);
-                // Keep existing content or show error
-                if(collectionContent.innerHTML.trim() === '') {
-                    collectionContent.innerHTML = '<div class="empty-state"><div class="empty-state-visual"><i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i></div><h3 class="empty-state-title">Unable to load collection</h3><p class="empty-state-desc">Please try refreshing the page.</p></div>';
+                err('❌ Collection load error:', e);
+                console.error('Full error:', JSON.stringify(e));
+                
+                // Show error in all containers
+                for(var c = 0; c < containers.length; c++) {
+                    if(containers[c] && containers[c].innerHTML.trim() === '') {
+                        containers[c].innerHTML = '<div class="empty-state"><div class="empty-state-visual"><i class="fa-solid fa-exclamation-triangle empty-state-icon text-red-400"></i></div><h3 class="empty-state-title">Load Error</h3><p class="empty-state-desc">Could not load products. Error: ' + ((e && e.message) || 'Unknown') + '</p><button onclick="window.loadSellerCollection()" class="empty-state-action mt-4"><i class="fa-solid fa-refresh text-xs"></i>Retry</button></div>';
+                    }
                 }
             });
     };
+    
+    // Helper: Update dashboard-specific product grids
+    function updateDashboardProductGrids(products) {
+        // Update Products tab grid if it exists
+        var productsTab = document.getElementById('dashTabProducts');
+        if(productsTab && products.length > 0) {
+            var gridContainer = productsTab.querySelector('#dashProductsList');
+            if(gridContainer) {
+                gridContainer.innerHTML = renderProductGrid(products);
+                gridContainer.classList.remove('empty-state-dash');
+            }
+        }
+    }
     
     function renderSellerCollection(products, container) {
         if(!container) return;
