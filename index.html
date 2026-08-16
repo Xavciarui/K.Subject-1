@@ -340,7 +340,7 @@
         .glow-line {
             height: 2px;
             background: linear-gradient(90deg, transparent, #e8a630, #e07a5f, transparent);
-            animation: glowLinePulse 3s ease-in-out infinite;
+            animation: none;
         }
         @keyframes glowLinePulse {
             0%, 100% { opacity: 0.3; }
@@ -7005,7 +7005,7 @@ async function handleForgotPassword() {
             '.modal-btn-danger:hover{box-shadow:0 4px 15px rgba(239,68,68,.4)}',
             '.image-drop-zone{border:2px dashed rgba(232,166,48,.3);border-radius:1rem;background:rgba(20,20,30,.5);transition:all .3s;overflow:hidden}',
             '.image-drop-zone:hover,.image-drop-zone.drag-over{border-color:#e8a630;background:rgba(232,166,48,.08);box-shadow:0 0 30px rgba(232,166,48,.12)}',
-            '.drop-icon{animation:floatDash 3s ease-in-out infinite}',
+            '.drop-icon{animation:none!important}',
             '@keyframes floatDash{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}',
             '.browse-btn{padding:.625rem 1.25rem;background:linear-gradient(135deg,rgba(232,166,48,.15),rgba(212,146,42,.1));border:1px solid rgba(232,166,48,.3);border-radius:.625rem;color:#e8a630;font-size:.875rem;font-weight:500;cursor:pointer;transition:all .2s}',
             '.browse-btn:hover{background:linear-gradient(135deg,rgba(232,166,48,.25),rgba(212,146,42,.2));border-color:#e8a630;color:#f0b540}',
