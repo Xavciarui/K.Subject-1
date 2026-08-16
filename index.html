@@ -2344,7 +2344,174 @@
         z-index: 1 !important;
     }
 
-    </style>
+    
+        /* ═══════════════════════════════════════════════════════════════
+           CATEGORY TABS - HORIZONTAL SCROLL CONTAINER (v2.0)
+           Single row layout with smooth mobile scrolling
+           ═══════════════════════════════════════════════════════════════ */
+           
+                      .category-tabs-wrapper {
+             /* Core scroll behavior */
+             overflow-x: auto;
+             overflow-y: visible; /* Changed from hidden to prevent clipping */
+             -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+             scroll-behavior: smooth;
+             
+             /* Flexbox layout - NO WRAP! */
+             display: flex;
+             flex-wrap: nowrap;
+             gap: 0.625rem; /* gap-2.5 = 10px */
+             align-items: center; /* Center vertically to prevent clip */
+             
+             /* Spacing - increased to prevent top clipping */
+             margin-top: 1.5rem; /* mt-6 = 24px */
+             margin-bottom: 0.5rem; /* Extra bottom spacing */
+             padding-top: 0.25rem; /* Prevent top clip */
+             padding-bottom: 0.75rem; /* Extra space for shadow */
+             
+             /* Ensure content is fully visible */
+             clip-path: none;
+             contain: layout style;
+             
+             /* Hide scrollbar - Cross browser */
+             scrollbar-width: none; /* Firefox */
+             -ms-overflow-style: none; /* IE/Edge  */
+           }
+           
+           /* Hide scrollbar for Chrome/Safari/Opera */
+           .category-tabs-wrapper::-webkit-scrollbar {
+             display: none;
+             height: 0;
+             width: 0;
+           }
+           
+           /* Ensure tabs don't shrink too much on small screens */
+           .category-tabs-wrapper .cat-pill {
+             flex-shrink: 0; /* Prevent buttons from squishing */
+           }
+           
+           /* ═══ BASE PILL STYLE - Prevent Clipping ═══ */
+           .category-tabs-wrapper .cat-pill {
+             flex-shrink: 0; /* Prevent buttons from squishing */
+             
+             /* Ensure full visibility */
+             line-height: 1.5; /* Proper line height */
+             height: auto; /* Auto height */
+             min-height: 38px; /* Minimum height for touch targets */
+             
+             /* Prevent any overflow clipping */
+             overflow: visible;
+             text-overflow: ellipsis;
+             white-space: nowrap;
+             
+             /* Smooth transitions */
+             transition: 
+               all 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+               box-shadow 0.3s ease,
+               background-color 0.2s ease;
+           }
+           
+           /* Ensure icons don't cause clipping */
+           .cat-pill i {
+             display: inline-block;
+             vertical-align: middle;
+             line-height: 1;
+           }
+
+           
+           /* Optional: Subtle gradient indicators on mobile (shows more content available) */
+           @media (max-width: 768px) {
+             .category-tabs-wrapper {
+               margin-left: -1rem; /* Slight overflow for gradient effect */
+               margin-right: -1rem;
+               padding-left: 1rem;
+               padding-right: 1rem;
+               
+               /* Shadow gradients at edges */
+               mask-image: linear-gradient(
+                 to right,
+                 transparent 0%,
+                 black 3%,
+                 black 97%,
+                 transparent 100%
+               );
+               -webkit-mask-image: linear-gradient(
+                 to right,
+                 transparent 0%,
+                 black 3%,
+                 black 97%,
+                 transparent 100%
+               );
+             }
+           }
+           
+           /* Desktop: Show full width without scroll if possible */
+           @media (min-width: 769px) {
+             .category-tabs-wrapper {
+               /* Allow natural flex behavior on desktop */
+               justify-content: flex-start;
+               
+               /* Remove mask on desktop */
+               mask-image: none;
+               -webkit-mask-image: none;
+               
+               /* Reset margins */
+               margin-left: 0;
+               margin-right: 0;
+               padding-left: 0;
+               padding-right: 0;
+             }
+             
+             /* Only enable scroll if content overflows */
+             .category-tabs-wrapper.overflows {
+               overflow-x: auto;
+             }
+           }
+           
+           /* Active tab indicator animation */
+           .cat-pill {
+             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+             position: relative;
+           }
+           
+                      .cat-pill:hover {
+             transform: translateY(-1px);
+             background: rgba(255, 255, 255, 0.05);        /* Subtle light tint */
+             border-color: rgba(255, 255, 255, 0.12);       /* Slightly visible border */
+             box-shadow: 
+               0 4px 12px rgba(0, 0, 0, 0.3),              /* Dark shadow */
+               0 0 15px rgba(232, 166, 48, 0.08);           /* Hint of gold */
+             color: #ede8e0;                                 /* Lighter text on hover */
+           }
+           
+           /* ═══ ACTIVE STATE - Dark Theme Compatible ═══ */
+           .cat-pill.active {
+             /* Use accent gold color (#e8a630) instead of white */
+             background: rgba(232, 166, 48, 0.12);          /* Gold tint bg */
+             border-color: rgba(232, 166, 48, 0.4);         /* Gold border */
+             color: #e8a630;                                  /* Gold text */
+             box-shadow: 
+               0 0 20px rgba(232, 166, 48, 0.15),           /* Gold glow */
+               0 2px 8px rgba(0, 0, 0, 0.3);                /* Depth shadow */
+             
+             /* Fix clipping - ensure no overflow issues */
+             overflow: visible;
+             position: relative;
+             z-index: 1;
+           }
+           
+           /* Active tab icon color */
+           .cat-pill.active i {
+             color: #e8a630;
+           }
+           
+           /* Touch feedback for mobile */
+           @media (hover: none) and (pointer: coarse) {
+             .cat-pill:active {
+               transform: scale(0.96);
+             }
+           }
+</style>
 
     <script type="application/ld+json">
 {
@@ -2923,27 +3090,95 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap gap-2.5 mt-6 reveal" style="transition-delay:100ms">
-                        <button class="cat-pill active rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle" data-colcat="all" onclick="filterCollection('all')">All items</button>
-                        <button class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle" data-colcat="home" onclick="filterCollection('home')">
-                            <i class="fa-solid fa-house mr-1.5 text-xs" aria-hidden="true"></i>Home & Living
+                    <!-- ═══ HORIZONTAL SCROLL CATEGORY TABS v2.0 ═══ -->
+                    <div class="category-tabs-wrapper reveal" id="categoryTabsContainer" role="tablist" aria-label="Filter by category" style="transition-delay:100ms">
+                        
+                        <!-- All Items Tab -->
+                        <button 
+                            class="cat-pill active rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                            data-colcat="all" 
+                            onclick="filterCollection('all')"
+                            role="tab"
+                            aria-selected="true"
+                            aria-controls="collectionContent"
+                            type="button">
+                            <i class="fa-solid fa-grid-2 mr-1.5 text-xs" aria-hidden="true"></i>All Items
                         </button>
-                        <button class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle" data-colcat="tech" onclick="filterCollection('tech')">
+                        
+                        <!-- Home & Living Tab -->
+                        <button 
+                            class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                            data-colcat="home-living" 
+                            onclick="filterCollection('home-living')"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="collectionContent"
+                            type="button">
+                            <i class="fa-solid fa-house-chimney mr-1.5 text-xs" aria-hidden="true"></i>Home & Living
+                        </button>
+                        
+                        <!-- Tech & Gadgets Tab -->
+                        <button 
+                            class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                            data-colcat="tech" 
+                            onclick="filterCollection('tech')"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="collectionContent"
+                            type="button">
                             <i class="fa-solid fa-microchip mr-1.5 text-xs" aria-hidden="true"></i>Tech & Gadgets
                         </button>
-                        <button class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle" data-colcat="fashion" onclick="filterCollection('fashion')">
+                        
+                        <!-- Fashion & Clothing Tab -->
+                        <button 
+                            class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                            data-colcat="fashion" 
+                            onclick="filterCollection('fashion')"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="collectionContent"
+                            type="button">
                             <i class="fa-solid fa-shirt mr-1.5 text-xs" aria-hidden="true"></i>Fashion & Clothing
                         </button>
-                        <button class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle" data-colcat="beauty" onclick="filterCollection('beauty')">
+                        
+                        <!-- Beauty & Personal Care Tab -->
+                        <button 
+                            class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                            data-colcat="beauty" 
+                            onclick="filterCollection('beauty')"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="collectionContent"
+                            type="button">
                             <i class="fa-solid fa-spa mr-1.5 text-xs" aria-hidden="true"></i>Beauty & Personal Care
                         </button>
-                        <button class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle" data-colcat="outdoor" onclick="filterCollection('outdoor')">
-                            <i class="fa-solid fa-tree mr-1.5 text-xs" aria-hidden="true"></i>Outdoor & Sports
+                        
+                        <!-- Outdoor & Sports Tab -->
+                        <button 
+                            class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                            data-colcat="outdoor" 
+                            onclick="filterCollection('outdoor')"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="collectionContent"
+                            type="button">
+                            <i class="fa-solid fa-mountain-sun mr-1.5 text-xs" aria-hidden="true"></i>Outdoor & Sports
                         </button>
-                        <button class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle" data-colcat="others" onclick="filterCollection('others')">
-                            <i class="fa-solid fa-grip mr-1.5 text-xs" aria-hidden="true"></i>Others
+                        
+                        <!-- Others Tab -->
+                        <button 
+                            class="cat-pill rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-2 text-sm text-subtle hover:bg-white/[0.06] hover:border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                            data-colcat="others" 
+                            onclick="filterCollection('others')"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="collectionContent"
+                            type="button">
+                            <i class="fa-solid fa-ellipsis mr-1.5 text-xs" aria-hidden="true"></i>Others
                         </button>
+                        
                     </div>
+                    <!-- ═══ END HORIZONTAL SCROLL CATEGORY TABS ═══ -->
                     <div class="mt-8" id="collectionContent">
                         <div class="empty-state" id="collectionEmptyState">
                             <div class="empty-state-visual">
@@ -8815,6 +9050,124 @@ async function handleForgotPassword() {
     setTimeout(function() { clearInterval(_authCheckInterval); }, 30000);
     
     log('✓ Dashboard Enhancement loaded');
+})();
+</script>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════════════
+     CATEGORY TABS - ENHANCED SCROLL BEHAVIOR (v2.0)
+     Auto-scroll to active tab, drag-to-scroll on desktop, smooth touch gestures
+     ════════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+    'use strict';
+    
+    // Initialize when DOM is ready
+    function initCategoryTabsScroll() {
+        var container = document.getElementById('categoryTabsContainer');
+        
+        if (!container) {
+            console.warn('[CategoryTabs] Container not found');
+            return;
+        }
+        
+        // Check if content overflows (for desktop)
+        function checkOverflow() {
+            if (container.scrollWidth > container.clientWidth) {
+                container.classList.add('overflows');
+            } else {
+                container.classList.remove('overflows');
+            }
+        }
+        
+        // Initial check + on resize
+        checkOverflow();
+        window.addEventListener('resize', checkOverflow);
+        
+        // Smooth scroll to active tab on mobile
+        function scrollToActiveTab() {
+            var activeTab = container.querySelector('.cat-pill.active');
+            
+            if (!activeTab) return;
+            
+            // Only auto-scroll on mobile/small screens
+            if (window.innerWidth <= 768) {
+                var containerRect = container.getBoundingClientRect();
+                var tabRect = activeTab.getBoundingClientRect();
+                
+                // Calculate center position
+                var scrollLeft = (tabRect.left + tabRect.right) / 2 - (containerRect.left + containerRect.right) / 2 + container.scrollLeft;
+                
+                // Animate to position
+                container.scrollTo({
+                    left: scrollLeft,
+                    behavior: 'smooth'
+                });
+            }
+        }
+        
+        // Observe tab changes (for when filterCollection updates active state)
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    scrollToActiveTab();
+                }
+            });
+        });
+        
+        // Watch all cat-pills for class changes
+        var tabs = container.querySelectorAll('.cat-pill');
+        tabs.forEach(function(tab) {
+            observer.observe(tab, { attributes: true });
+        });
+        
+        // Scroll to active tab on load
+        setTimeout(scrollToActiveTab, 100);
+        
+        // Touch swipe enhancement (momentum)
+        var isDown = false;
+        var startX;
+        var scrollLeft;
+        
+        container.addEventListener('mousedown', function(e) {
+            isDown = true;
+            startX = e.pageX - container.offsetLeft;
+            scrollLeft = container.scrollLeft;
+            container.style.cursor = 'grabbing';
+        });
+        
+        container.addEventListener('mouseleave', function() {
+            isDown = false;
+            container.style.cursor = 'grab';
+        });
+        
+        container.addEventListener('mouseup', function() {
+            isDown = false;
+            container.style.cursor = 'grab';
+        });
+        
+        container.addEventListener('mousemove', function(e) {
+            if (!isDown) return;
+            e.preventDefault();
+            var x = e.pageX - container.offsetLeft;
+            var walk = (x - startX) * 1.5; /* Scroll speed multiplier */
+            container.scrollLeft = scrollLeft - walk;
+        });
+        
+        /* Set initial cursor style */
+        if (container.scrollWidth > container.clientWidth) {
+            container.style.cursor = 'grab';
+        }
+        
+        console.log('[CategoryTabs] Horizontal scroll initialized');
+    }
+    
+    /* Initialize when DOM ready */
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCategoryTabsScroll);
+    } else {
+        initCategoryTabsScroll();
+    }
 })();
 </script>
 
