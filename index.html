@@ -965,6 +965,10 @@
            Dashboard variant — compact
         ═══════════════════════════════════════ */
         .empty-state-dash {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             text-align: center;
             background: linear-gradient(165deg, rgba(19,19,28,0.95), rgba(19,19,28,0.7));
             border: 1px solid rgba(255,255,255,0.05);
@@ -1028,6 +1032,10 @@
             }
             /* Dashboard variant mobile */
             .empty-state-dash {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
                 padding: 20px 16px;
             }
             .empty-state-dash .empty-state-visual {
@@ -4133,7 +4141,7 @@
 
                             <div class="bg-card border border-white/[0.04] rounded-2xl overflow-hidden" id="ordersContainerDesktop">
                                 <!-- Orders will be loaded here by JavaScript -->
-                                <div id="dashOrdersList">
+                                <div id="dashOrdersTabContent">
                                     <div class="flex justify-center py-12">
                                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                                     </div>
@@ -7767,7 +7775,8 @@ async function handleForgotPassword() {
         limit = limit || 20;
         var containers = [
             sg('dashOrdersList'),
-            sg('dashOrdersListMobile')
+            sg('dashOrdersListMobile'),
+            sg('dashOrdersTabContent')
         ];
         
         var hasContainer = false;
@@ -7990,7 +7999,7 @@ async function handleForgotPassword() {
         if(!container) return;
         
         if(products.length === 0) {
-            container.innerHTML = '<div class="empty-state" id="collectionEmptyState">' +
+            container.innerHTML = '<div class="empty-state" id="collectionEmptyStateDynamic">' +
                 '<div class="empty-state-visual"><i class="fa-solid fa-box-open empty-state-icon" aria-hidden="true"></i></div>' +
                 '<h3 class="empty-state-title">Your Collection is Empty</h3>' +
                 '<p class="empty-state-desc">Start adding products to build your curated collection. Your items will appear here for customers to discover.</p>' +
