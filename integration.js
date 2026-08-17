@@ -98,24 +98,222 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 2. PATCH: filterCollection → ProductManager.renderCollection
+    // 2. PATCH: filterCollection → ProductManager.renderCollection + Category-Specific UI
     // ═══════════════════════════════════════════════════════════════════════════
     var _origFilterCollection = window.filterCollection || function () {};
-    window.filterCollection = function (cat) {
+    
+    // Category-specific display data - SIMPLE & CLEAN (matches image exactly)
+    var _categoryDisplayData = {
+        'all': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Full Collection',
+            subtitle: 'Explore items across all categories.'
+        },
+        'home-living': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Home & Living',
+            subtitle: 'Discover home essentials and lifestyle products.'
+        },
+        'tech': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Tech & Gadgets',
+            subtitle: 'Explore tech innovations and gadgets.'
+        },
+        'fashion': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Fashion & Clothing',
+            subtitle: 'Discover fashion pieces that define style.'
+        },
+        'beauty': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Beauty & Personal Care',
+            subtitle: 'Premium beauty essentials on the way.'
+        },
+        'outdoor': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Outdoor & Sports',
+            subtitle: 'Outdoor gear and adventure equipment coming soon.'
+        },
+        'others': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Others',
+            subtitle: 'More unique categories coming soon.'
+        },
+        'library': {
+            icon: 'fa-box-open',
+            title: 'No items yet',
+            desc: 'The collection is being curated. Check back soon.',
+            heading: 'Library',
+            subtitle: 'Essential reads and resources coming soon.'
+        }
+    };
+    
+    // Debounce/lock to prevent glitching from rapid re-renders
+    var _renderLock = false;
+    var _lastRenderedCategory = null;
+    var _renderTimeout = null;
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // LOADING STATE - Smooth category transition with loading indicator
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Show loading state while transitioning between categories
+     * Displays a clean, centered spinner that matches the design aesthetic
+     */
+    function _showCategoryLoading(cat) {
+        var container = sg('collectionContent');
+        if (!container) return;
+        
+        // Build elegant loading state HTML
+        var loadingHtml = '<div class="category-loading" data-loading="' + cat + '">' +
+            '<div class="category-loading-spinner">' +
+                '<div class="loading-spinner-ring"></div>' +
+                '<i class="fa-solid fa-spinner fa-spin loading-spinner-icon" aria-hidden="true"></i>' +
+            '</div>' +
+            '<p class="category-loading-text">Loading...</p>' +
+        '</div>';
+        
+        container.innerHTML = loadingHtml;
+        
+        log('[loading] Showing loading state for:', cat);
+    }
+    
+    /**
+     * Render category-specific empty state - SIMPLE & CLEAN (matches image)
+     * Includes smooth fade-in transition from loading state
+     */
+    function _renderCategoryEmptyState(cat) {
+        var data = _categoryDisplayData[cat] || _categoryDisplayData['all'];
+        var container = sg('collectionContent');
+        
+        if (!container) return;
+        
+        // Prevent duplicate renders for same category
+        if (_renderLock && _lastRenderedCategory === cat) {
+            log('[render] Skipped duplicate render for:', cat);
+            return;
+        }
+        
+        // Check if already showing this category's empty state
+        var currentFilter = container.querySelector('[data-filter]');
+        if (currentFilter && currentFilter.getAttribute('data-filter') === cat) {
+            log('[render] Already showing correct category:', cat);
+            return;
+        }
+        
+        // Set lock
+        _renderLock = true;
+        _lastRenderedCategory = cat;
+        
+        // Clear any pending render
+        if (_renderTimeout) {
+            clearTimeout(_renderTimeout);
+        }
+        
+        // Build SIMPLE & CLEAN HTML - EXACTLY like the image (NO button)
+        // Added 'empty-state-fade-in' class for smooth transition
+        var html = '<div class="empty-state empty-state-fade-in" data-filter="' + cat + '">' +
+            '<div class="empty-state-visual"><i class="fa-solid ' + data.icon + ' empty-state-icon" aria-hidden="true"></i></div>' +
+            '<h3 class="empty-state-title">' + data.title + '</h3>' +
+            '<p class="empty-state-desc">' + data.desc + '</p></div>';
+        
+        // Apply with minimal DOM manipulation
+        if (container.innerHTML !== html) {
+            container.innerHTML = html;
+        }
+        
+        // Update heading if element exists (use CSS class, no inline style needed)
+        var headingEl = sg('collectionHeading');
+        if (headingEl && headingEl.textContent !== data.heading) {
+            headingEl.textContent = data.heading;
+            // Font style is now handled by CSS class .font-display - matches home page
+        }
+        
+        // Update subtitle if element exists
+        var subtitleEl = sg('collectionSubtitle');
+        if (subtitleEl && subtitleEl.textContent !== data.subtitle) {
+            subtitleEl.textContent = data.subtitle;
+        }
+        
+        log('[render] Rendered category empty state for:', cat);
+        
+        // Release lock after a short delay
+        _renderTimeout = setTimeout(function() {
+            _renderLock = false;
+        }, 300);
+    }
+    
+    // Store reference for index.html to call
+    window._integrationFilterCollection = function (cat) {
+        _integrationFilterCollectionImpl(cat);
+    };
+    
+    function _integrationFilterCollectionImpl(cat) {
+        log('[filterCollection] Filtering by:', cat);
+        
+        // Store current filter BEFORE rendering (critical for ProductManager check)
+        window._currentCollectionFilter = cat;
+        
         // Update pill active states (preserve original UI behaviour)
         var pills = document.querySelectorAll('.cat-pill');
         for (var i = 0; i < pills.length; i++) {
             pills[i].classList.remove('active');
+            pills[i].setAttribute('aria-selected', 'false');
         }
         var activePill = document.querySelector('.cat-pill[data-colcat="' + cat + '"]');
-        if (activePill) activePill.classList.add('active');
-
-        // Delegate to manager
-        if (typeof ProductManager.renderCollection === 'function') {
-            ProductManager.renderCollection(cat === 'all' ? null : cat);
-        } else {
-            _origFilterCollection(cat);
+        if (activePill) {
+            activePill.classList.add('active');
+            activePill.setAttribute('aria-selected', 'true');
+            
+            // Scroll pill into view on mobile
+            setTimeout(function() {
+                if (activePill && typeof activePill.scrollIntoView === 'function') {
+                    activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }, 50);
         }
+
+        // STEP 1: Show loading state immediately for smooth UX feedback
+        _showCategoryLoading(cat);
+        
+        // STEP 2 & 3 COMBINED: After brief delay, render empty state THEN call ProductManager
+        // This prevents double-content because:
+        // - Empty state [data-filter] exists BEFORE ProductManager runs
+        // - ProductManager detects it and SKIPS rendering entirely
+        var _cat = cat;
+        setTimeout(function() {
+            // First: Render empty state (creates [data-filter] attribute)
+            _renderCategoryEmptyState(_cat);
+            
+            // Then: Call ProductManager (will detect [data-filter] and skip!)
+            if (typeof ProductManager.renderCollection === 'function') {
+                try {
+                    ProductManager.renderCollection(_cat === 'all' ? null : _cat);
+                } catch (e) {
+                    error('ProductManager.renderCollection failed:', e);
+                    // Empty state is already rendered above
+                }
+            } else {
+                // No ProductManager - already rendered empty state above
+                log('[filterCollection] No ProductManager, using category empty state');
+                _origFilterCollection(_cat);
+            }
+        }, 400); // 400ms total: 350ms visible loading + buffer for smooth transition
     };
 
     // ═══════════════════════════════════════════════════════════════════════════

@@ -1509,6 +1509,18 @@
             var self = this;
             var container = safeGet('collectionContent');
             if (!container) return Promise.resolve([]);
+            
+            // FIX: Check if integration.js custom state (loading OR empty) is already displayed
+            // If so, COMPLETELY SKIP rendering to prevent double-content display bug
+            var existingCustomState = container.querySelector('[data-filter], [data-loading]');
+            if (existingCustomState && window._currentCollectionFilter !== undefined) {
+                // Custom state already showing - return immediately without overwriting!
+                // This prevents the "two contents displaying one after another" glitch
+                log('[ProductManager] Custom state detected (loading/empty) - skipping render entirely to prevent double-display');
+                return Promise.resolve([]);
+            }
+            
+            // Show spinner only when no custom state exists
             container.innerHTML = '<div class="flex items-center justify-center py-20"><i class="fa-solid fa-spinner fa-spin text-2xl text-accent"></i></div>';
 
             if (!window.sb) {
@@ -1523,11 +1535,21 @@
 
             return query.then(function(result) {
                 var products = result.data || [];
+                // Double-check before rendering - don't overwrite custom state
+                var recheckState = container.querySelector('[data-filter], [data-loading]');
+                if (recheckState && window._currentCollectionFilter !== undefined) {
+                    log('[ProductManager] Custom state still present - aborting product grid render');
+                    return products;
+                }
                 self._renderProductGrid(products, container);
                 return products;
             }).catch(function(error) {
                 error('[ProductManager] Error loading collection:', error);
-                container.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-20"><div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mb-5"><i class="fa-solid fa-triangle-exclamation text-2xl text-muted/50" aria-hidden="true"></i></div><p class="font-medium text-subtle text-lg">Unable to load collection</p><p class="text-sm text-muted mt-2 max-w-sm">There was a problem fetching products from the server. Please try again later.</p></div>';
+                // Only show error if custom state not present
+                var errorCheckState = container.querySelector('[data-filter], [data-loading]');
+                if (!errorCheckState) {
+                    container.innerHTML = '<div class="flex flex-col items-center justify-center text-center py-20"><div class="w-20 h-20 rounded-full bg-white/[0.04] flex items-center justify-center mb-5"><i class="fa-solid fa-triangle-exclamation text-2xl text-muted/50" aria-hidden="true"></i></div><p class="font-medium text-subtle text-lg">Unable to load collection</p><p class="text-sm text-muted mt-2 max-w-sm">There was a problem fetching products from the server. Please try again later.</p></div>';
+                }
                 return [];
             });
         },

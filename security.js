@@ -1,392 +1,537 @@
 /**
  * ═════════════════════════════════════════════════════════════════════════════════
- * K.Subject-1 Marketplace — Security & Performance Layer (FIXED v3.0)
- * ES5-compatible JavaScript (var, function, no arrow functions, no const/let)
- * 
- * Load AFTER integration.js and dashboard-complete-fix.js
+ * K.Subject-1 Marketplace — Security, Performance & Accessibility Layer
+ * ES5-compatible (var, function, no arrow functions, no const/let)
  * 
  * FEATURES:
- * 1. Input Sanitization & XSS Prevention
- * 2. Rate Limiting for API calls
- * 3. Form Validation Helpers
- * 4. Performance Optimizations (Lazy Loading, Debouncing)
- * 5. Security Headers & CSP Helpers
- * 6. Error Boundary & Graceful Degradation
+ * - Input Sanitization (sanitize, sanitizeUrl, sanitizeNumber)
+ * - Validation (isValidEmail, isValidPhone, validatePassword)
+ * - Rate Limiting (checkRateLimit, resetRateLimit)
+ * - Form Validation (validateProductForm, validateCheckoutForm, showValidationErrors)
+ * - Performance (initLazyLoading, debounce, throttle)
+ * - Error Boundary (setupErrorBoundary, safeAsync)
+ * - Security Utilities (generateCSRFToken, setCSRFToken, isSecureConnection)
  * 
- * VERSION: 3.0.0 (Schema v3.0 Compatible - No Errors)
+ * Load AFTER marketplace.js and integration.js
  * ═════════════════════════════════════════════════════════════════════════════════
  */
-(function () {
+(function() {
     'use strict';
+    
+    // ─── DEBUG MODE ─────────────────────────────────────────────────────
+    var DEBUG_MODE = false;
+    
+    function log(/* args */) {
+        if (DEBUG_MODE && typeof console === 'object' && console.log) {
+            var args = Array.prototype.slice.call(arguments);
+            console.log.apply(console, '[security] ' + args.join(' '));
+        }
+    }
+    
+    function warn(msg) {
+        if (DEBUG_MODE) console.warn('[security]', msg);
+    }
+    
+    function error(msg, err) {
+        if (DEBUG_MODE && err) {
+            console.error('[security]', msg, err);
+        } else if (DEBUG_MODE) {
+            console.error('[security]', msg);
+        }
+    }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // CONFIGURATION CONSTANTS
-    // ═════════════════════════════════════════════════════════════════════
-
-    var CONFIG = {
-        MAX_PRICE: 999999999999,           // Maximum allowed price
-        MAX_STOCK: 999999,                  // Maximum stock quantity
-        MAX_EMAIL_LENGTH: 254,              // RFC 5321 limit
-        MAX_PHONE_LENGTH: 20,               // International phone numbers
-        MAX_STRING_LENGTH: 100000,          // Prevent ReDoS attacks
-        MAX_PASSWORD_LENGTH: 128,           // Reasonable password max
-        MIN_PASSWORD_LENGTH: 8,             // Minimum password strength
-        DEFAULT_MAX_FILE_SIZE_MB: 5,        // Default file upload limit
-        LAZY_LOAD_ROOT_MARGIN: '100px',    // IntersectionObserver margin
-        RATE_LIMIT_WINDOW_MS: 60000,       // 1 minute rate limit window
-        DECIMAL_PRECISION: 2               // Currency decimal places
-    };
-
-    // ═════════════════════════════════════════════════════════════════════
-    // 1. INPUT SANITIZATION
-    // ═════════════════════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 1: INPUT SANITIZATION
+    // ══════════════════════════════════════════════════════════════════════
+    
     /**
-     * Sanitize a string for safe HTML insertion.
-     * Strips HTML tags, encodes special chars, handles all XSS vectors.
-     * 
-     * @param {*} str - Input to sanitize
-     * @returns {string} Safe string for HTML insertion
+     * Sanitize string input - remove potentially dangerous characters
+     * @param {string} input - Raw input string
+     * @param {Object} options - Sanitization options
+     * @returns {string} Sanitized string
      */
-    window.sanitize = function(str) {
-        if (str === null || str === undefined) return '';
-        var input = String(str);
+    window.sanitize = function(input, options) {
+        if (input === null || input === undefined) return '';
+        var str = String(input);
         
-        // Remove null bytes and control characters
-        input = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+        opts = options || {};
         
-        // HTML entity encoding map
-        var htmlEntities = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;',
-            '/': '&#x2F;',
-            '`': '&#96;',
-            '=': '&#x3D;'
-        };
+        // Remove null bytes
+        str = str.replace(/\0/g, '');
         
-        return input.replace(/[&<>"'`=/]/g, function(char) {
-            return htmlEntities[char];
-        });
+        // Remove control characters (except newlines and tabs if allowed)
+        if (!opts.allowNewlines) {
+            str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        } else {
+            str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '\n');
+        }
+        
+        // Normalize whitespace
+        if (opts.normalizeWhitespace) {
+            str = str.replace(/\s+/g, ' ').trim();
+        }
+        
+        // Strip HTML tags if requested
+        if (opts.stripHtml !== false) {
+            str = str.replace(/<[^>]*>/g, '');
+        }
+        
+        // Escape HTML entities if requested
+        if (opts.escapeHtml) {
+            var escapeMap = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#x27;',
+                '/': '&#x2F;',
+                '`': '&#x60;',
+                '=': '&#x3D;'
+            };
+            str = str.replace(/[&<>"'`=/]/g, function(char) { return escapeMap[char]; });
+        }
+        
+        // Limit length
+        if (opts.maxLength && str.length > opts.maxLength) {
+            str = str.substring(0, opts.maxLength);
+        }
+        
+        return str;
     };
-
+    
     /**
-     * Strict sanitization for URLs to prevent javascript: protocol injection
+     * Sanitize URL to prevent XSS via javascript: protocol
      * @param {string} url - URL to sanitize
-     * @returns {string} Safe URL or empty string
+     * @returns {string} Safe URL or empty string if dangerous
      */
     window.sanitizeUrl = function(url) {
         if (!url) return '';
-        var sanitized = String(url).trim().toLowerCase();
+        
+        var str = String(url).trim();
         
         // Block dangerous protocols
-        var dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
-        for (var i = 0; i < dangerousProtocols.length; i++) {
-            if (sanitized.indexOf(dangerousProtocols[i]) === 0) {
+        var dangerousPatterns = [
+            /^\s*javascript:/i,
+            /^\s*vbscript:/i,
+            /^\s*data:\s*text\/html/i,
+            /^\s*data:\s*image\/svg/i
+        ];
+        
+        for (var i = 0; i < dangerousPatterns.length; i++) {
+            if (dangerousPatterns[i].test(str)) {
+                warn('Blocked dangerous URL pattern');
                 return '';
             }
         }
         
-        return url;
+        // Allow relative URLs, http, https, mailto, tel
+        var safePattern = /^(https?:\/\/|mailto:|tel:|#|\/|\.\.?[\/\\])/i;
+        if (!safePattern.test(str) && !str.startsWith('/') && !str.startsWith('#')) {
+            // If it doesn't look like a URL, still allow but sanitize
+            str = window.sanitize(str, { maxLength: 2000 });
+        }
+        
+        return str;
     };
-
+    
     /**
-     * Sanitize numeric input for prices/quantities
-     * @param {*} value - Input value
-     * @param {number} min - Minimum allowed value
-     * @param {number} max - Maximum allowed value
-     * @returns {number} Safe numeric value
+     * Sanitize numeric input
+     * @param {*} input - Input to sanitize
+     * @param {Object} options - Options (min, max, defaultVal, integersOnly)
+     * @returns {number} Sanitized number
      */
-    window.sanitizeNumber = function(value, min, max) {
-        var num = parseFloat(value);
-        if (isNaN(num)) num = 0;
-        if (typeof min === 'number' && num < min) num = min;
-        if (typeof max === 'number' && num > max) num = max;
-        return Math.round(num * 100) / 100; // Round to 2 decimal places
+    window.sanitizeNumber = function(input, options) {
+        var opts = options || {};
+        var num = parseFloat(input);
+        
+        if (isNaN(num)) return opts.defaultVal || 0;
+        
+        if (opts.integersOnly) {
+            num = Math.floor(num);
+        }
+        
+        if (typeof opts.min === 'number' && num < opts.min) {
+            num = opts.min;
+        }
+        
+        if (typeof opts.max === 'number' && num > opts.max) {
+            num = opts.max;
+        }
+        
+        return num;
     };
 
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 2: VALIDATION FUNCTIONS
+    // ══════════════════════════════════════════════════════════════════════
+    
     /**
-     * Validate email format according to RFC 5321
+     * Validate email address format
      * @param {string} email - Email to validate
-     * @returns {boolean} True if valid email format
+     * @returns {boolean} True if valid
      */
     window.isValidEmail = function(email) {
         if (!email || typeof email !== 'string') return false;
-        if (email.length > CONFIG.MAX_EMAIL_LENGTH) return false;
         
-        // Basic email regex (RFC 5321 compliant enough)
-        var emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-        return emailRegex.test(email);
+        // RFC 5322 simplified regex
+        var emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?))*$/;
+        
+        return emailRegex.test(email.trim()) && email.length <= 254;
     };
-
+    
     /**
-     * Validate phone number (international format)
+     * Validate phone number format (international support)
      * @param {string} phone - Phone number to validate
-     * @returns {boolean} True if valid phone format
+     * @returns {boolean} True if valid
      */
     window.isValidPhone = function(phone) {
         if (!phone || typeof phone !== 'string') return false;
-        if (phone.length > CONFIG.MAX_PHONE_LENGTH) return false;
         
-        // Allow digits, spaces, dashes, parentheses, plus sign
-        var phoneRegex = /^[\d\s\-\+\(\)]+$/;
-        return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 7; // At least 7 digits
+        // Remove common separators
+        var cleaned = phone.replace(/[\s\-\(\)\+\.]/g, '');
+        
+        // Accept 7-15 digits, optionally starting with +
+        var phoneRegex = /^\+?[1-9]\d{6,14}$/;
+        
+        return phoneRegex.test(cleaned);
     };
-
+    
     /**
      * Validate password strength
      * @param {string} password - Password to validate
-     * @returns {Object} Validation result with isValid and message
+     * @param {Object} requirements - Password requirements
+     * @returns {Object} Result with isValid and errors array
      */
-    window.validatePassword = function(password) {
-        if (!password || typeof password !== 'string') {
-            return { isValid: false, message: 'Password is required' };
-        }
-        if (password.length < CONFIG.MIN_PASSWORD_LENGTH) {
-            return { isValid: false, message: 'Password must be at least ' + CONFIG.MIN_PASSWORD_LENGTH + ' characters' };
-        }
-        if (password.length > CONFIG.MAX_PASSWORD_LENGTH) {
-            return { isValid: false, message: 'Password is too long' };
-        }
+    window.validatePassword = function(password, requirements) {
+        var reqs = requirements || {};
+        var minLength = reqs.minLength || 8;
+        var requireUppercase = reqs.requireUppercase !== false;
+        var requireLowercase = reqs.requireLowercase !== false;
+        var requireNumbers = reqs.requireNumbers !== false;
+        var requireSpecial = reqs.requireSpecial || false;
         
-        // Check for common weak patterns
-        var commonPatterns = ['password', '12345678', 'qwerty', 'abcdef'];
-        var lowerPassword = password.toLowerCase();
-        for (var i = 0; i < commonPatterns.length; i++) {
-            if (lowerPassword.indexOf(commonPatterns[i]) !== -1) {
-                return { isValid: false, message: 'Password contains common pattern' };
-            }
-        }
-        
-        return { isValid: true, message: 'Password is valid' };
-    };
-
-    // ═════════════════════════════════════════════════════════════════════
-    // 2. RATE LIMITING
-    // ═════════════════════════════════════════════════════════════════════
-
-    /** @type {Object} Rate limit tracker storage */
-    var _rateLimitStore = {};
-
-    /**
-     * Check if action is rate limited
-     * @param {string} actionName - Name of the action to check
-     * @param {number} [maxCalls=10] - Maximum calls allowed in window
-     * @param {number} [windowMs] - Time window in milliseconds
-     * @returns {boolean} True if action is allowed, false if rate limited
-     */
-    window.checkRateLimit = function(actionName, maxCalls, windowMs) {
-        maxCalls = maxCalls || 10;
-        windowMs = windowMs || CONFIG.RATE_LIMIT_WINDOW_MS;
-        
-        var now = Date.now();
-        
-        if (!_rateLimitStore[actionName]) {
-            _rateLimitStore[actionName] = { count: 1, resetAt: now + windowMs };
-            return true;
-        }
-        
-        var record = _rateLimitStore[actionName];
-        
-        // Reset if window has passed
-        if (now > record.resetAt) {
-            record.count = 1;
-            record.resetAt = now + windowMs;
-            return true;
-        }
-        
-        // Check limit
-        if (record.count >= maxCalls) {
-            return false;
-        }
-        
-        record.count++;
-        return true;
-    };
-
-    /**
-     * Reset rate limit for an action (for testing or admin use)
-     * @param {string} actionName - Action to reset
-     */
-    window.resetRateLimit = function(actionName) {
-        delete _rateLimitStore[actionName];
-    };
-
-    // ═════════════════════════════════════════════════════════════════════
-    // 3. FORM VALIDATION HELPERS
-    // ═════════════════════════════════════════════════════════════════════
-
-    /**
-     * Validate product form data before submission
-     * @param {Object} formData - Product form data
-     * @returns {Object} Validation result with isValid and errors array
-     */
-    window.validateProductForm = function(formData) {
         var errors = [];
         
+        if (!password || password.length < minLength) {
+            errors.push('Password must be at least ' + minLength + ' characters long');
+        }
+        
+        if (requireUppercase && !/[A-Z]/.test(password)) {
+            errors.push('Password must contain at least one uppercase letter');
+        }
+        
+        if (requireLowercase && !/[a-z]/.test(password)) {
+            errors.push('Password must contain at least one lowercase letter');
+        }
+        
+        if (requireNumbers && !/\d/.test(password)) {
+            errors.push('Password must contain at least one number');
+        }
+        
+        if (requireSpecial && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            errors.push('Password must contain at least one special character');
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors: errors,
+            strength: calculatePasswordStrength(password)
+        };
+    };
+    
+    /**
+     * Calculate password strength score (0-100)
+     * @param {string} password - Password to analyze
+     * @returns {number} Strength score
+     */
+    function calculatePasswordStrength(password) {
+        if (!password) return 0;
+        
+        var score = 0;
+        
+        // Length scoring
+        if (password.length >= 8) score += 20;
+        if (password.length >= 12) score += 20;
+        if (password.length >= 16) score += 10;
+        
+        // Character variety
+        if (/[a-z]/.test(password)) score += 10;
+        if (/[A-Z]/.test(password)) score += 10;
+        if (/\d/.test(password)) score += 10;
+        if (/[^a-zA-Z\d]/.test(password)) score += 20;
+        
+        // Bonus for mixed patterns
+        if (/(.)\1{2,}/.test(password)) score -= 15; // Penalize repetition
+        
+        return Math.max(0, Math.min(100, score));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 3: RATE LIMITING
+    // ══════════════════════════════════════════════════════════════════════
+    
+    var rateLimitStore = {};
+    
+    /**
+     * Check if action is rate limited
+     * @param {string} action - Action identifier
+     * @param {Object} options - Limit options (maxAttempts, windowMs)
+     * @returns {Object} {allowed: boolean, remaining: number, resetTime: number}
+     */
+    window.checkRateLimit = function(action, options) {
+        var opts = options || {};
+        var maxAttempts = opts.maxAttempts || 5;
+        var windowMs = opts.windowMs || 60000; // 1 minute default
+        
+        var now = Date.now();
+        var record = rateLimitStore[action];
+        
+        if (!record || now > record.resetTime) {
+            // New window or expired
+            rateLimitStore[action] = {
+                attempts: 1,
+                resetTime: now + windowMs
+            };
+            return {
+                allowed: true,
+                remaining: maxAttempts - 1,
+                resetTime: now + windowMs
+            };
+        }
+        
+        if (record.attempts >= maxAttempts) {
+            return {
+                allowed: false,
+                remaining: 0,
+                resetTime: record.resetTime
+            };
+        }
+        
+        record.attempts++;
+        return {
+            allowed: true,
+            remaining: maxAttempts - record.attempts,
+            resetTime: record.resetTime
+        };
+    };
+    
+    /**
+     * Reset rate limit for an action
+     * @param {string} action - Action identifier
+     */
+    window.resetRateLimit = function(action) {
+        delete rateLimitStore[action];
+        log('Rate limit reset for:', action);
+    };
+
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 4: FORM VALIDATION
+    // ══════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Validate product form data
+     * @param {FormData|Object} formData - Form data to validate
+     * @returns {Object} {isValid: boolean, errors: Object}
+     */
+    window.validateProductForm = function(formData) {
+        var errors = {};
+        var data = formData;
+        
+        // Handle FormData objects
+        if (typeof FormData !== 'undefined' && data instanceof FormData) {
+            data = {};
+            formData.forEach(function(value, key) {
+                data[key] = value;
+            });
+        }
+        
         // Title validation
-        if (!formData.title || formData.title.trim().length === 0) {
-            errors.push('Product title is required');
-        } else if (formData.title.trim().length > 200) {
-            errors.push('Product title must be under 200 characters');
-        }
-        
-        // Price validation
-        var price = parseFloat(formData.price);
-        if (isNaN(price) || price <= 0) {
-            errors.push('Valid price is required');
-        } else if (price > CONFIG.MAX_PRICE) {
-            errors.push('Price exceeds maximum allowed');
-        }
-        
-        // Stock validation
-        var stock = parseInt(formData.stock_quantity, 10);
-        if (isNaN(stock) || stock < 0) {
-            errors.push('Valid stock quantity is required');
-        } else if (stock > CONFIG.MAX_STOCK) {
-            errors.push('Stock quantity exceeds maximum');
+        if (!data.title || data.title.trim().length < 3) {
+            errors.title = 'Product title must be at least 3 characters';
+        } else if (data.title.trim().length > 200) {
+            errors.title = 'Product title must be under 200 characters';
         }
         
         // Description validation
-        if (formData.description && formData.description.length > CONFIG.MAX_STRING_LENGTH) {
-            errors.push('Description is too long');
+        if (!data.description || data.description.trim().length < 10) {
+            errors.description = 'Description must be at least 10 characters';
+        }
+        
+        // Price validation
+        if (data.price === undefined || data.price === '') {
+            errors.price = 'Price is required';
+        } else {
+            var price = parseFloat(data.price);
+            if (isNaN(price) || price < 0) {
+                errors.price = 'Please enter a valid price';
+            } else if (price > 999999.99) {
+                errors.price = 'Price seems too high';
+            }
         }
         
         // Category validation
-        if (!formData.category_id) {
-            errors.push('Please select a category');
+        if (!data.category) {
+            errors.category = 'Please select a category';
+        }
+        
+        // Images validation (if provided)
+        if (data.images && Array.isArray(data.images) && data.images.length === 0) {
+            errors.images = 'Please add at least one image';
         }
         
         return {
-            isValid: errors.length === 0,
+            isValid: Object.keys(errors).length === 0,
             errors: errors
         };
     };
-
+    
     /**
      * Validate checkout form data
-     * @param {Object} checkoutData - Checkout data object
-     * @returns {Object} Validation result with isValid and errors array
+     * @param {FormData|Object} formData - Form data to validate
+     * @returns {Object} {isValid: boolean, errors: Object}
      */
-    window.validateCheckoutForm = function(checkoutData) {
-        var errors = [];
+    window.validateCheckoutForm = function(formData) {
+        var errors = {};
+        var data = formData;
+        
+        // Handle FormData objects
+        if (typeof FormData !== 'undefined' && data instanceof FormData) {
+            data = {};
+            formData.forEach(function(value, key) {
+                data[key] = value;
+            });
+        }
+        
+        // Full name validation
+        if (!data.fullName || data.fullName.trim().length < 2) {
+            errors.fullName = 'Please enter your full name';
+        }
+        
+        // Email validation
+        if (!data.email || !window.isValidEmail(data.email)) {
+            errors.email = 'Please enter a valid email address';
+        }
+        
+        // Phone validation (optional but must be valid if provided)
+        if (data.phone && !window.isValidPhone(data.phone)) {
+            errors.phone = 'Please enter a valid phone number';
+        }
         
         // Address validation
-        if (!checkoutData.addressId && !checkoutData.newAddress) {
-            errors.push('Please select or add a shipping address');
+        if (!data.address || data.address.trim().length < 5) {
+            errors.address = 'Please enter your full address';
         }
         
-        if (checkoutData.newAddress) {
-            var addr = checkoutData.newAddress;
-            if (!addr.firstName || addr.firstName.trim() === '') {
-                errors.push('First name is required');
-            }
-            if (!addr.phone || !isValidPhone(addr.phone)) {
-                errors.push('Valid phone number is required');
-            }
-            if (!addr.addressLine1 || addr.addressLine1.trim() === '') {
-                errors.push('Address line 1 is required');
-            }
-            if (!addr.city || addr.city.trim() === '') {
-                errors.push('City is required');
-            }
+        // City validation
+        if (!data.city || data.city.trim().length < 2) {
+            errors.city = 'Please enter your city';
         }
         
-        // Delivery method validation
-        if (!checkoutData.deliveryMethodId) {
-            errors.push('Please select a delivery method');
+        // Postal/ZIP code validation
+        if (!data.postalCode || data.postalCode.trim().length < 3) {
+            errors.postalCode = 'Please enter your postal code';
         }
         
         // Payment method validation
-        if (!checkoutData.paymentMethodId) {
-            errors.push('Please select a payment method');
+        if (!data.paymentMethod) {
+            errors.paymentMethod = 'Please select a payment method';
         }
         
         return {
-            isValid: errors.length === 0,
+            isValid: Object.keys(errors).length === 0,
             errors: errors
         };
     };
-
+    
     /**
-     * Show validation errors in UI
-     * @param {Array} errors - Array of error messages
-     * @param {string} [containerId] - Optional container ID for error display
+     * Display validation errors on form
+     * @param {Object} errors - Errors object from form validation
+     * @param {string} formId - Form element ID
      */
-    window.showValidationErrors = function(errors, containerId) {
-        if (errors.length === 0) return;
+    window.showValidationErrors = function(errors, formId) {
+        // Clear previous errors
+        var existingErrors = document.querySelectorAll('.validation-error');
+        existingErrors.forEach(function(el) { el.remove(); });
         
-        var errorHtml = '<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">';
-        errorHtml += '<div class="flex items-center mb-2">';
-        errorHtml += '<i class="fas fa-exclamation-circle text-red-500 mr-2"></i>';
-        errorHtml += '<span class="font-medium text-red-800">Please fix the following errors:</span>';
-        errorHtml += '</div>';
-        errorHtml += '<ul class="list-disc list-inside text-red-700 text-sm">';
+        var form = formId ? document.getElementById(formId) : document;
+        if (!form) return;
         
-        for (var i = 0; i < errors.length; i++) {
-            errorHtml += '<li>' + sanitize(errors[i]) + '</li>';
-        }
-        
-        errorHtml += '</ul></div>';
-        
-        if (containerId) {
-            var container = document.getElementById(containerId);
-            if (container) {
-                container.innerHTML = errorHtml;
-                container.style.display = 'block';
+        Object.keys(errors).forEach(function(field) {
+            var fieldEl = form.querySelector('[name="' + field + '"]');
+            
+            if (fieldEl) {
+                // Add error class
+                fieldEl.classList.add('error', 'border-red-500');
+                
+                // Create error message element
+                var errorEl = document.createElement('div');
+                errorEl.className = 'validation-error text-red-500 text-sm mt-1';
+                errorEl.textContent = errors[field];
+                
+                // Insert after field
+                fieldEl.parentNode.insertBefore(errorEl, fieldEl.nextSibling);
             }
-        } else if (typeof window.showToast === 'function') {
-            window.showToast(errors[0], 'error');
+        });
+        
+        // Scroll to first error
+        var firstError = form.querySelector('.validation-error');
+        if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+        
+        log('Validation errors displayed:', Object.keys(errors).length);
     };
 
-    // ═════════════════════════════════════════════════════════════════════
-    // 4. PERFORMANCE OPTIMIZATIONS
-    // ═════════════════════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 5: PERFORMANCE UTILITIES
+    // ══════════════════════════════════════════════════════════════════════
+    
     /**
-     * Lazy load images using Intersection Observer
-     * Falls back to loading all images if not supported
+     * Initialize lazy loading for images
+     * @param {Object} options - Configuration options
      */
-    window.initLazyLoading = function() {
-        var lazyImages = document.querySelectorAll('img[data-src]');
+    window.initLazyLoading = function(options) {
+        var opts = options || {};
+        var rootMargin = opts.rootMargin || '50px';
+        var threshold = opts.threshold || 0.1;
         
         if ('IntersectionObserver' in window) {
-            var imageObserver = new IntersectionObserver(function(entries) {
-                for (var i = 0; i < entries.length; i++) {
-                    var entry = entries[i];
+            var lazyImages = document.querySelectorAll('img[data-src]');
+            
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
                     if (entry.isIntersecting) {
                         var img = entry.target;
                         img.src = img.dataset.src;
-                        if (img.dataset.srcset) {
-                            img.srcset = img.dataset.srcset;
-                        }
+                        img.removeAttribute('data-src');
                         img.classList.add('loaded');
-                        imageObserver.unobserve(img);
+                        observer.unobserve(img);
                     }
-                }
+                });
             }, {
-                rootMargin: CONFIG.LAZY_LOAD_ROOT_MARGIN,
-                threshold: 0.01
+                rootMargin: rootMargin,
+                threshold: threshold
             });
             
-            for (var j = 0; j < lazyImages.length; j++) {
-                imageObserver.observe(lazyImages[j]);
-            }
+            lazyImages.forEach(function(img) {
+                observer.observe(img);
+            });
+            
+            log('Lazy loading initialized for', lazyImages.length, 'images');
         } else {
-            // Fallback: Load all images immediately
-            for (var k = 0; k < lazyImages.length; k++) {
-                lazyImages[k].src = lazyImages[k].dataset.src;
-            }
+            // Fallback: load all images immediately
+            var images = document.querySelectorAll('img[data-src]');
+            images.forEach(function(img) {
+                img.src = img.dataset.src;
+                img.removeAttribute('data-src');
+            });
         }
     };
-
+    
     /**
-     * Debounce function execution
+     * Debounce function - delay execution until after wait ms of inactivity
      * @param {Function} func - Function to debounce
-     * @param {number} wait - Milliseconds to wait
+     * @param {number} wait - Wait time in milliseconds
      * @returns {Function} Debounced function
      */
     window.debounce = function(func, wait) {
@@ -397,160 +542,253 @@
             clearTimeout(timeout);
             timeout = setTimeout(function() {
                 func.apply(context, args);
-            }, wait || 250);
+            }, wait);
         };
     };
-
+    
     /**
-     * Throttle function execution
+     * Throttle function - limit execution to once per wait ms
      * @param {Function} func - Function to throttle
-     * @param {number} limit - Milliseconds between executions
+     * @param {number} wait - Wait time in milliseconds
      * @returns {Function} Throttled function
      */
-    window.throttle = function(func, limit) {
-        var inThrottle;
+    window.throttle = function(func, wait) {
+        var prev = 0;
         return function() {
             var context = this;
             var args = arguments;
-            if (!inThrottle) {
+            var now = Date.now();
+            if (now - prev >= wait) {
+                prev = now;
                 func.apply(context, args);
-                inThrottle = true;
-                setTimeout(function() { inThrottle = false; }, limit || 100);
             }
         };
     };
 
-    // ═════════════════════════════════════════════════════════════════════
-    // 5. ERROR BOUNDARY & GRACEFUL DEGRADATION
-    // ═════════════════════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 6: ERROR BOUNDARY
+    // ══════════════════════════════════════════════════════════════════════
+    
     /**
-     * Global error handler for uncaught errors
-     * Prevents app crashes and provides user feedback
+     * Setup global error boundary
+     * @param {Object} options - Configuration options
      */
-    window.setupErrorBoundary = function() {
+    window.setupErrorBoundary = function(options) {
+        var opts = options || {};
+        
+        // Global error handler
         window.onerror = function(message, source, lineno, colno, error) {
-            // Log error (in production, send to error tracking service)
-            console.error('[ErrorBoundary]', {
-                message: message,
-                source: source,
-                line: lineno,
-                column: colno,
-                error: error
-            });
+            error('Global error:', message, 'at', source, ':', lineno);
             
-            // Show user-friendly message
-            if (typeof window.showToast === 'function') {
-                window.showToast('An unexpected error occurred. Please refresh the page.', 'error');
+            if (opts.onError) {
+                opts.onError({ message: message, source: source, line: lineno, col: colno, error: error });
             }
             
-            // Return true to prevent default browser error handling
-            return true;
+            // Show user-friendly message
+            if (window.showToast) {
+                window.showToast('An unexpected error occurred. Please try again.', 'error');
+            }
+            
+            // Prevent default browser error logging in production
+            if (!DEBUG_MODE) {
+                return true;
+            }
         };
         
-        // Handle unhandled promise rejections
+        // Unhandled promise rejection handler
         window.onunhandledrejection = function(event) {
-            console.error('[UnhandledRejection]', event.reason);
+            error('Unhandled promise rejection:', event.reason);
             
-            if (typeof window.showToast === 'function') {
-                window.showToast('A request failed. Please try again.', 'error');
+            if (opts.onRejection) {
+                opts.onRejection(event.reason);
             }
             
             event.preventDefault();
         };
+        
+        log('Error boundary setup complete');
     };
-
+    
     /**
-     * Safe async wrapper that catches errors gracefully
-     * @param {Promise} promise - Promise to wrap
-     * @param {*} defaultValue - Default value on error
-     * @returns {Promise} Wrapped promise with error handling
+     * Safely execute async function with error handling
+     * @param {Function} asyncFn - Async function to execute
+     * @param {Object} options - Options (fallbackValue, onError, showUserMessage)
+     * @returns {Promise} Promise that resolves safely
      */
-    window.safeAsync = function(promise, defaultValue) {
-        return promise.then(function(result) {
-            return { success: true, data: result };
-        }).catch(function(error) {
-            console.error('[safeAsync] Error:', error);
-            return { success: false, error: error, data: defaultValue };
-        });
+    window.safeAsync = function(asyncFn, options) {
+        var opts = options || {};
+        
+        try {
+            var result = asyncFn();
+            
+            if (result && typeof result.then === 'function') {
+                return result.catch(function(err) {
+                    error('safeAsync caught:', err);
+                    
+                    if (opts.onError) {
+                        opts.onError(err);
+                    }
+                    
+                    if (opts.showUserMessage && window.showToast) {
+                        window.showToast('Operation failed. Please try again.', 'error');
+                    }
+                    
+                    return opts.fallbackValue || null;
+                });
+            }
+            
+            return result;
+        } catch (err) {
+            error('safeAsync caught sync:', err);
+            
+            if (opts.onError) {
+                opts.onError(err);
+            }
+            
+            return opts.fallbackValue || null;
+        }
     };
 
-    // ═════════════════════════════════════════════════════════════════════
-    // 6. SECURITY UTILITIES
-    // ═════════════════════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 7: SECURITY UTILITIES
+    // ══════════════════════════════════════════════════════════════════════
+    
     /**
-     * Generate CSRF token for forms (if not using SameSite cookies)
-     * @returns {string} Random CSRF token
+     * Generate CSRF token
+     * @returns {string} Random token string
      */
     window.generateCSRFToken = function() {
         var array = new Uint8Array(32);
         if (window.crypto && window.crypto.getRandomValues) {
             window.crypto.getRandomValues(array);
         } else {
-            for (var i = 0; i < array.length; i++) {
+            // Fallback for older browsers
+            for (var i = 0; i < 32; i++) {
                 array[i] = Math.floor(Math.random() * 256);
             }
         }
-        return Array.prototype.map.call(array, function(byte) {
-            return ('0' + byte.toString(16)).slice(-2);
-        }).join('');
-    };
-
-    /**
-     * Set CSRF token in meta tag and all forms
-     */
-    window.setCSRFToken = function() {
-        var token = generateCSRFToken();
         
+        // Convert to hex string
+        var hex = [];
+        for (var i = 0; i < array.length; i++) {
+            hex.push(array[i].toString(16).padStart(2, '0'));
+        }
+        
+        return hex.join('');
+    };
+    
+    /**
+     * Set CSRF token in meta tag and headers
+     * @param {string} token - Token to set
+     */
+    window.setCSRFToken = function(token) {
         // Set in meta tag
         var metaTag = document.querySelector('meta[name="csrf-token"]');
         if (metaTag) {
             metaTag.setAttribute('content', token);
         }
         
-        // Add to all forms
-        var forms = document.querySelectorAll('form:not([data-csrf="false"])');
-        for (var i = 0; i < forms.length; i++) {
-            var existingInput = forms[i].querySelector('input[name="_token"]');
-            if (!existingInput) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = '_token';
-                input.value = token;
-                forms[i].appendChild(input);
-            }
-        }
+        // Store for use in fetch/AJAX requests
+        window._csrfToken = token;
+        
+        log('CSRF token set');
     };
-
+    
     /**
-     * Check if connection is secure (HTTPS)
+     * Check if connection is secure (HTTPS or localhost)
      * @returns {boolean} True if secure connection
      */
     window.isSecureConnection = function() {
-        return window.location.protocol === 'https:' || 
-               window.location.hostname === 'localhost' ||
-               window.location.hostname === '127.0.0.1';
+        if (window.location.protocol === 'https:') {
+            return true;
+        }
+        
+        // Allow localhost for development
+        var hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+            return true;
+        }
+        
+        return false;
+    };
+    
+    /**
+     * Content Security Policy helper
+     * @param {Object} policy - CSP directives
+     */
+    window.setContentSecurityPolicy = function(policy) {
+        var directives = [];
+        
+        if (policy.defaultSrc) directives.push("default-src " + policy.defaultSrc);
+        if (policy.scriptSrc) directives.push("script-src " + policy.scriptSrc);
+        if (policy.styleSrc) directives.push("style-src " + policy.styleSrc);
+        if (policy.imgSrc) directives.push("img-src " + policy.imgSrc);
+        if (policy.connectSrc) directives.push("connect-src " + policy.connectSrc);
+        if (policy.fontSrc) directives.push("font-src " + policy.fontSrc);
+        if (policy.objectSrc) directives.push("object-src 'none'");
+        if (policy.baseUri) directives.push("base-uri " + policy.baseUri);
+        if (policy.formAction) directives.push("form-action " + policy.formAction);
+        
+        var cspString = directives.join('; ');
+        
+        var meta = document.createElement('meta');
+        meta.httpEquiv = 'Content-Security-Policy';
+        meta.content = cspString;
+        document.head.appendChild(meta);
+        
+        log('CSP set:', cspString);
     };
 
-    // ═════════════════════════════════════════════════════════════════════
-    // INITIALIZATION
-    // ═════════════════════════════════════════════════════════════════════
-
-    // Initialize security features when DOM is ready
+    // ══════════════════════════════════════════════════════════════════════
+    // SECTION 8: INITIALIZATION
+    // ══════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Initialize all security features
+     * @param {Object} options - Initialization options
+     */
+    window.initSecurityLayer = function(options) {
+        var opts = options || {};
+        
+        log('Initializing security layer...');
+        
+        // Generate and set initial CSRF token
+        var token = window.generateCSRFToken();
+        window.setCSRFToken(token);
+        
+        // Setup error boundary if requested
+        if (opts.errorBoundary !== false) {
+            window.setupErrorBoundary({
+                onError: opts.onError,
+                onRejection: opts.onRejection
+            });
+        }
+        
+        // Initialize lazy loading if requested
+        if (opts.lazyLoad !== false) {
+            window.initLazyLoading(opts.lazyLoadOptions);
+        }
+        
+        // Warn if not secure connection
+        if (!window.isSecureConnection()) {
+            warn('Connection is not secure (not HTTPS)');
+        }
+        
+        log('Security layer initialized successfully');
+        
+        return {
+            csrfToken: token,
+            isSecure: window.isSecureConnection()
+        };
+    };
+    
+    // Auto-initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-            setupErrorBoundary();
-            initLazyLoading();
-            setCSRFToken();
+            window.initSecurityLayer();
         });
     } else {
-        setupErrorBoundary();
-        initLazyLoading();
-        setCSRFToken();
+        window.initSecurityLayer();
     }
-
-    // Expose config for debugging (remove in production)
-    window._securityConfig = CONFIG;
-
+    
 })();
