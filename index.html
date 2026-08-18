@@ -188,6 +188,21 @@
             animation: pulse-slow 3s ease-in-out infinite;
         }
 
+        /* Pending Approval Badge Styles */
+        #pendingApprovalBadge {
+            animation: badge-glow 2s ease-in-out infinite;
+        }
+        @keyframes badge-glow {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.15);
+                border-color: rgba(234, 179, 8, 0.25);
+            }
+            50% { 
+                box-shadow: 0 0 12px 4px rgba(234, 179, 8, 0.1);
+                border-color: rgba(234, 179, 8, 0.4);
+            }
+        }
+
         /* ═══════════════════════════════════════
            5. CARD EFFECTS
         ═══════════════════════════════════════ */
@@ -3173,12 +3188,35 @@
                         </button>
 
                         <!-- User Menu (hidden until logged in) -->
-                        <button onclick="toggleUserMenu()" class="hidden sm:flex items-center gap-2 rounded-xl bg-accent/10 border border-accent/10 px-4 py-2 text-sm text-accent hover:bg-accent/15 transition" id="userMenuBtn" style="display:none;" type="button">
-                            <i class="fa-solid fa-user text-xs" aria-hidden="true"></i>
-                            <span id="userMenuName">Account</span>
-                            <i class="fa-solid fa-chevron-down text-[10px] ml-1" aria-hidden="true"></i>
-                        </button>
-                        <div id="userMenuDropdown" aria-label="User menu" class="absolute top-full right-4 mt-2 w-48 rounded-xl border border-white/[0.06] bg-surface/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden opacity-0 pointer-events-none translate-y-2 transition-all duration-200" style="z-index:60;">
+                        <div class="hidden sm:flex items-center gap-2">
+                            <button onclick="toggleUserMenu()" class="flex items-center gap-2 rounded-xl bg-accent/10 border border-accent/10 px-4 py-2 text-sm text-accent hover:bg-accent/15 transition relative" id="userMenuBtn" style="display:none;" type="button">
+                                <i class="fa-solid fa-user text-xs" aria-hidden="true"></i>
+                                <span id="userMenuName">Account</span>
+                                <i class="fa-solid fa-chevron-down text-[10px] ml-1" aria-hidden="true"></i>
+                            </button>
+                            <!-- Pending Approval Badge -->
+                            <div id="pendingApprovalBadge" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/25 backdrop-blur-sm" style="display:none;">
+                                <span class="relative flex h-2.5 w-2.5">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
+                                </span>
+                                <span class="text-yellow-200 font-medium text-xs whitespace-nowrap">Pending Review</span>
+                            </div>
+                        </div>
+                        <div id="userMenuDropdown" aria-label="User menu" class="absolute top-full right-4 mt-2 w-56 rounded-xl border border-white/[0.06] bg-surface/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden opacity-0 pointer-events-none translate-y-2 transition-all duration-200" style="z-index:60;">
+                            <!-- Pending Status Indicator in Dropdown -->
+                            <div id="dropdownPendingStatus" class="hidden px-4 py-3 bg-yellow-500/5 border-b border-yellow-500/10" style="display:none;">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="relative flex h-2.5 w-2.5">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
+                                    </div>
+                                    <div>
+                                        <p class="text-yellow-200 font-semibold text-xs">Pending Review</p>
+                                        <p class="text-yellow-200/60 text-[11px]">Account under review</p>
+                                    </div>
+                                </div>
+                            </div>
                             <button id="dashMenuLink" onclick="navigateTo('dashboard');toggleUserMenu();" class="w-full text-left px-4 py-3 text-sm text-subtle hover:bg-white/[0.04] hover:text-accent transition flex items-center gap-2.5" type="button">
                                 <i class="fa-solid fa-gauge-high text-xs text-muted w-4" aria-hidden="true"></i> Dashboard
                             </button>
@@ -3220,6 +3258,16 @@
                                     </button>
                                 </div>
                                 <div class="border-t border-white/[0.04] p-3">
+                                    <!-- Mobile Pending Approval Badge -->
+                                    <div id="mobilePendingBadge" class="hidden mb-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/25" style="display:none;">
+                                        <div class="flex items-center gap-2">
+                                            <span class="relative flex h-2 w-2">
+                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                                            </span>
+                                            <span class="text-yellow-200 font-medium text-xs">Account Pending Review</span>
+                                        </div>
+                                    </div>
                                     <button onclick="openAuth();toggleMobileNav();" class="w-full rounded-xl bg-accent/10 border border-accent/10 py-2.5 text-sm text-accent font-medium hover:bg-accent/15 transition auth-mobile-btn" type="button">
                                         Sign In
                                     </button>
@@ -3303,7 +3351,7 @@
                                 <p class="text-xs text-muted mt-0.5">Products</p>
                             </div>
                             <div>
-                                <p class="font-display text-2xl font-bold text-softWhite">6</p>
+                                <p class="font-display text-2xl font-bold text-softWhite">5</p>
                                 <p class="text-xs text-muted mt-0.5">Categories</p>
                             </div>
                             <div>
@@ -6589,6 +6637,8 @@ function updateAuthUI() {
     var userMobileBtn = document.querySelectorAll('.user-mobile-btn');
 
     var approved = currentUser && currentUser.status === 'approved';
+    var pending = currentUser && currentUser.status === 'pending';
+    var pendingBadge = document.getElementById('pendingApprovalBadge');
 
     if (currentUser) {
         if (authBtn)      authBtn.style.display = 'none';
@@ -6596,6 +6646,36 @@ function updateAuthUI() {
         if (dashNavBtn)   dashNavBtn.style.display   = approved ? '' : 'none';
         if (dashMenuLink) dashMenuLink.style.display  = approved ? '' : 'none';
         if (userMenuName) userMenuName.textContent     = currentUser.brand || currentUser.name;
+        
+        // Show/hide pending approval badge in header
+        if (pendingBadge) {
+            if (pending) {
+                pendingBadge.style.display = 'flex';
+            } else {
+                pendingBadge.style.display = 'none';
+            }
+        }
+        
+        // Show/hide mobile pending badge
+        var mobilePendingBadge = document.getElementById('mobilePendingBadge');
+        if (mobilePendingBadge) {
+            if (pending) {
+                mobilePendingBadge.style.display = 'block';
+            } else {
+                mobilePendingBadge.style.display = 'none';
+            }
+        }
+        
+        // Show/hide dropdown pending status
+        var dropdownPendingStatus = document.getElementById('dropdownPendingStatus');
+        if (dropdownPendingStatus) {
+            if (pending) {
+                dropdownPendingStatus.style.display = 'block';
+            } else {
+                dropdownPendingStatus.style.display = 'none';
+            }
+        }
+        
         dashMobileNav.forEach(function (el) { el.style.display = approved ? '' : 'none'; });
         authMobileBtn.forEach(function (el) { el.style.display = 'none'; });
         userMobileBtn.forEach(function (el) { el.style.display = ''; });
@@ -7619,5 +7699,4 @@ async function handleForgotPassword() {
 
 
 </body>
-
 </html>
