@@ -581,6 +581,24 @@
             width: 1px; background: linear-gradient(to bottom, rgba(232,166,48,0.3), transparent);
         }
 
+        /* ═══════════════════════════════════════
+           RETURNS TIMELINE - Perfect Line Alignment
+        ═══════════════════════════════════════ */
+        
+        /* Step circles - perfectly centered on timeline */
+        .step-circle {
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .step-circle:hover {
+            transform: scale(1.1);
+        }
+
         .collab-perk-card {
             transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
             position: relative; overflow: hidden;
@@ -3696,12 +3714,13 @@
                             <i class="fa-solid fa-list-ol text-accent text-sm" aria-hidden="true"></i>
                             How to Initiate a Return
                         </h2>
-                        <div class="relative pl-10 sm:pl-12">
-                            <div class="absolute left-[15px] sm:left-[19px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-accent/50 via-coral/50 to-sage/50 rounded-full"></div>
+                        <div class="relative" style="padding-left: 42px;">
+                            <!-- Vertical connecting line - PERFECTLY ALIGNED through circle centers -->
+                            <div class="absolute top-2 bottom-2 rounded-full" style="left: 15px; width: 2px; background: linear-gradient(to bottom, rgba(232,166,48,0.5), rgba(236,120,96,0.5), rgba(134,169,145,0.5));"></div>
 
                             <!-- Step 1 -->
                             <div class="relative mb-10 group">
-                                <div class="absolute -left-10 sm:-left-12 top-0.5 w-8 h-8 rounded-full bg-accent/20 border-2 border-accent flex items-center justify-center step-circle">
+                                <div class="absolute top-0.5 rounded-full border-2 border-accent flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(232,166,48,0.2);">
                                     <span class="text-accent font-bold text-xs">1</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-accent/15 transition group-hover:bg-cardHover">
@@ -3719,7 +3738,7 @@
 
                             <!-- Step 2 -->
                             <div class="relative mb-10 group">
-                                <div class="absolute -left-10 sm:-left-12 top-0.5 w-8 h-8 rounded-full bg-coral/20 border-2 border-coral flex items-center justify-center step-circle">
+                                <div class="absolute top-0.5 rounded-full border-2 border-coral flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(236,120,96,0.2);">
                                     <span class="text-coral font-bold text-xs">2</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-coral/15 transition group-hover:bg-cardHover">
@@ -3737,7 +3756,7 @@
 
                             <!-- Step 3 -->
                             <div class="relative mb-10 group">
-                                <div class="absolute -left-10 sm:-left-12 top-0.5 w-8 h-8 rounded-full bg-sage/20 border-2 border-sage flex items-center justify-center step-circle">
+                                <div class="absolute top-0.5 rounded-full border-2 border-sage flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(134,169,145,0.2);">
                                     <span class="text-sage font-bold text-xs">3</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-sage/15 transition group-hover:bg-cardHover">
@@ -3755,7 +3774,7 @@
 
                             <!-- Step 4 -->
                             <div class="relative group">
-                                <div class="absolute -left-10 sm:-left-12 top-0.5 w-8 h-8 rounded-full bg-accent/20 border-2 border-accent flex items-center justify-center step-circle">
+                                <div class="absolute top-0.5 rounded-full border-2 border-accent flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(232,166,48,0.2);">
                                     <span class="text-accent font-bold text-xs">4</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-accent/15 transition group-hover:bg-cardHover">
@@ -7440,7 +7459,6 @@ async function handleForgotPassword() {
 }
 
 </script>
-
 
 <!-- K.Subject-1 Marketplace: Core Logic (managers) -->
 <script src="marketplace.js"></script>
