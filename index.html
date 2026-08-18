@@ -582,21 +582,115 @@
         }
 
         /* ═══════════════════════════════════════
-           RETURNS TIMELINE - Perfect Line Alignment
+           RETURNS TIMELINE - Perfect Line Alignment & Vibrant Styling
         ═══════════════════════════════════════ */
         
-        /* Step circles - perfectly centered on timeline */
-        .step-circle {
-            box-sizing: border-box;
+        /* Timeline container - provides space for circles */
+        .returns-timeline-container {
+            position: relative;
+            padding-left: 52px;
+        }
+        
+        /* Vertical connecting line - PERFECTLY CENTERED through all circles */
+        .returns-timeline-line {
+            position: absolute;
+            top: 8px;
+            bottom: 8px;
+            left: 19px;  /* Perfectly centers on 38px-wide circles: (38/2) - (3/2) = 17.5 ≈ 18 */
+            width: 3px;
+            border-radius: 3px;
+            background: linear-gradient(
+                to bottom,
+                rgba(232, 166, 48, 0.7) 0%,
+                rgba(232, 166, 48, 0.6) 25%,
+                rgba(236, 120, 96, 0.65) 50%,
+                rgba(236, 120, 96, 0.55) 75%,
+                rgba(134, 169, 145, 0.6) 100%
+            );
+            box-shadow: 
+                0 0 12px rgba(232, 166, 48, 0.15),
+                0 0 24px rgba(236, 120, 96, 0.1);
+            z-index: 1;
+        }
+        
+        /* Step item wrapper */
+        .returns-step-item {
+            position: relative;
+        }
+        
+        /* Step circles - PERFECTLY CENTERED on timeline */
+        .returns-step-circle {
+            position: absolute;
+            left: -33px;
+            top: 4px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+            border: 2.5px solid;
             z-index: 2;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
         
-        .step-circle:hover {
-            transform: scale(1.1);
+        .returns-step-circle:hover {
+            transform: scale(1.12);
+        }
+        
+        /* Accent color variant (Gold - Steps 1 & 4) */
+        .returns-step-circle-accent {
+            background: rgba(232, 166, 48, 0.2);
+            border-color: rgba(232, 166, 48, 0.7);
+            color: #e8a630;
+            box-shadow: 
+                0 4px 16px rgba(0,0,0,0.3),
+                0 0 20px rgba(232, 166, 48, 0.15),
+                inset 0 0 12px rgba(232, 166, 48, 0.1);
+        }
+        
+        .returns-step-circle-accent:hover {
+            box-shadow: 
+                0 6px 24px rgba(0,0,0,0.4),
+                0 0 28px rgba(232, 166, 48, 0.25),
+                inset 0 0 16px rgba(232, 166, 48, 0.15);
+        }
+        
+        /* Coral color variant (Orange/Coral - Step 2) */
+        .returns-step-circle-coral {
+            background: rgba(236, 120, 96, 0.2);
+            border-color: rgba(236, 120, 96, 0.7);
+            color: #ec7860;
+            box-shadow: 
+                0 4px 16px rgba(0,0,0,0.3),
+                0 0 20px rgba(236, 120, 96, 0.15),
+                inset 0 0 12px rgba(236, 120, 96, 0.1);
+        }
+        
+        .returns-step-circle-coral:hover {
+            box-shadow: 
+                0 6px 24px rgba(0,0,0,0.4),
+                0 0 28px rgba(236, 120, 96, 0.25),
+                inset 0 0 16px rgba(236, 120, 96, 0.15);
+        }
+        
+        /* Sage color variant (Green - Step 3) */
+        .returns-step-circle-sage {
+            background: rgba(134, 169, 145, 0.2);
+            border-color: rgba(134, 169, 145, 0.7);
+            color: #86a991;
+            box-shadow: 
+                0 4px 16px rgba(0,0,0,0.3),
+                0 0 20px rgba(134, 169, 145, 0.15),
+                inset 0 0 12px rgba(134, 169, 145, 0.1);
+        }
+        
+        .returns-step-circle-sage:hover {
+            box-shadow: 
+                0 6px 24px rgba(0,0,0,0.4),
+                0 0 28px rgba(134, 169, 145, 0.25),
+                inset 0 0 16px rgba(134, 169, 145, 0.15);
         }
 
         .collab-perk-card {
@@ -3714,14 +3808,14 @@
                             <i class="fa-solid fa-list-ol text-accent text-sm" aria-hidden="true"></i>
                             How to Initiate a Return
                         </h2>
-                        <div class="relative" style="padding-left: 42px;">
-                            <!-- Vertical connecting line - PERFECTLY ALIGNED through circle centers -->
-                            <div class="absolute top-2 bottom-2 rounded-full" style="left: 15px; width: 2px; background: linear-gradient(to bottom, rgba(232,166,48,0.5), rgba(236,120,96,0.5), rgba(134,169,145,0.5));"></div>
+                        <div class="returns-timeline-container">
+                            <!-- Vertical connecting line - PERFECTLY CENTERED through circles -->
+                            <div class="returns-timeline-line"></div>
 
                             <!-- Step 1 -->
-                            <div class="relative mb-10 group">
-                                <div class="absolute top-0.5 rounded-full border-2 border-accent flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(232,166,48,0.2);">
-                                    <span class="text-accent font-bold text-xs">1</span>
+                            <div class="relative mb-10 group returns-step-item">
+                                <div class="returns-step-circle returns-step-circle-accent">
+                                    <span class="font-bold text-xs">1</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-accent/15 transition group-hover:bg-cardHover">
                                     <div class="flex items-start gap-3">
@@ -3737,9 +3831,9 @@
                             </div>
 
                             <!-- Step 2 -->
-                            <div class="relative mb-10 group">
-                                <div class="absolute top-0.5 rounded-full border-2 border-coral flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(236,120,96,0.2);">
-                                    <span class="text-coral font-bold text-xs">2</span>
+                            <div class="relative mb-10 group returns-step-item">
+                                <div class="returns-step-circle returns-step-circle-coral">
+                                    <span class="font-bold text-xs">2</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-coral/15 transition group-hover:bg-cardHover">
                                     <div class="flex items-start gap-3">
@@ -3755,9 +3849,9 @@
                             </div>
 
                             <!-- Step 3 -->
-                            <div class="relative mb-10 group">
-                                <div class="absolute top-0.5 rounded-full border-2 border-sage flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(134,169,145,0.2);">
-                                    <span class="text-sage font-bold text-xs">3</span>
+                            <div class="relative mb-10 group returns-step-item">
+                                <div class="returns-step-circle returns-step-circle-sage">
+                                    <span class="font-bold text-xs">3</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-sage/15 transition group-hover:bg-cardHover">
                                     <div class="flex items-start gap-3">
@@ -3773,9 +3867,9 @@
                             </div>
 
                             <!-- Step 4 -->
-                            <div class="relative group">
-                                <div class="absolute top-0.5 rounded-full border-2 border-accent flex items-center justify-center step-circle" style="left: -26px; width: 32px; height: 32px; background: rgba(232,166,48,0.2);">
-                                    <span class="text-accent font-bold text-xs">4</span>
+                            <div class="relative group returns-step-item">
+                                <div class="returns-step-circle returns-step-circle-accent">
+                                    <span class="font-bold text-xs">4</span>
                                 </div>
                                 <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-accent/15 transition group-hover:bg-cardHover">
                                     <div class="flex items-start gap-3">
