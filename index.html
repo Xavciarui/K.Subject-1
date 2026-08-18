@@ -581,116 +581,175 @@
             width: 1px; background: linear-gradient(to bottom, rgba(232,166,48,0.3), transparent);
         }
 
-        /* ═══════════════════════════════════════
-           RETURNS TIMELINE - Perfect Line Alignment & Vibrant Styling
-        ═══════════════════════════════════════ */
+        /* ═════════════════════════════════════════════════════════════════════════
+           RETURNS TIMELINE - Beautiful Design with NO Line Behind Circles!
+           Each connector is a SEPARATE element between steps only.
+        ═════════════════════════════════════════════════════════════════════════ */
         
-        /* Timeline container - provides space for circles */
-        .returns-timeline-container {
+        /* Timeline Container */
+        .returns-timeline {
             position: relative;
-            padding-left: 52px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
         }
         
-        /* Vertical connecting line - PERFECTLY CENTERED through all circles */
-        .returns-timeline-line {
-            position: absolute;
-            top: 8px;
-            bottom: 8px;
-            left: 19px;  /* Perfectly centers on 38px-wide circles: (38/2) - (3/2) = 17.5 ≈ 18 */
-            width: 3px;
-            border-radius: 3px;
-            background: linear-gradient(
-                to bottom,
-                rgba(232, 166, 48, 0.7) 0%,
-                rgba(232, 166, 48, 0.6) 25%,
-                rgba(236, 120, 96, 0.65) 50%,
-                rgba(236, 120, 96, 0.55) 75%,
-                rgba(134, 169, 145, 0.6) 100%
-            );
-            box-shadow: 
-                0 0 12px rgba(232, 166, 48, 0.15),
-                0 0 24px rgba(236, 120, 96, 0.1);
-            z-index: 1;
-        }
-        
-        /* Step item wrapper */
-        .returns-step-item {
+        /* Each Step Row */
+        .returns-step {
             position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            padding-bottom: 28px;
         }
         
-        /* Step circles - PERFECTLY CENTERED on timeline */
-        .returns-step-circle {
-            position: absolute;
-            left: -33px;
-            top: 4px;
-            width: 38px;
-            height: 38px;
+        .returns-step:last-child {
+            padding-bottom: 0;
+        }
+        
+        /* Step Number Circle - Beautiful & Prominent */
+        .returns-step-number {
+            position: relative;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2.5px solid;
-            z-index: 2;
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            flex-shrink: 0;
+            
+            /* Smooth hover animation */
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        box-shadow 0.3s ease;
+            
+            z-index: 2; /* Above connector lines */
         }
         
-        .returns-step-circle:hover {
-            transform: scale(1.12);
+        .returns-step-number:hover {
+            transform: scale(1.15) translateY(-2px);
         }
         
-        /* Accent color variant (Gold - Steps 1 & 4) */
-        .returns-step-circle-accent {
-            background: rgba(232, 166, 48, 0.2);
-            border-color: rgba(232, 166, 48, 0.7);
+        /* Gold/Accent Variant (Steps 1 & 4) */
+        .returns-step-gold {
+            background: linear-gradient(145deg, rgba(232, 166, 48, 0.25), rgba(232, 166, 48, 0.12));
+            border: 3px solid #e8a630;
             color: #e8a630;
-            box-shadow: 
-                0 4px 16px rgba(0,0,0,0.3),
-                0 0 20px rgba(232, 166, 48, 0.15),
-                inset 0 0 12px rgba(232, 166, 48, 0.1);
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.4),
+                0 0 24px rgba(232, 166, 48, 0.35),
+                inset 0 2px 10px rgba(232, 166, 48, 0.2);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
         
-        .returns-step-circle-accent:hover {
-            box-shadow: 
-                0 6px 24px rgba(0,0,0,0.4),
-                0 0 28px rgba(232, 166, 48, 0.25),
-                inset 0 0 16px rgba(232, 166, 48, 0.15);
-        }
-        
-        /* Coral color variant (Orange/Coral - Step 2) */
-        .returns-step-circle-coral {
-            background: rgba(236, 120, 96, 0.2);
-            border-color: rgba(236, 120, 96, 0.7);
+        /* Coral Variant (Step 2) */
+        .returns-step-coral {
+            background: linear-gradient(145deg, rgba(236, 120, 96, 0.25), rgba(236, 120, 96, 0.12));
+            border: 3px solid #ec7860;
             color: #ec7860;
-            box-shadow: 
-                0 4px 16px rgba(0,0,0,0.3),
-                0 0 20px rgba(236, 120, 96, 0.15),
-                inset 0 0 12px rgba(236, 120, 96, 0.1);
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.4),
+                0 0 24px rgba(236, 120, 96, 0.35),
+                inset 0 2px 10px rgba(236, 120, 96, 0.2);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
         
-        .returns-step-circle-coral:hover {
-            box-shadow: 
-                0 6px 24px rgba(0,0,0,0.4),
-                0 0 28px rgba(236, 120, 96, 0.25),
-                inset 0 0 16px rgba(236, 120, 96, 0.15);
-        }
-        
-        /* Sage color variant (Green - Step 3) */
-        .returns-step-circle-sage {
-            background: rgba(134, 169, 145, 0.2);
-            border-color: rgba(134, 169, 145, 0.7);
+        /* Sage/Green Variant (Step 3) */
+        .returns-step-sage {
+            background: linear-gradient(145deg, rgba(134, 169, 145, 0.25), rgba(134, 169, 145, 0.12));
+            border: 3px solid #86a991;
             color: #86a991;
-            box-shadow: 
-                0 4px 16px rgba(0,0,0,0.3),
-                0 0 20px rgba(134, 169, 145, 0.15),
-                inset 0 0 12px rgba(134, 169, 145, 0.1);
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.4),
+                0 0 24px rgba(134, 169, 145, 0.35),
+                inset 0 2px 10px rgba(134, 169, 145, 0.2);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
         
-        .returns-step-circle-sage:hover {
+        /* Step Content Card */
+        .returns-step-content {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 18px 22px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+        
+        .returns-step-content:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+        
+        /* Card color variants on hover */
+        .returns-card-gold:hover { border-color: rgba(232, 166, 48, 0.25); }
+        .returns-card-coral:hover { border-color: rgba(236, 120, 96, 0.25); }
+        .returns-card-sage:hover { border-color: rgba(134, 169, 145, 0.25); }
+        
+        /* Icon wrapper inside card */
+        .returns-step-icon-wrap {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .returns-step-icon {
+            font-size: 15px;
+        }
+        
+        /*
+         * ══════════════════════════════════════════════════════
+         * CONNECTOR LINES - Between circles ONLY!
+         * These are separate elements that connect step to step.
+         * They do NOT appear behind the circles!
+         * ══════════════════════════════════════════════════════
+         */
+        .returns-connector {
+            position: absolute;
+            left: 21px; /* Center of 44px circle: (44/2) = 22, minus half line width */
+            top: 50px; /* Below the circle (circle is 44px tall + some gap) */
+            width: 3px;
+            height: calc(100% - 46px); /* From below circle to bottom of step */
+            border-radius: 3px;
+            z-index: 1; /* Behind circles (z-index: 2) */
+            
+            /* Vibrant gradient based on connection */
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+        }
+        
+        /* Gold → Coral gradient (between step 1 & 2) */
+        .returns-connector-gold-coral {
+            background: linear-gradient(to bottom, #e8a630 0%, #ec7860 100%);
             box-shadow: 
-                0 6px 24px rgba(0,0,0,0.4),
-                0 0 28px rgba(134, 169, 145, 0.25),
-                inset 0 0 16px rgba(134, 169, 145, 0.15);
+                0 0 8px rgba(232, 166, 48, 0.35),
+                0 0 16px rgba(236, 120, 96, 0.25);
+        }
+        
+        /* Coral → Sage gradient (between step 2 & 3) */
+        .returns-connector-coral-sage {
+            background: linear-gradient(to bottom, #ec7860 0%, #86a991 100%);
+            box-shadow: 
+                0 0 8px rgba(236, 120, 96, 0.35),
+                0 0 16px rgba(134, 169, 145, 0.25);
+        }
+        
+        /* Sage → Gold gradient (between step 3 & 4) */
+        .returns-connector-sage-gold {
+            background: linear-gradient(to bottom, #86a991 0%, #e8a630 100%);
+            box-shadow: 
+                0 0 8px rgba(134, 169, 145, 0.35),
+                0 0 16px rgba(232, 166, 48, 0.25);
         }
 
         .collab-perk-card {
@@ -3808,81 +3867,72 @@
                             <i class="fa-solid fa-list-ol text-accent text-sm" aria-hidden="true"></i>
                             How to Initiate a Return
                         </h2>
-                        <div class="returns-timeline-container">
-                            <!-- Vertical connecting line - PERFECTLY CENTERED through circles -->
-                            <div class="returns-timeline-line"></div>
-
+                        
+                        <!-- Timeline Container -->
+                        <div class="returns-timeline">
+                            
                             <!-- Step 1 -->
-                            <div class="relative mb-10 group returns-step-item">
-                                <div class="returns-step-circle returns-step-circle-accent">
-                                    <span class="font-bold text-xs">1</span>
-                                </div>
-                                <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-accent/15 transition group-hover:bg-cardHover">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 border border-accent/10">
-                                            <i class="fa-solid fa-box-open text-accent text-sm" aria-hidden="true"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="font-semibold text-softWhite mb-1">Find Your Order</h3>
-                                            <p class="text-sm text-subtle leading-relaxed">Go to your <strong class="text-softWhite">Dashboard</strong> and locate the order containing the item you want to return.</p>
-                                        </div>
+                            <div class="returns-step">
+                                <div class="returns-step-number returns-step-gold">1</div>
+                                <div class="returns-step-content returns-card-gold">
+                                    <div class="returns-step-icon-wrap">
+                                        <i class="fa-solid fa-box-open returns-step-icon text-accent"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-softWhite mb-1">Find Your Order</h3>
+                                        <p class="text-sm text-subtle leading-relaxed">Go to your <strong class="text-softWhite">Dashboard</strong> and locate the order containing the item you want to return.</p>
                                     </div>
                                 </div>
+                                <!-- Connector Line: Step 1 → Step 2 -->
+                                <div class="returns-connector returns-connector-gold-coral"></div>
                             </div>
 
                             <!-- Step 2 -->
-                            <div class="relative mb-10 group returns-step-item">
-                                <div class="returns-step-circle returns-step-circle-coral">
-                                    <span class="font-bold text-xs">2</span>
-                                </div>
-                                <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-coral/15 transition group-hover:bg-cardHover">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-9 h-9 rounded-xl bg-coral/10 flex items-center justify-center shrink-0 border border-coral/10">
-                                            <i class="fa-solid fa-clipboard-list text-coral text-sm" aria-hidden="true"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="font-semibold text-softWhite mb-1">Request a Return</h3>
-                                            <p class="text-sm text-subtle leading-relaxed">Click <strong class="text-softWhite">"Request Return"</strong> next to the item, select a reason, and upload photos if the item arrived damaged.</p>
-                                        </div>
+                            <div class="returns-step">
+                                <div class="returns-step-number returns-step-coral">2</div>
+                                <div class="returns-step-content returns-card-coral">
+                                    <div class="returns-step-icon-wrap">
+                                        <i class="fa-solid fa-clipboard-list returns-step-icon text-coral"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-softWhite mb-1">Request a Return</h3>
+                                        <p class="text-sm text-subtle leading-relaxed">Click <strong class="text-softWhite">"Request Return"</strong> next to the item, select a reason, and upload photos if the item arrived damaged.</p>
                                     </div>
                                 </div>
+                                <!-- Connector Line: Step 2 → Step 3 -->
+                                <div class="returns-connector returns-connector-coral-sage"></div>
                             </div>
 
                             <!-- Step 3 -->
-                            <div class="relative mb-10 group returns-step-item">
-                                <div class="returns-step-circle returns-step-circle-sage">
-                                    <span class="font-bold text-xs">3</span>
-                                </div>
-                                <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-sage/15 transition group-hover:bg-cardHover">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-9 h-9 rounded-xl bg-sage/10 flex items-center justify-center shrink-0 border border-sage/10">
-                                            <i class="fa-solid fa-clock-rotate-left text-sage text-sm" aria-hidden="true"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="font-semibold text-softWhite mb-1">Review &amp; Approval</h3>
-                                            <p class="text-sm text-subtle leading-relaxed">Our team reviews your request within <strong class="text-softWhite">2 business days</strong>. You will be notified via email once approved.</p>
-                                        </div>
+                            <div class="returns-step">
+                                <div class="returns-step-number returns-step-sage">3</div>
+                                <div class="returns-step-content returns-card-sage">
+                                    <div class="returns-step-icon-wrap">
+                                        <i class="fa-solid fa-clock-rotate-left returns-step-icon text-sage"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-softWhite mb-1">Review &amp; Approval</h3>
+                                        <p class="text-sm text-subtle leading-relaxed">Our team reviews your request within <strong class="text-softWhite">2 business days</strong>. You will be notified via email once approved.</p>
                                     </div>
                                 </div>
+                                <!-- Connector Line: Step 3 → Step 4 -->
+                                <div class="returns-connector returns-connector-sage-gold"></div>
                             </div>
 
-                            <!-- Step 4 -->
-                            <div class="relative group returns-step-item">
-                                <div class="returns-step-circle returns-step-circle-accent">
-                                    <span class="font-bold text-xs">4</span>
-                                </div>
-                                <div class="ml-2 sm:ml-4 rounded-2xl border border-white/[0.05] bg-card p-5 sm:p-6 hover:border-accent/15 transition group-hover:bg-cardHover">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 border border-accent/10">
-                                            <i class="fa-solid fa-truck-fast text-accent text-sm" aria-hidden="true"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="font-semibold text-softWhite mb-1">Ship &amp; Get Refunded</h3>
-                                            <p class="text-sm text-subtle leading-relaxed">Receive a prepaid return shipping label via email. Once we receive and inspect the item, your refund is processed within <strong class="text-softWhite">5-7 business days</strong>.</p>
-                                        </div>
+                            <!-- Step 4 (Last step - no connector after) -->
+                            <div class="returns-step">
+                                <div class="returns-step-number returns-step-gold">4</div>
+                                <div class="returns-step-content returns-card-gold">
+                                    <div class="returns-step-icon-wrap">
+                                        <i class="fa-solid fa-truck-fast returns-step-icon text-accent"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-softWhite mb-1">Ship &amp; Get Refunded</h3>
+                                        <p class="text-sm text-subtle leading-relaxed">Receive a prepaid return shipping label via email. Once we receive and inspect the item, your refund is processed within <strong class="text-softWhite">5–7 business days</strong>.</p>
                                     </div>
                                 </div>
                             </div>
+                            
                         </div>
                     </div>
 
