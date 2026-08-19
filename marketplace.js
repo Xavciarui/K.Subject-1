@@ -232,8 +232,8 @@
         if (isNaN(numPrice)) {
             numPrice = 0;
         }
-        // Use KES currency symbol for Kenyan marketplace
-        return 'KSh ' + numPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        // Use MMK currency symbol for Myanmar marketplace
+        return 'MMK ' + numPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     /**
@@ -936,7 +936,7 @@
             var defaults = {
                 'statTotalProducts': '0',
                 'statActiveProducts': '0',
-                'statRevenue': 'KSh 0.00',  // Fixed: Use KES currency
+                'statRevenue': 'MMK 0.00',  // Fixed: Use MMK currency
                 'statOrders': '0',
                 'statViews': '0'
             };

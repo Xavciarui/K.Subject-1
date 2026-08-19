@@ -5555,7 +5555,7 @@ async function createProfile(userId, meta) {
             description: meta.description || '',
             role:        normalizedRole,
             status:      'pending',  // ⏳ SPAM PROTECTION - Must be approved by admin!
-            country:     'Kenya'
+            country:     'Myanmar'
         };
         
         console.log('[createProfile] Inserting data:', JSON.stringify(row, null, 2));
@@ -5615,7 +5615,7 @@ async function createProfile(userId, meta) {
                     last_name: '',
                     role: 'seller',
                     status: 'pending',
-                    country: 'Kenya'
+                    country: 'Myanmar'
                 };
                 var retryRes = await sb.from('profiles').insert(retryRow).select().single();
                 if (!retryRes.error && retryRes.data) {

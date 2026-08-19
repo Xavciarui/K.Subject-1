@@ -40,7 +40,7 @@
         return;
     }
 
-    var fp = window.formatPrice || function (v) { return 'KSh ' + (v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var fp = window.formatPrice || function (v) { return 'MMK ' + (v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
     var sr = window.starRating  || function (r) { return ''; };
     var ta = window.timeAgo    || function (d) { return d || ''; };
     var sg = window.safeGet || function (id) { return document.getElementById(id); };
