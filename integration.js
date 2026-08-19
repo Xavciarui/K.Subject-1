@@ -436,11 +436,28 @@
             }
         }
         else if (view === 'dashboard') {
-            if (typeof currentUser !== 'undefined' && currentUser && currentUser.id) {
+            // SECURITY CHECK: Only load dashboard data for APPROVED users
+            var isApproved = typeof currentUser !== 'undefined' && 
+                            currentUser && 
+                            currentUser.id && 
+                            currentUser.status === 'approved';
+            
+            if (isApproved) {
                 DashboardManager.loadDashboardStats();
                 DashboardManager.loadDashboardProducts();
                 DashboardManager.loadDashboardOrders();
                 DashboardManager.loadRecentActivity();
+            } else {
+                console.warn('[integration] Dashboard access blocked - user not approved. Status:', 
+                    (currentUser && currentUser.status) || 'no user');
+                
+                // Redirect to approval waiting or home
+                if (typeof navigateToApprovalWaiting === 'function' && 
+                    currentUser && currentUser.status === 'pending') {
+                    navigateToApprovalWaiting();
+                } else if (typeof window.navigateTo === 'function') {
+                    window.navigateTo('home');
+                }
             }
         }
         else if (view === 'checkout') {
