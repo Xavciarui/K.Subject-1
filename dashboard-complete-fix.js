@@ -1,6 +1,6 @@
 /**
  * ════════════════════════════════════════════════════════════════════════════════════════════
- * K.Subject-1 Marketplace — Feature Completion Module (FIXED v3.1 - COMPLETE)
+ * K.Subject-1 Marketplace — Feature Completion Module (FIXED v4.0 - COMPLETE)
  * ES5-compatible JavaScript (var, function, no arrow functions, no const/let)
  * 
  * This file completes all incomplete features in the K.Subject-1 marketplace.
@@ -40,15 +40,28 @@
  * - Issue #10: Enhanced error handling for foreign key violations
  * - Issue #11: Auto-refresh of collection views after product operations
  * 
- * VERSION: 3.1.0 (COMPLETE + PRODUCT CREATION FIX)
+ * ✨ NEW IN v4.0 (CRITICAL BUG FIXES):
+ * - BUG #1: Helper Function Aliases added for safe fallbacks
+ * - BUG #2: currentUser null checks on all sensitive functions
+ * - BUG #3: Browser confirm() replaced with custom modal
+ * - BUG #4: Collection query syntax fixed (invalid aggregation removed)
+ * - BUG #5: Image upload individual error handling added
+ * - BUG #6: Product delete now cleans up images from storage
+ * - BUG #7: Analytics chart handles empty data gracefully
+ * - BUG #8: Filename collision prevention with random suffix
+ * - BUG #9: DEBUG_MODE set to false for production
+ * - BUG #10: Toast stacking limit implemented
+ * 
+ * VERSION: 4.0.0 (COMPLETE + ALL CRITICAL BUGS FIXED)
  * ════════════════════════════════════════════════════════════════════════════════════════════
  */
 
 (function() {
     'use strict';
     
-    // ─── DEBUG MODE - Set to true only during development ─────────────────
-    var DEBUG_MODE = true;
+    // ─── DEBUG MODE - Set to false for production ──────────────────────────────
+    // BUG #9 FIX: Changed from true to false for production safety
+    var DEBUG_MODE = false;
     
     // FIXED: Proper logging functions that don't call themselves recursively
     function log(/* args */) {
@@ -69,17 +82,58 @@
             console.error('[dashboard-fix]', msg);
         }
     }
-    
-    // Shorthand helpers
-    var sg = typeof safeGet === 'function' ? safeGet : function(id) { return document.getElementById(id); };
-    var eh = typeof escapeHtml === 'function' ? escapeHtml : function(str) {
-        if (!str) return '';
-        return String(str).replace(/[&<>"'\/]/g, function(char) {
-            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;','/':'&#x2F;'}[char];
-        });
+
+    // ════════════════════════════════════════════════════════════════════════════════
+    // BUG #1 FIX: HELPER FUNCTION ALIASES (Safe fallbacks)
+    // These ensure helpers work even if global versions aren't loaded yet
+    // ════════════════════════════════════════════════════════════════════════════════
+
+    var eh = window.escapeHtml || function(t) { 
+        if (!t) return ''; 
+        return String(t).replace(/[&<>"']/g, function(c) { 
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; 
+        }); 
     };
 
-    log('🚀 Dashboard Feature Completion Module v3.1 loading...');
+    var sg = window.safeGet || function(id) { 
+        return document.getElementById(id); 
+    };
+
+    var fp = window.formatPrice || function(p) { 
+        if (typeof p !== 'number') p = parseFloat(p) || 0; 
+        return 'KES ' + p.toLocaleString(); 
+    };
+
+    var sr = window.starRating || function(rating, size) {
+        if (typeof rating !== 'number') rating = 0;
+        var stars = '';
+        var fullStars = Math.floor(rating);
+        var hasHalf = rating % 1 >= 0.5;
+        for (var i = 0; i < 5; i++) {
+            if (i < fullStars) stars += '★';
+            else if (i === fullStars && hasHalf) stars += '⯨';
+            else stars += '☆';
+        }
+        return '<span class="star-rating" style="color:#fbbf24;font-size:' + (size || '14px') + '">' + stars + '</span>';
+    };
+
+    var ta = window.timeAgo || function(dateString) {
+        if (!dateString) return '';
+        var now = new Date();
+        var date = new Date(dateString);
+        var seconds = Math.floor((now - date) / 1000);
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+        if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+        return date.toLocaleDateString();
+    };
+    
+    // Keep existing shorthand helpers as fallbacks (in case window versions exist)
+    var _sg = typeof safeGet === 'function' ? safeGet : sg;
+    var _eh = typeof escapeHtml === 'function' ? escapeHtml : eh;
+
+    log('🚀 Dashboard Feature Completion Module v4.0 loading...');
 
     // ════════════════════════════════════════════════════════════════════════════════
     // SECTION 1: SELLER DASHBOARD ENHANCEMENTS
@@ -91,8 +145,10 @@
     window.initSellerDashboard = function() {
         log('Initializing seller dashboard...');
         
+        // BUG #2 FIX: Added explicit currentUser check with user feedback
         if (!window.currentUser || !window.currentUser.id) {
             warn('No user logged in - dashboard initialization skipped');
+            if (window.showToast) showToast('Please sign in to access the dashboard.', 'warning');
             return;
         }
         
@@ -331,6 +387,12 @@
      * @param {string|Object} [productIdOrData] - Product ID or data for editing
      */
     window.openProductModal = function(productIdOrData) {
+        // BUG #2 FIX: Check authentication before opening modal
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to manage products.', 'error');
+            return;
+        }
+        
         var isEdit = typeof productIdOrData === 'string' || (productIdOrData && productIdOrData.id);
         
         var modalHtml = renderProductModal(isEdit ? productIdOrData : null);
@@ -426,6 +488,12 @@
      * Handle product form submission
      */
     function handleProductSubmit(isEdit) {
+        // BUG #2 FIX: Verify user is still authenticated before submit
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Your session has expired. Please sign in again.', 'error');
+            return;
+        }
+        
         var form = document.getElementById('productForm');
         if (!form) return;
         
@@ -533,6 +601,7 @@
 
     /**
      * Handle product image uploads
+     * BUG #5 FIX: Added individual error catching per file upload
      */
     function handleProductImages(productId) {
         var input = document.getElementById('productImageInput');
@@ -544,12 +613,16 @@
         for (var i = 0; i < files.length; i++) {
             (function(file, index) {
                 var fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                var filePath = productId + '/' + Date.now() + '_' + fileName;
+                // BUG #8 FIX: Added random suffix to prevent filename collisions
+                var filePath = productId + '/' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + fileName;
                 
+                // BUG #5 FIX: Wrapped in Promise with individual catch to prevent Promise.all failure
                 promises.push(
                     window.sb.storage.from('product-images')
                         .upload(filePath, file)
                         .then(function(uploadResult) {
+                            if (uploadResult.error) throw uploadResult.error;
+                            
                             var publicUrl = window.sb.storage.from('product-images').getPublicUrl(uploadResult.path);
                             
                             return window.sb.from('product_images').insert([{
@@ -563,11 +636,20 @@
                                 file_size: file.size
                             }]);
                         })
+                        .catch(function(err) {
+                            // BUG #5 FIX: Individual error handling - don't break Promise.all
+                            console.error('Image upload failed:', file.name, err);
+                            showToast('Failed to upload: ' + file.name, 'error');
+                            return null;  // Return null so Promise.all can filter it out
+                        })
                 );
             })(files[i], i);
         }
         
-        return Promise.all(promises);
+        // Filter out null results from failed uploads
+        return Promise.all(promises).then(function(results) {
+            return results.filter(function(r) { return r !== null; });
+        });
     }
 
     /**
@@ -704,24 +786,32 @@
 
     /**
      * Remove existing product image
+     * BUG #3 FIX: Replaced browser confirm() with custom showConfirmModal
      */
     window.removeExistingImage = function(imageId, buttonElement) {
-        if (!confirm('Remove this image?')) return;
+        // Store reference to button for callback
+        var _buttonElement = buttonElement;
+        var _imageId = imageId;
         
-        window.sb.from('product_images')
-            .delete()
-            .eq('id', imageId)
-            .then(function() {
-                // Remove image preview from DOM
-                if (buttonElement && buttonElement.parentElement) {
-                    buttonElement.parentElement.remove();
-                }
-                showToast('Image removed', 'success');
-            })
-            .catch(function(err) {
-                error('Error removing image:', err);
-                showToast('Failed to remove image', 'error');
-            });
+        // BUG #3 FIX: Using custom modal instead of browser confirm()
+        showConfirmModal('Remove Image', 'Are you sure you want to remove this image?', function() {
+            window.sb.from('product_images')
+                .delete()
+                .eq('id', _imageId)
+                .then(function() {
+                    // Remove image preview from DOM
+                    if (_buttonElement && _buttonElement.parentElement) {
+                        _buttonElement.parentElement.remove();
+                    }
+                    showToast('Image removed', 'success');
+                })
+                .catch(function(err) {
+                    error('Error removing image:', err);
+                    showToast('Failed to remove image', 'error');
+                });
+        });
+        // Return early - the actual logic is inside the callback above
+        return;
     };
 
     /**
@@ -737,14 +827,80 @@
 
     /**
      * Delete product
+     * BUG #6 FIX: Now cleans up images from storage before deleting product
      */
     window.deleteProduct = function(productId) {
-        showConfirmModal('Delete Product', 'Are you sure you want to delete this product? This action cannot be undone.', function() {
-            window.sb.from('products')
-                .delete()
-                .eq('id', productId)
-                .eq('seller_id', window.currentUser.id)
+        // BUG #2 FIX: Check authentication first
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to continue.', 'error');
+            return;
+        }
+        
+        showConfirmModal('Delete Product', 'This will permanently delete the product and all its images.', function() {
+            // Use async-style execution with Promises
+            var userId = window.currentUser.id;
+            
+            // 1. Get product images first
+            window.sb.from('product_images')
+                .select('*')
+                .eq('product_id', productId)
+                .then(function(imagesResult) {
+                    var images = imagesResult.data || [];
+                    
+                    // 2. Delete images from storage if any exist
+                    if (images.length > 0) {
+                        var pathsToDelete = [];
+                        
+                        for (var idx = 0; idx < images.length; idx++) {
+                            try {
+                                // Extract path from URL
+                                var imgUrl = images[idx].image_url || images[idx].url || '';
+                                if (imgUrl) {
+                                    var urlParts = new URL(imgUrl);
+                                    var match = urlParts.pathname.match(/\/object\/[^\/]+\/(.+)/);
+                                    if (match) {
+                                        pathsToDelete.push(match[1]);
+                                    }
+                                }
+                            } catch(e) { 
+                                // URL parsing failed, skip this path
+                            }
+                        }
+                        
+                        // Remove from storage if we have valid paths
+                        var storagePromise = pathsToDelete.length > 0 
+                            ? window.sb.storage.from('product-images').remove(pathsToDelete)
+                                .catch(function(storageErr) {
+                                    console.warn('Some storage deletions failed:', storageErr);
+                                    // Continue even if storage cleanup fails
+                                    return null;
+                                })
+                            : Promise.resolve(null);
+                        
+                        return storagePromise.then(function() {
+                            // 3. Delete image records from DB
+                            return window.sb.from('product_images')
+                                .delete()
+                                .eq('product_id', productId)
+                                .catch(function(dbErr) {
+                                    console.warn('Image record deletion failed:', dbErr);
+                                    return null;
+                                });
+                        });
+                    } else {
+                        return Promise.resolve(null);
+                    }
+                })
                 .then(function() {
+                    // 4. Delete the product itself
+                    return window.sb.from('products')
+                        .delete()
+                        .eq('id', productId)
+                        .eq('seller_id', userId);
+                })
+                .then(function(result) {
+                    if (result && result.error) throw result.error;
+                    
                     showToast('Product deleted successfully', 'success');
                     
                     // Refresh views
@@ -774,6 +930,13 @@
      */
     window.initLibrarySystem = function() {
         log('Initializing library system...');
+        
+        // BUG #2 FIX: Check authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            warn('No user logged in - library initialization skipped');
+            if (window.showToast) showToast('Please sign in to access library.', 'warning');
+            return;
+        }
         
         var uploadZone = sg('libraryUploadZone');
         if (uploadZone) {
@@ -821,14 +984,22 @@
 
     /**
      * Handle library file uploads
+     * BUG #2 FIX: Added currentUser guard at start
      */
     function handleLibraryFileUpload(files) {
+        // BUG #2 FIX: Check authentication before upload
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to upload files.', 'error');
+            return;
+        }
+        
         if (!files || files.length === 0) return;
         
         for (var i = 0; i < files.length; i++) {
             (function(file) {
                 var fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                var filePath = window.currentUser.id + '/library/' + Date.now() + '_' + fileName;
+                // BUG #8 FIX: Added random suffix to prevent filename collisions
+                var filePath = window.currentUser.id + '/library/' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + fileName;
                 
                 showToast('Uploading ' + file.name + '...', 'info');
                 
@@ -948,8 +1119,15 @@
 
     /**
      * Delete library file
+     * BUG #2 FIX: Added currentUser check via showConfirmModal guard
      */
     window.deleteLibraryFile = function(fileId) {
+        // BUG #2 FIX: Check authentication before deletion
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to continue.', 'error');
+            return;
+        }
+        
         showConfirmModal('Delete File', 'Are you sure you want to delete this file?', function() {
             // First get file info to delete from storage too
             window.sb.from('library_files')
@@ -988,19 +1166,31 @@
      */
     window.initCollectionSystem = function() {
         log('Initializing collection system...');
+        
+        // BUG #2 FIX: Check authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            warn('No user logged in - collection initialization skipped');
+            return;
+        }
+        
         loadCollections();
     };
 
     /**
      * Load user's collections
+     * BUG #4 FIX: Fixed invalid Supabase aggregation syntax
      */
     function loadCollections() {
         var container = sg('collectionsList');
         if (!container || !window.sb || !window.currentUser) return;
         
+        var userId = window.currentUser.id;
+        
+        // BUG #4 FIX: Changed from invalid '.select('*, collection_products(count)')' 
+        // to separate queries that properly get counts
         window.sb.from('collections')
-            .select('*, collection_products(count)')
-            .eq('user_id', window.currentUser.id)
+            .select('*')
+            .eq('user_id', userId)
             .order('created_at', {ascending: false})
             .then(function(result) {
                 var collections = result.data || [];
@@ -1014,39 +1204,74 @@
                     return;
                 }
                 
-                var html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
-                
-                for (var i = 0; i < collections.length; i++) {
-                    var collection = collections[i];
-                    var count = collection.collection_products ? collection.collection_products.count || 0 : 0;
-                    
-                    html += '<div class="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onclick="viewCollection(\'' + collection.id + '\')">' +
-                        '<div class="h-32 bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">' +
-                            '<i class="fas fa-layer-group text-4xl text-purple-400"></i>' +
-                        '</div>' +
-                        '<div class="p-4">' +
-                            '<h3 class="font-semibold text-gray-900 truncate">' + eh(collection.name) + '</h3>' +
-                            '<p class="text-sm text-gray-500 mt-1">' + count + ' products</p>' +
-                            '<div class="flex gap-2 mt-3">' +
-                                '<button onclick="event.stopPropagation();editCollection(\'' + collection.id + '\')" class="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200">Edit</button>' +
-                                '<button onclick="event.stopPropagation();deleteCollection(\'' + collection.id + '\')" class="px-3 py-1.5 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">Delete</button>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>';
+                // BUG #4 FIX: Get counts separately using proper count query
+                var countPromises = [];
+                for (var c = 0; c < collections.length; c++) {
+                    (function(collection, index) {
+                        countPromises.push(
+                            window.sb.from('collection_products')
+                                .select('*', { count: 'exact', head: true })
+                                .eq('collection_id', collection.id)
+                                .then(function(countResult) {
+                                    collections[index].product_count = countResult.count || 0;
+                                })
+                                .catch(function() {
+                                    collections[index].product_count = 0;
+                                })
+                        );
+                    })(collections[c], c);
                 }
                 
-                html += '</div>';
-                container.innerHTML = html;
+                // Wait for all counts then render
+                Promise.all(countPromises).then(function() {
+                    renderCollectionsList(collections, container);
+                });
             })
             .catch(function(err) {
                 error('Collections error:', err);
             });
+    }
+    
+    /**
+     * Render collections list to container
+     * Helper function extracted for cleaner code after BUG #4 fix
+     */
+    function renderCollectionsList(collections, container) {
+        var html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+        
+        for (var i = 0; i < collections.length; i++) {
+            var collection = collections[i];
+            var count = collection.product_count || 0;
+            
+            html += '<div class="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onclick="viewCollection(\'' + collection.id + '\')">' +
+                '<div class="h-32 bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">' +
+                    '<i class="fas fa-layer-group text-4xl text-purple-400"></i>' +
+                '</div>' +
+                '<div class="p-4">' +
+                    '<h3 class="font-semibold text-gray-900 truncate">' + eh(collection.name) + '</h3>' +
+                    '<p class="text-sm text-gray-500 mt-1">' + count + ' products</p>' +
+                    '<div class="flex gap-2 mt-3">' +
+                        '<button onclick="event.stopPropagation();editCollection(\'' + collection.id + '\')" class="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200">Edit</button>' +
+                        '<button onclick="event.stopPropagation();deleteCollection(\'' + collection.id + '\')" class="px-3 py-1.5 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">Delete</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
     }
 
     /**
      * Open collection create/edit modal
      */
     window.openCollectionModal = function(collectionId) {
+        // BUG #2 FIX: Check authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to manage collections.', 'error');
+            return;
+        }
+        
         var isEdit = !!collectionId;
         var title = isEdit ? 'Edit Collection' : 'Create New Collection';
         
@@ -1081,6 +1306,12 @@
      * Handle collection form submission
      */
     function handleCollectionSubmit(isEdit) {
+        // BUG #2 FIX: Verify authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Your session has expired. Please sign in again.', 'error');
+            return;
+        }
+        
         var name = document.getElementById('collectionName').value.trim();
         var description = document.getElementById('collectionDescription').value.trim();
         var isPublic = document.getElementById('collectionIsPublic').checked;
@@ -1160,6 +1391,12 @@
      * Delete collection
      */
     window.deleteCollection = function(collectionId) {
+        // BUG #2 FIX: Check authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to continue.', 'error');
+            return;
+        }
+        
         showConfirmModal('Delete Collection', 'Delete "' + collectionId + '"? Products won\'t be deleted.', function() {
             window.sb.from('collections')
                 .delete()
@@ -1244,6 +1481,12 @@
      * Add products to collection modal
      */
     window.showAddToCollectionModal = function(collectionId) {
+        // BUG #2 FIX: Check authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to continue.', 'error');
+            return;
+        }
+        
         window.sb.from('products')
             .select('id, title, product_images(*)')
             .eq('seller_id', window.currentUser.id)
@@ -1294,6 +1537,12 @@
      * Remove product from collection
      */
     window.removeFromCollection = function(collectionId, collectionProductId) {
+        // BUG #2 FIX: Check authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to continue.', 'error');
+            return;
+        }
+        
         window.sb.from('collection_products')
             .delete()
             .eq('id', collectionProductId)
@@ -1415,6 +1664,12 @@
      * Update order status
      */
     window.updateOrderStatus = function(orderId, newStatus) {
+        // BUG #2 FIX: Check authentication
+        if (!window.currentUser || !window.currentUser.id) {
+            if (window.showToast) showToast('Please sign in to continue.', 'error');
+            return Promise.reject(new Error('Not authenticated'));
+        }
+        
         var statusMessages = {
             'processing': 'Accepting order...',
             'shipped': 'Marking as shipped...',
@@ -1460,8 +1715,8 @@
         }
         
         Promise.all([
-            // Revenue over last 30 days
-            window_sb.rpc('get_seller_revenue', {seller_id_param: uid, days_param: 30}),
+            // Revenue over last 30 days - FIXED: was window_sb.rpc (typo)
+            window.sb.rpc('get_seller_revenue', {seller_id_param: uid, days_param: 30}),
             // Orders count by status
             window.sb.from('orders').select('status', {count:'exact'}).eq('seller_id', uid),
             // Top products
@@ -1493,17 +1748,24 @@
 
     /**
      * Render revenue chart (simple bar chart using CSS)
+     * BUG #7 FIX: Enhanced empty data handling and division-by-zero prevention
      */
     function renderRevenueChart(data) {
         var container = sg('revenueChart');
         if (!container) return;
         
+        // BUG #7 FIX: Handle empty/missing data more robustly
         if (!data || data.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 py-8">No revenue data available</p>';
+            container.innerHTML = '<div class="text-center py-8 text-muted"><p>No data available for this period</p><p class="text-sm text-gray-400 mt-2">Complete some orders to see revenue trends</p></div>';
             return;
         }
         
         var maxRevenue = Math.max.apply(null, data.map(function(d) { return d.revenue || 0; }));
+        
+        // BUG #7 FIX: Prevent division by zero
+        if (maxRevenue === 0 || isNaN(maxRevenue)) {
+            maxRevenue = 100; // Set minimum scale
+        }
         
         var html = '<div class="space-y-2">';
         for (var i = 0; i < data.length; i++) {
@@ -1754,9 +2016,20 @@
 
     /**
      * Show toast notification
+     * BUG #10 FIX: Added toast stacking limit to prevent UI overflow
      */
+    // BUG #10 FIX: Define maximum visible toasts constant
+    var MAX_VISIBLE_TOASTS = 5;
+
     window.showToast = function(message, type) {
         type = type || 'info';
+        
+        // BUG #10 FIX: Remove oldest toast if limit reached
+        var existingToasts = document.querySelectorAll('.toast-notification');
+        if (existingToasts.length >= MAX_VISIBLE_TOASTS) {
+            // Remove the oldest toast (first one in DOM)
+            existingToasts[0].remove();
+        }
         
         var colors = {
             success: 'bg-green-500',
@@ -1773,7 +2046,8 @@
         };
         
         var toast = document.createElement('div');
-        toast.className = 'fixed bottom-4 right-4 z-50 px-6 py-3 rounded-lg text-white shadow-lg transform translate-y-full opacity-0 transition-all duration-300 flex items-center gap-3 max-w-md';
+        // BUG #10 FIX: Add identifying class for stacking limit detection
+        toast.className = 'toast-notification fixed bottom-4 right-4 z-50 px-6 py-3 rounded-lg text-white shadow-lg transform translate-y-full opacity-0 transition-all duration-300 flex items-center gap-3 max-w-md';
         toast.style.backgroundColor = type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : type === 'warning' ? '#f59e0b' : '#3b82f6';
         
         toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i>' +
@@ -1790,7 +2064,9 @@
         // Auto remove after 4 seconds
         setTimeout(function() {
             toast.classList.add('translate-y-full', 'opacity-0');
-            setTimeout(function() { toast.remove(); }, 300);
+            setTimeout(function() { 
+                if (toast.parentElement) toast.remove(); 
+            }, 300);
         }, 4000);
     };
 
@@ -1918,7 +2194,7 @@
     }
 
     function initWhenReady() {
-        log('🎉 Dashboard Feature Completion Module v3.1 FULLY LOADED');
+        log('🎉 Dashboard Feature Completion Module v4.0 FULLY LOADED');
         log('');
         log('Features initialized:');
         log('  ✅ Seller Dashboard with stats');
@@ -1928,11 +2204,17 @@
         log('  ✅ Order Management');
         log('  ✅ Analytics & Charts');
         log('');
-        log('CRITICAL FIXES in v3.1:');
-        log('  ✅ Product creation now uses category_id (not category)');
-        log('  ✅ Collection auto-refreshes after product creation');
-        log('  ✅ Enhanced error handling for FK violations');
-        log('  ✅ Fallback queries for maximum compatibility');
+        log('CRITICAL FIXES in v4.0:');
+        log('  ✅ Helper Function Aliases (safe fallbacks)');
+        log('  ✅ currentUser null checks on all functions');
+        log('  ✅ Browser confirm() replaced with custom modals');
+        log('  ✅ Collection query syntax fixed');
+        log('  ✅ Image upload individual error handling');
+        log('  ✅ Product delete cleans up storage images');
+        log('  ✅ Analytics chart empty data handling');
+        log('  ✅ Filename collision prevention');
+        log('  ✅ DEBUG_MODE set to false');
+        log('  ✅ Toast stacking limit implemented');
         
         // Auto-initialize if on dashboard page
         if (typeof window.initSellerDashboard === 'function' && window.currentUser) {
@@ -1946,13 +2228,14 @@
 })();
 
 // ════════════════════════════════════════════════════════════════════════════════
-// PRODUCT CREATION FIX PATCH (v3.1) - Ensures products appear in collection
+// PRODUCT CREATION FIX PATCH (v4.0) - Ensures products appear in collection
 // ════════════════════════════════════════════════════════════════════════════════
 
 (function() {
     'use strict';
     
-    var DEBUG_MODE = true;
+    // BUG #9 FIX: Set DEBUG_MODE to false for production
+    var DEBUG_MODE = false;
     
     function log(/* args */) {
         if (DEBUG_MODE && typeof console === 'object' && console.log) {
@@ -1971,7 +2254,7 @@
         }
     }
     
-    log('🔧 Product Creation Fix Patch v3.1 activated');
+    log('🔧 Product Creation Fix Patch v4.0 activated');
     
     // ════════════════════════════════════════════════════════════════════════════════
     // PATCH #1: Ensure ProductManager.createProduct uses correct field names
@@ -1984,7 +2267,11 @@
         window.ProductManager.createProduct = function(data) {
             log('📦 Creating product with PATCHED schema...');
             
+            // BUG #2 FIX: Check authentication
             if (!window.currentUser || !window.currentUser.id) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Please sign in to create products.', 'error');
+                }
                 return Promise.reject(new Error('Not authenticated'));
             }
             
@@ -2086,8 +2373,12 @@
             error('Supabase not initialized'); 
             return; 
         }
+        // BUG #2 FIX: Check authentication with user feedback
         if (!window.currentUser || !window.currentUser.id) { 
             error('No user logged in'); 
+            if (typeof window.showToast === 'function') {
+                window.showToast('Please sign in to view collection.', 'warning');
+            }
             return; 
         }
         
@@ -2294,7 +2585,7 @@
     // PATCH COMPLETE
     // ════════════════════════════════════════════════════════════════════════════════
     
-    log('🎉 Product Creation Fix Patch v3.1 FULLY INSTALLED');
+    log('🎉 Product Creation Fix Patch v4.0 FULLY INSTALLED');
     log('');
     log('Summary of patches applied:');
     log('  ✅ ProductManager.createProduct() now uses category_id');
@@ -2302,6 +2593,7 @@
     log('  ✅ Form validation ensures category is always selected');
     log('  ✅ Views auto-refresh after product creation');
     log('  ✅ Enhanced error messages for debugging');
+    log('  ✅ Authentication checks on all functions');
     log('');
     log('Remember to run fix_product_schema_v3.sql in Supabase first!');
     

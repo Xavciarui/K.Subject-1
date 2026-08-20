@@ -54,7 +54,7 @@
         if (input === null || input === undefined) return '';
         var str = String(input);
         
-        opts = options || {};
+        var opts = options || {};
         
         // Remove null bytes
         str = str.replace(/\0/g, '');
@@ -370,7 +370,7 @@
         }
         
         // Category validation
-        if (!data.category) {
+        if (!data.category && !data.category_id) {
             errors.category = 'Please select a category';
         }
         

@@ -4800,7 +4800,7 @@
                                 <div class="lg:col-span-2">
                                     <div class="bg-card border border-white/[0.04] rounded-2xl p-6">
                                         <h3 class="font-semibold mb-5">Shop Information</h3>
-                                        <div class="space-y-4">
+                                        <form id="settingsForm" onsubmit="event.preventDefault(); saveShopSettings();" class="space-y-4">
                                             <div>
                                                 <label for="settingsShopName" class="block text-xs font-medium text-subtle mb-1.5">Shop Name</label>
                                                 <input type="text" class="auth-input" placeholder="Your shop name" id="settingsShopName" autocomplete="organization">
@@ -4823,10 +4823,10 @@
                                                 <label for="settingsAddress" class="block text-xs font-medium text-subtle mb-1.5">Address</label>
                                                 <input type="text" class="auth-input" placeholder="Your business address" id="settingsAddress" autocomplete="street-address">
                                             </div>
-                                            <button onclick="saveShopSettings()" class="px-6 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
+                                            <button type="submit" class="px-6 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accentDim transition">
                                                 Save Changes
                                             </button>
-                                        </div>
+                                        </form>
                                     </div>
                                 </div>
 
@@ -4847,15 +4847,15 @@
                                         <div class="space-y-3">
                                             <div class="flex justify-between text-sm">
                                                 <span class="text-muted">Products</span>
-                                                <span class="font-medium">0</span>
+                                                <span id="quickStatProducts" class="font-medium">0</span>
                                             </div>
                                             <div class="flex justify-between text-sm">
                                                 <span class="text-muted">Orders</span>
-                                                <span class="font-medium">0</span>
+                                                <span id="quickStatOrders" class="font-medium">0</span>
                                             </div>
                                             <div class="flex justify-between text-sm">
                                                 <span class="text-muted">Revenue</span>
-                                                <span class="font-medium">0 MMK</span>
+                                                <span id="quickStatRevenue" class="font-medium">0 KES</span>
                                             </div>
                                             <div class="flex justify-between text-sm">
                                                 <span class="text-muted">Member Since</span>
@@ -7700,6 +7700,1449 @@ async function handleForgotPassword() {
 <!-- K.Subject-1 Marketplace: Dashboard & Feature Completion Module -->
 <script src="dashboard-complete-fix.js"></script>
 
+<!-- ============================================
+     PRODUCT MODAL (Add/Edit) - CRITICAL FIX #C2
+     ============================================ -->
+
+<!-- Product Modal (Add/Edit) -->
+<div id="productModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="closeProductModal()"></div>
+    <div class="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <div class="bg-[#0f0f14] border border-white/[0.06] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <!-- Modal Header -->
+            <div class="sticky top-0 bg-[#0f0f14] border-b border-white/[0.06] px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
+                <h2 id="productModalTitle" class="text-lg font-semibold text-white">Add New Product</h2>
+                <button onclick="closeProductModal()" class="p-2 hover:bg-white/[0.05] rounded-lg transition-colors" aria-label="Close modal">
+                    <i class="fa-solid fa-xmark text-muted"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="productForm" onsubmit="event.preventDefault(); saveProduct();" class="p-6 space-y-5">
+                <input type="hidden" id="editProductId" value="">
+                
+                <!-- Product Title -->
+                <div>
+                    <label for="productTitle" class="block text-sm font-medium text-subtle mb-2">Product Title *</label>
+                    <input type="text" id="productTitle" name="title" required minlength="3" maxlength="200"
+                           class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition-all"
+                           placeholder="Enter product title">
+                    <p class="validation-error text-red-500 text-sm mt-1 hidden"></p>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label for="productDescription" class="block text-sm font-medium text-subtle mb-2">Description *</label>
+                    <textarea id="productDescription" name="description" required minlength="10" rows="4"
+                              class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition-all resize-none"
+                              placeholder="Describe your product in detail..."></textarea>
+                    <p class="validation-error text-red-500 text-sm mt-1 hidden"></p>
+                </div>
+                
+                <!-- Price & Category Row -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="productPrice" class="block text-sm font-medium text-subtle mb-2">Price (KES) *</label>
+                        <input type="number" id="productPrice" name="price" required min="0" max="999999.99" step="0.01"
+                               class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition-all"
+                               placeholder="0.00">
+                        <p class="validation-error text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+                    <div>
+                        <label for="productCategory" class="block text-sm font-medium text-subtle mb-2">Category *</label>
+                        <select id="productCategory" name="category_id" required
+                                class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition-all">
+                            <option value="">Select category</option>
+                            <option value="tech">Tech & Electronics</option>
+                            <option value="fashion">Fashion & Apparel</option>
+                            <option value="beauty">Beauty & Care</option>
+                            <option value="outdoor">Outdoor & Sports</option>
+                            <option value="home">Home & Living</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <p class="validation-error text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+                </div>
+                
+                <!-- SKU & Stock Row -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="productSku" class="block text-sm font-medium text-subtle mb-2">SKU</label>
+                        <input type="text" id="productSku" name="sku" maxlength="50"
+                               class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition-all"
+                               placeholder="Auto-generated if empty">
+                    </div>
+                    <div>
+                        <label for="productStock" class="block text-sm font-medium text-subtle mb-2">Stock Quantity *</label>
+                        <input type="number" id="productStock" name="stock_quantity" required min="0" max="99999"
+                               class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition-all"
+                               placeholder="0">
+                        <p class="validation-error text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+                </div>
+                
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-subtle mb-2">Product Images</label>
+                    <div id="productImageUploadArea" 
+                         class="border-2 border-dashed border-white/[0.1] rounded-xl p-6 text-center cursor-pointer hover:border-accent/50 transition-colors"
+                         onclick="document.getElementById('productImageInput').click()">
+                        <i class="fa-solid fa-cloud-upload-alt text-3xl text-muted mb-2"></i>
+                        <p class="text-sm text-muted">Click or drag images here</p>
+                        <p class="text-xs text-muted/60 mt-1">PNG, JPG, WebP up to 5MB each</p>
+                    </div>
+                    <input type="file" id="productImageInput" accept="image/*" multiple class="hidden" onchange="handleProductImages(this)">
+                    
+                    <!-- Image Previews -->
+                    <div id="productImagePreviews" class="grid grid-cols-4 gap-3 mt-3"></div>
+                    
+                    <!-- Existing Images (for edit mode) -->
+                    <div id="existingProductImages" class="grid grid-cols-4 gap-3 mt-3 hidden"></div>
+                </div>
+                
+                <!-- Status -->
+                <div>
+                    <label for="productStatus" class="block text-sm font-medium text-subtle mb-2">Status</label>
+                    <select id="productStatus" name="status"
+                            class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition-all">
+                        <option value="active">Active (Visible)</option>
+                        <option value="draft">Draft (Hidden)</option>
+                        <option value="out_of_stock">Out of Stock</option>
+                    </select>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.06]">
+                    <button type="button" onclick="closeProductModal()" 
+                            class="px-5 py-2.5 rounded-xl border border-white/[0.1] text-subtle hover:bg-white/[0.03] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="saveProductBtn"
+                            class="px-5 py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent/90 transition-colors flex items-center gap-2">
+                        <span>Save Product</span>
+                        <i class="fa-solid fa-spinner fa-spin hidden"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="closeDeleteModal()"></div>
+    <div class="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <div class="bg-[#0f0f14] border border-white/[0.06] rounded-2xl w-full max-w-md p-6 text-center shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+                <i class="fa-solid fa-trash-can text-2xl text-red-500"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-2">Delete Product?</h3>
+            <p id="deleteConfirmMessage" class="text-sm text-muted mb-6">This action cannot be undone. The product and all its images will be permanently deleted.</p>
+            <div class="flex items-center justify-center gap-3">
+                <button onclick="closeDeleteModal()" class="px-5 py-2.5 rounded-xl border border-white/[0.1] text-subtle hover:bg-white/[0.03] transition-colors">
+                    Cancel
+                </button>
+                <button onclick="confirmDeleteProduct()" id="confirmDeleteBtn" class="px-5 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+     SELLER DASHBOARD FUNCTIONALITY (FIXED)
+     CRITICAL FIXES #C1, #C3, #C4
+     ============================================ -->
+<script>
+(function() {
+    'use strict';
+    
+    // ─── Helper Aliases ──────────────────────────
+    var eh = window.escapeHtml || function(t) { return String(t).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+    var sg = window.safeGet || function(id) { return document.getElementById(id); };
+    var fp = window.formatPrice || function(p) { return 'KES ' + Number(p).toLocaleString(); };
+    
+    // ─── State ───────────────────────────────────
+    var _currentEditProductId = null;
+    var _pendingDeleteProductId = null;
+    var _productImages = [];
+    var _removedImageIds = [];
+    
+    // ════════════════════════════════════════════
+    // PRODUCT MODAL FUNCTIONS
+    // ════════════════════════════════════════════
+    
+    /**
+     * Open product modal for add or edit
+     * @param {string|null} productId - null for new, ID for edit
+     */
+    window.openProductModal = function(productId) {
+        var modal = sg('productModal');
+        if (!modal) {
+            console.error('Product modal not found');
+            return;
+        }
+        
+        _currentEditProductId = productId || null;
+        _productImages = [];
+        _removedImageIds = [];
+        
+        // Reset form
+        var form = sg('productForm');
+        if (form) form.reset();
+        
+        // Clear previews
+        var previewContainer = sg('productImagePreviews');
+        if (previewContainer) previewContainer.innerHTML = '';
+        
+        var existingContainer = sg('existingProductImages');
+        if (existingContainer) {
+            existingContainer.innerHTML = '';
+            existingContainer.classList.add('hidden');
+        }
+        
+        // Clear validation errors
+        clearValidationErrors();
+        
+        // Update title
+        var title = sg('productModalTitle');
+        if (title) {
+            title.textContent = productId ? 'Edit Product' : 'Add New Product';
+        }
+        
+        // Update button text
+        var btn = sg('saveProductBtn');
+        if (btn) {
+            btn.querySelector('span').textContent = productId ? 'Update Product' : 'Save Product';
+        }
+        
+        // Show modal
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        // If editing, load product data
+        if (productId) {
+            loadProductForEdit(productId);
+        } else {
+            // Auto-generate SKU
+            var skuInput = sg('productSku');
+            if (skuInput && !skuInput.value) {
+                skuInput.value = 'SKU-' + Date.now().toString(36).toUpperCase();
+            }
+        }
+    };
+    
+    /**
+     * Close product modal
+     */
+    window.closeProductModal = function() {
+        var modal = sg('productModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        _currentEditProductId = null;
+        _productImages = [];
+        _removedImageIds = [];
+    };
+    
+    /**
+     * Load product data into form for editing
+     */
+    function loadProductForEdit(productId) {
+        if (!window.sb || !window.currentUser) {
+            showToast('Connection error. Please try again.', 'error');
+            return;
+        }
+        
+        showLoadingState(true);
+        
+        window.sb.from('products')
+            .select('*')
+            .eq('id', productId)
+            .eq('seller_id', window.currentUser.id)  // Security: only own products
+            .single()
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                var product = result.data;
+                
+                // Populate form fields
+                setFieldValue('productTitle', product.title);
+                setFieldValue('productDescription', product.description);
+                setFieldValue('productPrice', product.price);
+                setFieldValue('productSku', product.sku || '');
+                setFieldValue('productStock', product.stock_quantity || 0);
+                setFieldValue('productStatus', product.status || 'active');
+                setFieldValue('productCategory', product.category_id || '');
+                
+                // Load existing images
+                loadExistingProductImages(productId);
+                
+                showLoadingState(false);
+            })
+            .catch(function(err) {
+                console.error('Load product error:', err);
+                showToast('Failed to load product data.', 'error');
+                closeProductModal();
+                showLoadingState(false);
+            });
+    }
+    
+    /**
+     * Load and display existing product images
+     */
+    function loadExistingProductImages(productId) {
+        window.sb.from('product_images')
+            .select('*')
+            .eq('product_id', productId)
+            .order('position', { ascending: true })
+            .then(function(result) {
+                if (result.error || !result.data.length) return;
+                
+                var container = sg('existingProductImages');
+                if (!container) return;
+                
+                container.classList.remove('hidden');
+                container.innerHTML = '';
+                
+                result.data.forEach(function(img, index) {
+                    var div = document.createElement('div');
+                    div.className = 'relative group';
+                    div.innerHTML = 
+                        '<img src="' + img.image_url + '" alt="Product image ' + (index+1) + '" class="w-full h-24 object-cover rounded-lg">' +
+                        '<button type="button" onclick="removeExistingImage(\'' + img.id + '\', this)" class="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">' +
+                        '  <i class="fa-solid fa-xmark text-xs text-white"></i>' +
+                        '</button>';
+                    container.appendChild(div);
+                });
+            });
+    }
+    
+    /**
+     * Remove an existing image from product
+     */
+    window.removeExistingImage = function(imageId, buttonElement) {
+        showConfirmModal(
+            'Remove Image',
+            'Are you sure you want to remove this image?',
+            function() {
+                _removedImageIds.push(imageId);
+                if (buttonElement && buttonElement.parentNode) {
+                    buttonElement.parentNode.remove();
+                }
+                showToast('Image marked for removal.', 'info');
+            }
+        );
+    };
+    
+    // ════════════════════════════════════════════
+    // IMAGE HANDLING
+    // ════════════════════════════════════════════
+    
+    /**
+     * Handle product image selection
+     */
+    window.handleProductImages = function(input) {
+        if (!input.files || !input.files.length) return;
+        
+        var maxSize = 5 * 1024 * 1024; // 5MB
+        var allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        var previewContainer = sg('productImagePreviews');
+        
+        Array.prototype.forEach.call(input.files, function(file) {
+            // Validate file type
+            if (allowedTypes.indexOf(file.type) === -1) {
+                showToast(file.name + ': Invalid file type. Use JPG, PNG, WebP, or GIF.', 'error');
+                return;
+            }
+            
+            // Validate file size
+            if (file.size > maxSize) {
+                showToast(file.name + ': File too large. Max 5MB.', 'error');
+                return;
+            }
+            
+            // Add to images array
+            _productImages.push(file);
+            
+            // Create preview
+            if (previewContainer) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var div = document.createElement('div');
+                    div.className = 'relative group';
+                    div.dataset.fileName = file.name;
+                    div.innerHTML = 
+                        '<img src="' + e.target.result + '" alt="Preview" class="w-full h-24 object-cover rounded-lg">' +
+                        '<button type="button" onclick="removeNewImage(this)" class="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">' +
+                        '  <i class="fa-solid fa-xmark text-xs text-white"></i>' +
+                        '</button>';
+                    previewContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Reset input so same file can be selected again if removed
+        input.value = '';
+    };
+    
+    /**
+     * Remove a newly added image preview
+     */
+    window.removeNewImage = function(button) {
+        var previewDiv = button.parentNode;
+        var fileName = previewDiv.dataset.fileName;
+        
+        // Remove from array
+        _productImages = _productImages.filter(function(f) { return f.name !== fileName; });
+        
+        // Remove from DOM
+        previewDiv.remove();
+    };
+    
+    // ════════════════════════════════════════════
+    // SAVE PRODUCT (CREATE/UPDATE)
+    // ════════════════════════════════════════════
+    
+    /**
+     * Save product - creates new or updates existing
+     */
+    window.saveProduct = function() {
+        // Validate form first
+        if (!validateProductForm()) return;
+        
+        if (!window.sb || !window.currentUser) {
+            showToast('Not authenticated. Please sign in.', 'error');
+            return;
+        }
+        
+        var btn = sg('saveProductBtn');
+        var spinner = btn ? btn.querySelector('.fa-spinner') : null;
+        
+        // Set loading state
+        if (btn) btn.disabled = true;
+        if (spinner) spinner.classList.remove('hidden');
+        
+        // Gather form data
+        var productData = {
+            seller_id: window.currentUser.id,
+            title: getValue('productTitle'),
+            description: getValue('productDescription'),
+            price: parseFloat(getValue('productPrice')),
+            category_id: getValue('productCategory'),
+            sku: getValue('productSku') || ('SKU-' + Date.now().toString(36).toUpperCase()),
+            stock_quantity: parseInt(getValue('productStock')) || 0,
+            status: getValue('productStatus') || 'active'
+        };
+        
+        var operation;
+        
+        if (_currentEditProductId) {
+            // UPDATE existing product
+            operation = updateProduct(_currentEditProductId, productData);
+        } else {
+            // CREATE new product
+            operation = createProduct(productData);
+        }
+        
+        operation
+            .then(function(result) {
+                showToast(
+                    _currentEditProductId ? 'Product updated successfully!' : 'Product created successfully!',
+                    'success'
+                );
+                closeProductModal();
+                
+                // Refresh product list
+                if (typeof window.loadSellerProducts === 'function') {
+                    window.loadSellerProducts();
+                }
+                
+                // Refresh dashboard stats
+                if (typeof window.loadDashboardStats === 'function') {
+                    window.loadDashboardStats();
+                }
+            })
+            .catch(function(err) {
+                console.error('Save product error:', err);
+                showToast(err.message || 'Failed to save product. Please try again.', 'error');
+            })
+            .finally(function() {
+                if (btn) btn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+            });
+    };
+    
+    /**
+     * Create new product in Supabase
+     */
+    function createProduct(productData) {
+        return window.sb.from('products')
+            .insert([{
+                seller_id: productData.seller_id,
+                title: productData.title,
+                description: productData.description,
+                price: productData.price,
+                category_id: productData.category_id,
+                sku: productData.sku,
+                stock_quantity: productData.stock_quantity,
+                status: productData.status,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single()
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                var newProduct = result.data;
+                
+                // Upload images if any
+                if (_productImages.length > 0) {
+                    return uploadProductImages(newProduct.id).then(function() {
+                        return newProduct;
+                    });
+                }
+                
+                return newProduct;
+            });
+    }
+    
+    /**
+     * Update existing product in Supabase
+     */
+    function updateProduct(productId, productData) {
+        return window.sb.from('products')
+            .update({
+                title: productData.title,
+                description: productData.description,
+                price: productData.price,
+                category_id: productData.category_id,
+                sku: productData.sku,
+                stock_quantity: productData.stock_quantity,
+                status: productData.status,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', productId)
+            .eq('seller_id', window.currentUser.id)  // Security check
+            .select()
+            .single()
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                var updatedProduct = result.data;
+                
+                // Handle image operations
+                var imageOps = [];
+                
+                // Remove marked images
+                if (_removedImageIds.length > 0) {
+                    imageOps.push(removeMarkedImages());
+                }
+                
+                // Upload new images
+                if (_productImages.length > 0) {
+                    imageOps.push(uploadProductImages(productId));
+                }
+                
+                if (imageOps.length > 0) {
+                    return Promise.all(imageOps).then(function() {
+                        return updatedProduct;
+                    });
+                }
+                
+                return updatedProduct;
+            });
+    }
+    
+    /**
+     * Upload product images to Supabase Storage
+     */
+    function uploadProductImages(productId) {
+        var uploadPromises = [];
+        
+        _productImages.forEach(function(file, index) {
+            var filePath = window.currentUser.id + '/' + productId + '/' + Date.now() + '_' + index + '_' + file.name;
+            
+            var uploadPromise = window.sb.storage
+                .from('product-images')
+                .upload(filePath, file, { cacheControl: '3600', upsert: true })
+                .then(function(uploadResult) {
+                    if (uploadResult.error) throw uploadResult.error;
+                    
+                    // Get public URL
+                    var publicUrlResult = window.sb.storage
+                        .from('product-images')
+                        .getPublicUrl(uploadResult.data.path);
+                    
+                    // Insert into product_images table
+                    return window.sb.from('product_images').insert([{
+                        product_id: productId,
+                        image_url: publicUrlResult.data.publicUrl,
+                        position: index,
+                        is_primary: index === 0,
+                        created_at: new Date().toISOString()
+                    }]);
+                });
+            
+            uploadPromises.push(uploadPromise);
+        });
+        
+        return Promise.all(uploadPromises);
+    }
+    
+    /**
+     * Remove images marked for deletion
+     */
+    function removeMarkedImages() {
+        var deletePromises = [];
+        
+        _removedImageIds.forEach(function(imageId) {
+            deletePromises.push(
+                window.sb.from('product_images')
+                    .delete()
+                    .eq('id', imageId)
+            );
+        });
+        
+        return Promise.all(deletePromises);
+    }
+    
+    // ════════════════════════════════════════════
+    // DELETE PRODUCT
+    // ════════════════════════════════════════════
+    
+    /**
+     * Initiate product deletion
+     */
+    window.deleteProduct = function(productId, productName) {
+        _pendingDeleteProductId = productId;
+        
+        var msgEl = sg('deleteConfirmMessage');
+        if (msgEl) {
+            msgEl.textContent = 'Are you sure you want to delete "' + (productName || 'this product') + '"? This action cannot be undone.';
+        }
+        
+        var modal = sg('deleteConfirmModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    };
+    
+    /**
+     * Close delete confirmation modal
+     */
+    window.closeDeleteModal = function() {
+        var modal = sg('deleteConfirmModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        _pendingDeleteProductId = null;
+    };
+    
+    /**
+     * Confirm and execute product deletion
+     */
+    window.confirmDeleteProduct = function() {
+        if (!_pendingDeleteProductId || !window.sb) return;
+        
+        var btn = sg('confirmDeleteBtn');
+        if (btn) btn.disabled = true;
+        
+        var productId = _pendingDeleteProductId;
+        
+        // First get product images to delete from storage
+        window.sb.from('product_images')
+            .select('*')
+            .eq('product_id', productId)
+            .then(function(result) {
+                var images = result.data || [];
+                var storageDeletes = [];
+                
+                // Queue storage deletions
+                images.forEach(function(img) {
+                    if (img.image_url) {
+                        try {
+                            var urlParts = new URL(img.image_url);
+                            var path = urlPathFromUrl(urlParts.pathname);
+                            if (path) {
+                                storageDeletes.push(
+                                    window.sb.storage.from('product-images').remove([path])
+                                );
+                            }
+                        } catch(e) { /* ignore URL parse errors */ }
+                    }
+                });
+                
+                // Delete images from DB
+                return Promise.all([
+                    window.sb.from('product_images').delete().eq('product_id', productId),
+                    Promise.all(storageDeletes)
+                ]);
+            })
+            .then(function() {
+                // Delete the product itself
+                return window.sb.from('products')
+                    .delete()
+                    .eq('id', productId)
+                    .eq('seller_id', window.currentUser.id);  // Security check
+            })
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                showToast('Product deleted successfully.', 'success');
+                closeDeleteModal();
+                
+                // Refresh lists
+                if (typeof window.loadSellerProducts === 'function') {
+                    window.loadSellerProducts();
+                }
+                if (typeof window.loadDashboardStats === 'function') {
+                    window.loadDashboardStats();
+                }
+            })
+            .catch(function(err) {
+                console.error('Delete product error:', err);
+                showToast('Failed to delete product. Please try again.', 'error');
+            })
+            .finally(function() {
+                if (btn) btn.disabled = false;
+            });
+    };
+    
+    /**
+     * Extract storage path from URL pathname
+     */
+    function urlPathFromUrl(pathname) {
+        // Supabase storage URLs typically have path like /storage/v1/object/bucket-name/path/to/file
+        var match = pathname.match(/\/object\/[^\/]+\/(.+)/);
+        return match ? match[1] : null;
+    }
+    
+    // ════════════════════════════════════════════
+    // FORM VALIDATION
+    // ════════════════════════════════════════════
+    
+    /**
+     * Validate product form before submission
+     */
+    function validateProductForm() {
+        clearValidationErrors();
+        var isValid = true;
+        
+        // Title validation
+        var title = getValue('productTitle');
+        if (!title || title.trim().length < 3) {
+            showFieldError('productTitle', 'Product title must be at least 3 characters.');
+            isValid = false;
+        } else if (title.trim().length > 200) {
+            showFieldError('productTitle', 'Product title must be under 200 characters.');
+            isValid = false;
+        }
+        
+        // Description validation
+        var desc = getValue('productDescription');
+        if (!desc || desc.trim().length < 10) {
+            showFieldError('productDescription', 'Description must be at least 10 characters.');
+            isValid = false;
+        }
+        
+        // Price validation
+        var price = parseFloat(getValue('productPrice'));
+        if (isNaN(price) || price < 0) {
+            showFieldError('productPrice', 'Please enter a valid price.');
+            isValid = false;
+        } else if (price > 999999.99) {
+            showFieldError('productPrice', 'Price seems too high.');
+            isValid = false;
+        }
+        
+        // Category validation
+        var category = getValue('productCategory');
+        if (!category) {
+            showFieldError('productCategory', 'Please select a category.');
+            isValid = false;
+        }
+        
+        // Stock validation
+        var stock = parseInt(getValue('productStock'));
+        if (isNaN(stock) || stock < 0) {
+            showFieldError('productStock', 'Please enter a valid stock quantity.');
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+    
+    /**
+     * Show field validation error
+     */
+    function showFieldError(fieldId, message) {
+        var input = sg(fieldId);
+        var errorEl = input ? input.parentNode.querySelector('.validation-error') : null;
+        
+        if (input) {
+            input.classList.add('border-red-500');
+        }
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+    }
+    
+    /**
+     * Clear all validation errors
+     */
+    function clearValidationErrors() {
+        var errors = document.querySelectorAll('.validation-error');
+        errors.forEach(function(el) {
+            el.textContent = '';
+            el.classList.add('hidden');
+        });
+        
+        var inputs = document.querySelectorAll('#productForm .border-red-500');
+        inputs.forEach(function(el) {
+            el.classList.remove('border-red-500');
+        });
+    }
+    
+    // ════════════════════════════════════════════
+    // SETTINGS FUNCTIONS
+    // ════════════════════════════════════════════
+    
+    /**
+     * Save shop settings
+     */
+    window.saveShopSettings = function() {
+        if (!window.sb || !window.currentUser) {
+            showToast('Not authenticated.', 'error');
+            return;
+        }
+        
+        var shopName = getValue('settingsShopName') || getValue('settingsShopNameMobile');
+        var email = getValue('settingsEmail') || getValue('settingsEmailMobile');
+        var phone = getValue('settingsPhone') || getValue('settingsPhoneMobile');
+        var desc = getValue('settingsDesc');
+        
+        // Basic validation
+        if (!shopName || shopName.trim().length < 2) {
+            showToast('Shop name is required (min 2 characters).', 'error');
+            return;
+        }
+        
+        var btn = event.target;
+        if (btn) btn.disabled = true;
+        
+        window.sb.from('profiles')
+            .update({
+                brand_name: shopName.trim(),
+                display_name: shopName.trim(),
+                phone: phone ? phone.trim() : null,
+                description: desc ? desc.trim() : null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', window.currentUser.id)
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                // Update local state
+                if (window.currentUser) {
+                    window.currentUser.brand = shopName.trim();
+                    window.currentUser.display_name = shopName.trim();
+                }
+                if (typeof window.saveSession === 'function') {
+                    window.saveSession();
+                }
+                
+                showToast('Settings saved successfully!', 'success');
+                
+                // Sync mobile/desktop fields
+                syncSettingsFields(shopName, email, phone, desc);
+            })
+            .catch(function(err) {
+                console.error('Save settings error:', err);
+                showToast('Failed to save settings: ' + (err.message || 'Unknown error'), 'error');
+            })
+            .finally(function() {
+                if (btn) btn.disabled = false;
+            });
+    };
+    
+    /**
+     * Sync values between desktop and mobile settings fields
+     */
+    function syncSettingsFields(shopName, email, phone, desc) {
+        setValue('settingsShopName', shopName);
+        setValue('settingsShopNameMobile', shopName);
+        setValue('settingsEmail', email);
+        setValue('settingsEmailMobile', email);
+        setValue('settingsPhone', phone);
+        setValue('settingsPhoneMobile', phone);
+        setValue('settingsDesc', desc);
+    }
+    
+    /**
+     * Handle avatar/profile image upload
+     */
+    window.handleAvatarUpload = function(input) {
+        if (!input.files || !input.files[0]) return;
+        if (!window.sb || !window.currentUser) {
+            showToast('Not authenticated.', 'error');
+            return;
+        }
+        
+        var file = input.files[0];
+        
+        // Validate
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file.', 'error');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image must be less than 5MB.', 'error');
+            return;
+        }
+        
+        showToast('Uploading avatar...', 'info');
+        
+        var filePath = 'avatars/' + window.currentUser.id + '_' + Date.now() + '_' + file.name;
+        
+        window.sb.storage
+            .from('avatars')
+            .upload(filePath, file, { cacheControl: '3600', upsert: true })
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                var publicUrl = window.sb.storage
+                    .from('avatars')
+                    .getPublicUrl(result.data.path);
+                
+                return window.sb.from('profiles')
+                    .update({ avatar_url: publicUrl.data.publicUrl })
+                    .eq('id', window.currentUser.id);
+            })
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                // Update UI
+                var avatars = document.querySelectorAll('.settings-avatar-preview, .dashboard-avatar');
+                avatars.forEach(function(img) {
+                    if (img.tagName === 'IMG') {
+                        img.src = URL.createObjectURL(file);
+                    }
+                });
+                
+                // Update current user object
+                if (window.currentUser) {
+                    window.currentUser.avatar_url = publicUrl; // will be refreshed on next load
+                }
+                
+                showToast('Avatar uploaded successfully!', 'success');
+            })
+            .catch(function(err) {
+                console.error('Avatar upload error:', err);
+                showToast('Failed to upload avatar.', 'error');
+            });
+        
+        // Reset input
+        input.value = '';
+    };
+    
+    // ════════════════════════════════════════════
+    // DATA LOADING FUNCTIONS
+    // ════════════════════════════════════════════
+    
+    /**
+     * Load seller's products for dashboard display
+     */
+    window.loadSellerProducts = function() {
+        var container = sg('dashProductsList');
+        if (!container) return;
+        
+        if (!window.sb || !window.currentUser) {
+            container.innerHTML = '<div class="text-center py-12 text-muted"><p>Please sign in to view your products.</p></div>';
+            return;
+        }
+        
+        // Show loading state
+        container.innerHTML = '<div class="flex justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
+        
+        window.sb.from('products')
+            .select('*, product_images(image_url, is_primary), categories(name)')
+            .eq('seller_id', window.currentUser.id)
+            .order('created_at', { ascending: false })
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                var products = result.data || [];
+                
+                if (products.length === 0) {
+                    container.innerHTML = 
+                        '<div class="empty-state-dash text-center py-12">' +
+                        '  <i class="fa-solid fa-box-open text-4xl text-muted mb-4"></i>' +
+                        '  <p class="text-muted mb-4">No products yet</p>' +
+                        '  <button onclick="openProductModal()" class="px-4 py-2 bg-accent rounded-xl text-white text-sm">Add Your First Product</button>' +
+                        '</div>';
+                    return;
+                }
+                
+                // Render products
+                var html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+                
+                products.forEach(function(product) {
+                    var primaryImage = '/images/placeholder-product.jpg';
+                    if (product.product_images && product.product_images.length > 0) {
+                        var primary = product.product_images.find(function(img) { return img.is_primary; }) || product.product_images[0];
+                        primaryImage = primary.image_url;
+                    }
+                    
+                    var categoryName = product.categories ? product.categories.name : product.category_id || 'Uncategorized';
+                    var statusClass = product.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                                       product.status === 'draft' ? 'bg-yellow-500/20 text-yellow-400' :
+                                       'bg-red-500/20 text-red-400';
+                    var statusText = product.status === 'active' ? 'Active' :
+                                     product.status === 'draft' ? 'Draft' : 'Out of Stock';
+                    
+                    html += 
+                        '<div class="bg-card border border-white/[0.04] rounded-xl overflow-hidden hover:border-accent/30 transition-all group">' +
+                        '  <div class="aspect-square bg-white/[0.02] relative overflow-hidden">' +
+                        '    <img src="' + primaryImage + '" alt="' + eh(product.title) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src=\'/images/placeholder-product.jpg\'">' +
+                        '    <span class="absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium ' + statusClass + '">' + statusText + '</span>' +
+                        '  </div>' +
+                        '  <div class="p-4">' +
+                        '    <h4 class="font-medium text-white text-sm line-clamp-1 mb-1">' + eh(product.title) + '</h4>' +
+                        '    <p class="text-accent font-semibold text-sm mb-2">' + fp(product.price) + '</p>' +
+                        '    <div class="flex items-center justify-between text-xs text-muted">' +
+                        '      <span>Stock: ' + (product.stock_quantity || 0) + '</span>' +
+                        '      <span class="px-1.5 py-0.5 bg-white/[0.05] rounded">' + eh(categoryName) + '</span>' +
+                        '    </div>' +
+                        '    <div class="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.04]">' +
+                        '      <button onclick="openProductModal(\'' + product.id + '\')" class="flex-1 px-3 py-1.5 text-xs bg-white/[0.05] rounded-lg hover:bg-white/[0.1] transition-colors">' +
+                        '        <i class="fa-solid fa-pen mr-1"></i>Edit' +
+                        '      </button>' +
+                        '      <button onclick="deleteProduct(\'' + product.id + '\', \'' + eh(product.title).replace(/'/g, "\\'") + '\')" class="flex-1 px-3 py-1.5 text-xs bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors">' +
+                        '        <i class="fa-solid fa-trash mr-1"></i>Delete' +
+                        '      </button>' +
+                        '    </div>' +
+                        '  </div>' +
+                        '</div>';
+                });
+                
+                html += '</div>';
+                
+                // Update count badge
+                var countBadge = sg('productsCountBadge');
+                if (countBadge) countBadge.textContent = products.length;
+                
+                container.innerHTML = html;
+            })
+            .catch(function(err) {
+                console.error('Load products error:', err);
+                container.innerHTML = '<div class="text-center py-12 text-red-400"><p>Failed to load products.</p><button onclick="loadSellerProducts()" class="mt-2 text-sm underline">Retry</button></div>';
+            });
+    };
+    
+    /**
+     * Load orders for the seller
+     */
+    window.loadOrders = function() {
+        var container = sg('dashOrdersTabContent');
+        if (!container) return;
+        
+        if (!window.sb || !window.currentUser) {
+            container.innerHTML = '<div class="text-center py-12 text-muted"><p>Please sign in to view your orders.</p></div>';
+            return;
+        }
+        
+        // Show loading
+        container.innerHTML = '<div class="flex justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div></div>';
+        
+        window.sb.from('orders')
+            .select('*, order_items(*, products(title, image_url)), profiles!orders_buyer_id_fkey(display_name)')
+            .eq('seller_id', window.currentUser.id)
+            .order('created_at', { ascending: false })
+            .limit(50)
+            .then(function(result) {
+                if (result.error) throw result.error;
+                
+                var orders = result.data || [];
+                
+                if (orders.length === 0) {
+                    container.innerHTML =
+                        '<div class="empty-state-dash text-center py-12">' +
+                        '  <i class="fa-solid fa-receipt text-4xl text-muted mb-4"></i>' +
+                        '  <p class="text-muted">No orders yet</p>' +
+                        '</div>';
+                    return;
+                }
+                
+                var html = '<div class="space-y-3">';
+                
+                orders.forEach(function(order) {
+                    var buyerName = order.profiles ? order.profiles.display_name : 'Unknown Buyer';
+                    var itemCount = order.order_items ? order.order_items.length : 0;
+                    var total = order.total_amount || 0;
+                    
+                    var statusColors = {
+                        pending: 'bg-yellow-500/20 text-yellow-400',
+                        processing: 'bg-blue-500/20 text-blue-400',
+                        shipped: 'bg-purple-500/20 text-purple-400',
+                        delivered: 'bg-green-500/20 text-green-400',
+                        cancelled: 'bg-red-500/20 text-red-400'
+                    };
+                    var statusColor = statusColors[order.status] || 'bg-gray-500/20 text-gray-400';
+                    
+                    html +=
+                        '<div class="bg-card border border-white/[0.04] rounded-xl p-4 hover:border-white/[0.08] transition-all">' +
+                        '  <div class="flex items-start justify-between mb-3">' +
+                        '    <div>' +
+                        '      <p class="font-medium text-white text-sm">#' + order.id.substring(0, 8).toUpperCase() + '</p>' +
+                        '      <p class="text-xs text-muted mt-1">' + buyerName + ' · ' + itemCount + ' item(s)</p>' +
+                        '    </div>' +
+                        '    <span class="px-2.5 py-1 rounded-lg text-xs font-medium capitalize ' + statusColor + '">' + (order.status || 'pending') + '</span>' +
+                        '  </div>' +
+                        '  <div class="flex items-center justify-between">' +
+                        '    <p class="text-accent font-semibold">' + fp(total) + '</p>' +
+                        '    <div class="flex items-center gap-2">' +
+                        '      <select onchange="updateOrderStatus(\'' + order.id + '\', this.value)" class="text-xs bg-white/[0.05] border border-white/[0.1] rounded-lg px-2 py-1.5 text-white">' +
+                        '        <option value="pending" ' + (order.status === 'pending' ? 'selected' : '') + '>Pending</option>' +
+                        '        <option value="processing" ' + (order.status === 'processing' ? 'selected' : '') + '>Processing</option>' +
+                        '        <option value="shipped" ' + (order.status === 'shipped' ? 'selected' : '') + '>Shipped</option>' +
+                        '        <option value="delivered" ' + (order.status === 'delivered' ? 'selected' : '') + '>Delivered</option>' +
+                        '        <option value="cancelled" ' + (order.status === 'cancelled' ? 'selected' : '') + '>Cancelled</option>' +
+                        '      </select>' +
+                        '    </div>' +
+                        '  </div>' +
+                        '</div>';
+                });
+                
+                html += '</div>';
+                
+                // Update count
+                var countBadge = sg('ordersCountBadge');
+                if (countBadge) countBadge.textContent = orders.length;
+                
+                container.innerHTML = html;
+            })
+            .catch(function(err) {
+                console.error('Load orders error:', err);
+                container.innerHTML = '<div class="text-center py-12 text-red-400"><p>Failed to load orders.</p><button onclick="loadOrders()" class="mt-2 text-sm underline">Retry</button></div>';
+            });
+    };
+    
+    /**
+     * Update order status
+     */
+    window.updateOrderStatus = function(orderId, newStatus) {
+        if (!window.sb) return;
+        
+        window.sb.from('orders')
+            .update({
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+                ...(newStatus === 'shipped' ? { shipped_at: new Date().toISOString() } : {}),
+                ...(newStatus === 'delivered' ? { delivered_at: new Date().toISOString() } : {})
+            })
+            .eq('id', orderId)
+            .eq('seller_id', window.currentUser.id)
+            .then(function(result) {
+                if (result.error) throw result.error;
+                showToast('Order status updated to ' + newStatus, 'success');
+            })
+            .catch(function(err) {
+                console.error('Update order status error:', err);
+                showToast('Failed to update order status.', 'error');
+                // Reload to revert UI change
+                loadOrders();
+            });
+    };
+    
+    /**
+     * Load dashboard statistics
+     */
+    window.loadDashboardStats = function() {
+        if (!window.sb || !window.currentUser) return;
+        
+        var userId = window.currentUser.id;
+        
+        // Run queries in parallel
+        Promise.all([
+            // Total revenue
+            window.sb.from('orders')
+                .select('total_amount')
+                .eq('seller_id', userId)
+                .in('status', ['delivered', 'shipped']),
+            
+            // Total orders
+            window.sb.from('orders')
+                .select('id', { count: 'exact', head: true })
+                .eq('seller_id', userId),
+            
+            // Total products
+            window.sb.from('products')
+                .select('id', { count: 'exact', head: true })
+                .eq('seller_id', userId),
+            
+            // Low stock products
+            window.sb.from('products')
+                .select('id', { count: 'exact', head: true })
+                .eq('seller_id', userId)
+                .lt('stock_quantity', 10)
+                .gt('stock_quantity', 0)
+        ]).then(function(results) {
+            // Revenue
+            var revenue = 0;
+            if (!results[0].error && results[0].data) {
+                results[0].data.forEach(function(o) { revenue += o.total_amount || 0; });
+            }
+            updateStat('statRevenue', fp(revenue));
+            updateStat('quickStatRevenue', fp(revenue));
+            
+            // Orders count
+            var ordersCount = results[1].count || 0;
+            updateStat('statOrders', ordersCount);
+            updateStat('quickStatOrders', ordersCount);
+            
+            // Products count
+            var productsCount = results[2].count || 0;
+            updateStat('statTotalProducts', productsCount);
+            updateStat('quickStatProducts', productsCount);
+            
+            // Low stock alert
+            var lowStockCount = results[3].count || 0;
+            var lowStockEl = sg('lowStockAlert');
+            if (lowStockEl) {
+                lowStockEl.style.display = lowStockCount > 0 ? 'block' : 'none';
+                if (lowStockCount > 0) {
+                    lowStockEl.querySelector('.alert-count').textContent = lowStockCount;
+                }
+            }
+        }).catch(function(err) {
+            console.error('Load stats error:', err);
+        });
+        
+        // Load recent orders for activity feed
+        loadRecentActivity();
+        
+        // Load revenue chart data
+        loadRevenueChart();
+    };
+    
+    /**
+     * Update a stat element's text content
+     */
+    function updateStat(elementId, value) {
+        var el = sg(elementId);
+        if (el) {
+            // Animate number change
+            var currentValue = parseInt(el.textContent.replace(/[^0-9.-]/g, '')) || 0;
+            var newValue = typeof value === 'number' ? value : parseInt(value.toString().replace(/[^0-9.-]/g, '')) || 0;
+            animateValue(el, currentValue, newValue, 500);
+        }
+    }
+    
+    /**
+     * Animate number value change
+     */
+    function animateValue(element, start, end, duration) {
+        var range = end - start;
+        var startTime = null;
+        
+        function step(timestamp) {
+            if (!startTime) startTime = timestamp;
+            var progress = Math.min((timestamp - startTime) / duration, 1);
+            var easeProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+            element.textContent = Math.round(start + range * easeProgress).toLocaleString();
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            }
+        }
+        
+        requestAnimationFrame(step);
+    }
+    
+    /**
+     * Load recent activity feed
+     */
+    function loadRecentActivity() {
+        var container = sg('activityFeed');
+        if (!container) return;
+        
+        window.sb.from('orders')
+            .select('*, profiles!orders_buyer_id_fkey(display_name)')
+            .eq('seller_id', window.currentUser.id)
+            .order('created_at', { ascending: false })
+            .limit(5)
+            .then(function(result) {
+                if (result.error || !result.data.length) {
+                    container.innerHTML = '<p class="text-sm text-muted text-center py-4">No recent activity</p>';
+                    return;
+                }
+                
+                var html = '';
+                result.data.forEach(function(order) {
+                    var buyer = order.profiles ? order.profiles.display_name : 'Someone';
+                    var timeAgo = getTimeAgo(order.created_at);
+                    
+                    html += 
+                        '<div class="flex items-start gap-3 py-3 border-b border-white/[0.04] last:border-0">' +
+                        '  <div class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">' +
+                        '    <i class="fa-solid fa-shopping-bag text-xs text-accent"></i>' +
+                        '  </div>' +
+                        '  <div class="flex-1 min-w-0">' +
+                        '    <p class="text-sm text-white"><span class="font-medium">' + eh(buyer) + '</span> placed an order</p>' +
+                        '    <p class="text-xs text-muted mt-0.5">' + fp(order.total_amount) + ' · ' + timeAgo + '</p>' +
+                        '  </div>' +
+                        '</div>';
+                });
+                
+                container.innerHTML = html;
+            });
+    }
+    
+    /**
+     * Load and render revenue chart
+     */
+    function loadRevenueChart() {
+        var container = sg('revenueChartContainer');
+        if (!container) return;
+        
+        // Get last 30 days data
+        var thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        window.sb.from('orders')
+            .select('total_amount, created_at')
+            .eq('seller_id', window.currentUser.id)
+            .in('status', ['delivered', 'shipped'])
+            .gte('created_at', thirtyDaysAgo.toISOString())
+            .order('created_at', { ascending: true })
+            .then(function(result) {
+                if (result.error || !result.data.length) {
+                    container.innerHTML = '<div class="text-center py-8 text-muted"><p>No revenue data for the last 30 days</p></div>';
+                    return;
+                }
+                
+                // Aggregate by day
+                var dailyData = {};
+                result.data.forEach(function(order) {
+                    var day = order.created_at.split('T')[0];
+                    dailyData[day] = (dailyData[day] || 0) + (order.total_amount || 0);
+                });
+                
+                // Render simple bar chart (CSS-based, no library needed)
+                var days = Object.keys(dailyData).slice(-14); // Last 14 days
+                var maxValue = Math.max.apply(null, days.map(function(d) { return dailyData[d]; }));
+                
+                var html = '<div class="flex items-end gap-1 h-32">';
+                days.forEach(function(day) {
+                    var value = dailyData[day];
+                    var height = maxValue > 0 ? (value / maxValue * 100) : 0;
+                    var dayLabel = day.split('-')[2]; // Just day number
+                    
+                    html += 
+                        '<div class="flex-1 flex flex-col items-center gap-1">' +
+                        '  <div class="w-full bg-accent/80 rounded-t-sm transition-all hover:bg-accent relative group" style="height: ' + height + '%;" title="' + fp(value) + '">' +
+                        '    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-white text-black text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">' + fp(value) + '</div>' +
+                        '  </div>' +
+                        '  <span class="text-[10px] text-muted">' + dayLabel + '</span>' +
+                        '</div>';
+                });
+                html += '</div>';
+                
+                container.innerHTML = html;
+            });
+    }
+    
+    // ════════════════════════════════════════════
+    // UTILITY FUNCTIONS
+    // ════════════════════════════════════════════
+    
+    /**
+     * Get element value safely
+     */
+    function getValue(id) {
+        var el = sg(id);
+        return el ? el.value : '';
+    }
+    
+    /**
+     * Set element value safely
+     */
+    function setValue(id, value) {
+        var el = sg(id);
+        if (el) el.value = value || '';
+    }
+    
+    /**
+     * Show/hide loading state on form
+     */
+    function showLoadingState(showing) {
+        var btn = sg('saveProductBtn');
+        var spinner = btn ? btn.querySelector('.fa-spinner') : null;
+        if (btn) btn.disabled = showing;
+        if (spinner) spinner.classList.toggle('hidden', !showing);
+    }
+    
+    /**
+     * Get human-readable time ago string
+     */
+    function getTimeAgo(dateString) {
+        var now = new Date();
+        var date = new Date(dateString);
+        var seconds = Math.floor((now - date) / 1000);
+        
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+        if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+        return date.toLocaleDateString();
+    }
+    
+    // ════════════════════════════════════════════
+    // INITIALIZATION
+    // ════════════════════════════════════════════
+    
+    /**
+     * Initialize seller dashboard when DOM ready
+     */
+    function initSellerDashboardFixes() {
+        // Make functions globally available
+        window.loadSellerProducts = window.loadSellerProducts || loadSellerProducts;
+        window.loadOrders = window.loadOrders || loadOrders;
+        window.loadDashboardStats = window.loadDashboardStats || loadDashboardStats;
+        
+        // Auto-load when dashboard is visible
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.target.id === 'sellerDashboard' && mutation.target.classList.contains('active')) {
+                    loadDashboardStats();
+                }
+            });
+        });
+        
+        var dashEl = sg('sellerDashboard');
+        if (dashEl) {
+            observer.observe(dashEl, { attributes: true, attributeFilter: ['class'] });
+        }
+        
+        log('Seller dashboard functionality initialized');
+    }
+    
+    // Initialize when DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSellerDashboardFixes);
+    } else {
+        initSellerDashboardFixes();
+    }
+    
+})();
+</script>
 
 </body>
 </html>
